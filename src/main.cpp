@@ -2,16 +2,13 @@
 
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
-
-#include "InputHandler/InputHandler.hpp"
 
 #include <stdexcept>
 
-int main(void) {
-    GLFWwindow* window;
+#include "InputHandler/InputHandler.hpp"
+#include "ImGui/ImGui.hpp"
+
+int main() {
     if (!glfwInit()) return -1;
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
@@ -20,65 +17,36 @@ int main(void) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
     if (!window) {
         glfwTerminate();
         return -1;
     }
 
     glfwMakeContextCurrent(window);
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
         throw std::runtime_error("Failed to initialize OpenGL");
     };
 
     // Set input callback
     glfwSetKeyCallback(window, keyCallback);
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    ImGui::StyleColorsDark();
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 460");
+    setupImGui(window);
 
     while (!glfwWindowShouldClose(window)) {
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
+        updateImGui(window);
 
-        ImGui::Begin("IDK");
-        ImGui::Text("Hello World!");
-
-        // Debug input states
-        if (gInputHandler.isKeyPressed(Key::W)) ImGui::Text("W pressed");
-        if (gInputHandler.isKeyPressed(Key::A)) ImGui::Text("A pressed");
-        if (gInputHandler.isKeyPressed(Key::S)) ImGui::Text("S pressed");
-        if (gInputHandler.isKeyPressed(Key::D)) ImGui::Text("D pressed");
-        if (gInputHandler.isKeyPressed(Key::R)) ImGui::Text("R pressed");
-        if (gInputHandler.isKeyPressed(Key::Tab)) ImGui::Text("Tab pressed");
-        if (gInputHandler.isKeyPressed(Key::Space)) ImGui::Text("Space pressed");
-        if (gInputHandler.isKeyPressed(Key::Num_1)) ImGui::Text("1 pressed");
-        if (gInputHandler.isKeyPressed(Key::Num_2)) ImGui::Text("2 pressed");
-        if (gInputHandler.isKeyPressed(Key::Num_3)) ImGui::Text("3 pressed");
-        if (gInputHandler.isKeyPressed(Key::Escape)) {
-            ImGui::Text("Escape pressed -> Closing window");
-            glfwSetWindowShouldClose(window, GLFW_TRUE);
-        }
-
-        ImGui::End();
-
+        // Clear
+        glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
+        // Render
+        renderImGui();
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
+    destroyImGui();
 
     glfwTerminate();
     return 0;
