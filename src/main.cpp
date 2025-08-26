@@ -6,8 +6,9 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-#include <stdexcept>
+#include "InputHandler/InputHandler.hpp"
 
+#include <stdexcept>
 
 int main(void) {
     GLFWwindow* window;
@@ -30,6 +31,9 @@ int main(void) {
         throw std::runtime_error("Failed to initialize OpenGL");
     };
 
+    // Set input callback
+    glfwSetKeyCallback(window, keyCallback);
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
@@ -44,6 +48,23 @@ int main(void) {
 
         ImGui::Begin("IDK");
         ImGui::Text("Hello World!");
+
+        // Debug input states
+        if (gInputHandler.isKeyPressed(Key::W)) ImGui::Text("W pressed");
+        if (gInputHandler.isKeyPressed(Key::A)) ImGui::Text("A pressed");
+        if (gInputHandler.isKeyPressed(Key::S)) ImGui::Text("S pressed");
+        if (gInputHandler.isKeyPressed(Key::D)) ImGui::Text("D pressed");
+        if (gInputHandler.isKeyPressed(Key::R)) ImGui::Text("R pressed");
+        if (gInputHandler.isKeyPressed(Key::Tab)) ImGui::Text("Tab pressed");
+        if (gInputHandler.isKeyPressed(Key::Space)) ImGui::Text("Space pressed");
+        if (gInputHandler.isKeyPressed(Key::Num_1)) ImGui::Text("1 pressed");
+        if (gInputHandler.isKeyPressed(Key::Num_2)) ImGui::Text("2 pressed");
+        if (gInputHandler.isKeyPressed(Key::Num_3)) ImGui::Text("3 pressed");
+        if (gInputHandler.isKeyPressed(Key::Escape)) {
+            ImGui::Text("Escape pressed -> Closing window");
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+        }
+
         ImGui::End();
 
         glClear(GL_COLOR_BUFFER_BIT);
