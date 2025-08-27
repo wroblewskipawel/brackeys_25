@@ -123,12 +123,12 @@ int main() {
 
         updateImGui(window);
         // Handle movement
-        if (gInputHandler.isKeyPressed(Key::W)) yOffset += moveSpeed * deltaTime;
-        if (gInputHandler.isKeyPressed(Key::S)) yOffset -= moveSpeed * deltaTime;
-        if (gInputHandler.isKeyPressed(Key::A)) xOffset -= moveSpeed * deltaTime;
-        if (gInputHandler.isKeyPressed(Key::D)) xOffset += moveSpeed * deltaTime;
-        if (gInputHandler.isKeyPressed(Key::R)) gMusicManager.play(SoundID::Coin);
-        if (gInputHandler.isKeyPressed(Key::Space)) gMusicManager.play(SoundID::Explosion);
+        if (gInputHandler.isPressed(Key::W)) yOffset += moveSpeed * deltaTime;
+        if (gInputHandler.isPressed(Key::S)) yOffset -= moveSpeed * deltaTime;
+        if (gInputHandler.isPressed(Key::A)) xOffset -= moveSpeed * deltaTime;
+        if (gInputHandler.isPressed(Key::D)) xOffset += moveSpeed * deltaTime;
+        if (gInputHandler.isClicked(Key::R)) gMusicManager.play(SoundID::Coin);
+        if (gInputHandler.isPressed(Key::Space)) gMusicManager.play(SoundID::Explosion);
 
         // Pass the offset to the shader
         glUniform2f(offsetLoc, xOffset, yOffset);
@@ -144,6 +144,7 @@ int main() {
         // Draw the triangle using the GL_TRIANGLES primitive
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
+        gInputHandler.update();
         // Render
         renderImGui();
         glfwSwapBuffers(window);
