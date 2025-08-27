@@ -50,6 +50,7 @@ target_include_directories(
     "${CMAKE_SOURCE_DIR}/extern/imgui/"
     "${CMAKE_SOURCE_DIR}/extern/imgui/backends/"
     "${CMAKE_SOURCE_DIR}/extern/glad/include/"
+    "${CMAKE_SOURCE_DIR}/extern/miniaudio/"
 )
 
 set(SHADER_DIR "${CMAKE_SOURCE_DIR}/shaders/")
