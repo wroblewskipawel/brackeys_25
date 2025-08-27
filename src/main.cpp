@@ -5,10 +5,15 @@
 
 #include <cmath>
 #include <stdexcept>
+#include <iostream>
 
 #include "ImGui/ImGui.hpp"
 #include "InputHandler/InputHandler.hpp"
 #include "MusicManager/MusicManager.hpp"
+
+#include "EntityComponentSystem/ECS.hpp"
+#include "EntityComponentSystem/Components/MovableComponent.hpp"
+#include "EntityComponentSystem/Systems/MovementSystem.hpp"
 
 // Vertex Shader source code
 const char* vertexShaderSource = "#version 330 core\n"
@@ -25,6 +30,11 @@ const char* fragmentShaderSource = "#version 330 core\n"
 "{\n"
 "   FragColor = vec4(0.8f, 0.3f, 0.02f, 1.0f);\n"
 "}\n\0";
+
+void debugSystem(ECS& ecs, const float& deltaTime) {
+    auto& movables = ecs.getStorage<MovableComponent>();
+    std::cout << "Debug: " << movables.getAll().size() << " movables tracked.\n";
+}
 
 int main() {
     if (!glfwInit()) return -1;
@@ -46,46 +56,27 @@ int main() {
         throw std::runtime_error("Failed to initialize OpenGL");
     };
 
-    // Set input callback
     glfwSetKeyCallback(window, keyCallback);
     setupImGui(window);
 
-    // Create Vertex Shader Object and get its reference
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    // Attach Vertex Shader source to the Vertex Shader Object
     glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    // Compile the Vertex Shader into machine code
     glCompileShader(vertexShader);
 
-    // Create Fragment Shader Object and get its reference
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    // Attach Fragment Shader source to the Fragment Shader Object
     glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    // Compile the Vertex Shader into machine code
     glCompileShader(fragmentShader);
 
-    // Create Shader Program Object and get its reference
     GLuint shaderProgram = glCreateProgram();
-    // Attach the Vertex and Fragment Shaders to the Shader Program
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
-    // Wrap-up/Link all the shaders together into the Shader Program
     glLinkProgram(shaderProgram);
 
-    // Delete the now useless Vertex and Fragment Shader objects
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    float xOffset = 0.0f;
-    float yOffset = 0.0f;
-    float deltaTime = 0.0f;
-    float lastFrame = 0.0f;
-    float moveSpeed = 1.0f; // units per second
-
-    // Get the uniform location once
     GLint offsetLoc = glGetUniformLocation(shaderProgram, "offset");
 
-    // Vertices coordinates
     GLfloat vertices[] =
     {
         -0.5f, -0.5f * float(std::sqrt(3)) / 3, 0.0f, // Lower left corner
@@ -95,56 +86,63 @@ int main() {
 
     GLuint VAO, VBO;
 
-    // Generate the VAO and VBO with only 1 object each
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 
-    // Make the VAO the current Vertex Array Object by binding it
     glBindVertexArray(VAO);
 
-    // Bind the VBO specifying it's a GL_ARRAY_BUFFER
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // Introduce the vertices into the VBO
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    // Configure the Vertex Attribute so that OpenGL knows how to read the VBO
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    // Enable the Vertex Attribute so that OpenGL knows to use it
     glEnableVertexAttribArray(0);
 
-    // Bind both the VBO and VAO to 0 so that we don't accidentally modify the VAO and VBO we created
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+
+    float deltaTime = 0.0f;
+    float lastFrame = 0.0f;
+
+    ECS ecs;
+
+    EntityID player = ecs.createEntity();
+    EntityID enemy  = ecs.createEntity();
+
+    ecs.addComponent(player, MovableComponent{0,0,1.0f,1.0f});
+    ecs.addComponent(enemy, MovableComponent{5,5,1.0f,1.0f});
+
+    ecs.nextStage(ECS::StageType::Parallel)
+          .addSystem(movementSystem)
+       .nextStage(ECS::StageType::Sequential)
+          .addSystem(debugSystem);
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        updateImGui(window);
-        // Handle movement
-        if (gInputHandler.isPressed(Key::W)) yOffset += moveSpeed * deltaTime;
-        if (gInputHandler.isPressed(Key::S)) yOffset -= moveSpeed * deltaTime;
-        if (gInputHandler.isPressed(Key::A)) xOffset -= moveSpeed * deltaTime;
-        if (gInputHandler.isPressed(Key::D)) xOffset += moveSpeed * deltaTime;
-        if (gInputHandler.isClicked(Key::R)) gMusicManager.play(SoundID::Coin);
-        if (gInputHandler.isPressed(Key::Space)) gMusicManager.play(SoundID::Explosion);
+        ecs.update(deltaTime);
 
-        // Pass the offset to the shader
-        glUniform2f(offsetLoc, xOffset, yOffset);
+        updateImGui(window);
+
+        // Music test
+        if (gInputHandler.isClicked(Key::R)) gMusicManager.play(SoundID::Coin);
+        if (gInputHandler.isPressed(Key::Space))
+            gMusicManager.play(SoundID::Explosion);
+
+        const auto x = ecs.getStorage<MovableComponent>().getAll()[player];
+        glUniform2f(offsetLoc, x.x, x.y);
+
+        gInputHandler.update();
 
         // Clear
         glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // Tell OpenGL which Shader Program we want to use
         glUseProgram(shaderProgram);
-        // Bind the VAO so OpenGL knows to use it
         glBindVertexArray(VAO);
-        // Draw the triangle using the GL_TRIANGLES primitive
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
-        gInputHandler.update();
         // Render
         renderImGui();
         glfwSwapBuffers(window);
@@ -152,10 +150,11 @@ int main() {
     }
 
     destroyImGui();
-    // Delete all the objects we've created
+
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram);
+
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
