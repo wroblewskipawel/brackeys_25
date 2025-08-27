@@ -8,6 +8,7 @@
 
 #include "ImGui/ImGui.hpp"
 #include "InputHandler/InputHandler.hpp"
+#include "MusicManager/MusicManager.hpp"
 
 // Vertex Shader source code
 const char* vertexShaderSource = "#version 330 core\n"
@@ -126,6 +127,8 @@ int main() {
         if (gInputHandler.isKeyPressed(Key::S)) yOffset -= moveSpeed * deltaTime;
         if (gInputHandler.isKeyPressed(Key::A)) xOffset -= moveSpeed * deltaTime;
         if (gInputHandler.isKeyPressed(Key::D)) xOffset += moveSpeed * deltaTime;
+        if (gInputHandler.isKeyPressed(Key::R)) gMusicManager.play(SoundID::Coin);
+        if (gInputHandler.isKeyPressed(Key::Space)) gMusicManager.play(SoundID::Explosion);
 
         // Pass the offset to the shader
         glUniform2f(offsetLoc, xOffset, yOffset);
