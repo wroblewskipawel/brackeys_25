@@ -14,48 +14,51 @@ MusicManager::MusicManager() {
         "assets/audio/explosion.wav"
     };
 
-    for (size_t i = 0; i < static_cast<size_t>(SoundID::COUNT); ++i)
+    for (size_t i = 0; i < static_cast<size_t>(SoundID::COUNT); ++i) {
         load(static_cast<SoundID>(i), autoPaths[i], false);
+    }
 }
 
 MusicManager::~MusicManager() {
-    for (size_t i = 0; i < sounds.size(); i++) {
-        if (loaded[i]) {
-            ma_sound_uninit(&sounds[i]);
+    for (auto& soundOpt : sounds) {
+        if (soundOpt.has_value()) {
+            ma_sound_uninit(&soundOpt.value());
         }
     }
     ma_engine_uninit(&engine);
 }
 
 void MusicManager::load(SoundID id, const std::string& filepath, bool loop) {
-    const auto index = static_cast<size_t>(id);
-    if (loaded[index]) {
-        ma_sound_uninit(&sounds[index]);
-        loaded[index] = false;
+    auto& soundOpt = sounds[static_cast<size_t>(id)];
+
+    if (soundOpt.has_value()) {
+        ma_sound_uninit(&soundOpt.value());
+        soundOpt.reset();
     }
 
-    if (ma_sound_init_from_file(&engine, filepath.c_str(), 0, nullptr, nullptr, &sounds[index]) != MA_SUCCESS) {
+    soundOpt.emplace();
+    if (ma_sound_init_from_file(&engine, filepath.c_str(), 0, nullptr, nullptr, &soundOpt.value()) != MA_SUCCESS) {
+        soundOpt.reset();
         throw std::runtime_error("Failed to load sound: " + filepath);
     }
 
-    ma_sound_set_looping(&sounds[index], loop ? MA_TRUE : MA_FALSE);
-    loaded[index] = true;
+    ma_sound_set_looping(&soundOpt.value(), loop ? MA_TRUE : MA_FALSE);
 }
 
 void MusicManager::play(SoundID id) {
-    if (const auto index = static_cast<size_t>(id); loaded[index]) {
-        ma_sound_start(&sounds[index]);
+    if (auto& soundOpt = sounds[static_cast<size_t>(id)]; soundOpt.has_value()) {
+        ma_sound_start(&soundOpt.value());
     }
 }
 
 void MusicManager::stop(SoundID id) {
-    if (const auto index = static_cast<size_t>(id); loaded[index]) {
-        ma_sound_stop(&sounds[index]);
+    if (auto& soundOpt = sounds[static_cast<size_t>(id)]; soundOpt.has_value()) {
+        ma_sound_stop(&soundOpt.value());
     }
 }
 
 void MusicManager::setVolume(SoundID id, float volume) {
-    if (const auto index = static_cast<size_t>(id); loaded[index]) {
-        ma_sound_set_volume(&sounds[index], volume);
+    if (auto& soundOpt = sounds[static_cast<size_t>(id)]; soundOpt.has_value()) {
+        ma_sound_set_volume(&soundOpt.value(), volume);
     }
 }

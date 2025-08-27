@@ -4,6 +4,7 @@
 #include "miniaudio.h"
 #include <array>
 #include <string>
+#include <optional>
 
 enum class SoundID {
     Coin = 0,
@@ -13,8 +14,7 @@ enum class SoundID {
 
 class MusicManager {
     ma_engine engine{};
-    std::array<ma_sound, static_cast<size_t>(SoundID::COUNT)> sounds{};
-    std::array<bool, static_cast<size_t>(SoundID::COUNT)> loaded{};
+    std::array<std::optional<ma_sound>, static_cast<size_t>(SoundID::COUNT)> sounds{};
 
 public:
     MusicManager();
