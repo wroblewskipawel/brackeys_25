@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <glm/glm.hpp>
+#include <ranges>
 #include <vector>
 
 
@@ -233,6 +234,17 @@ class MeshPackBuilder {
         return MeshHandle<Vertex>{packIndex, meshDatas.size() - 1};
     }
 
+    std::vector<MeshHandle<Vertex>> addMeshMulti(
+        std::vector<MeshData<Vertex>>&& meshes) {
+        std::vector<MeshHandle<Vertex>> handles;
+        for (auto&& mesh : meshes) {
+            meshDatas.emplace_back(std::move(mesh));
+            handles.emplace_back(
+                MeshHandle<Vertex>{packIndex, meshDatas.size() - 1});
+        }
+        return handles;
+    }
+
     MeshPack<Vertex> build() {
         MeshBuffers buffers{};
         std::vector<Mesh> meshes;
@@ -248,18 +260,23 @@ class MeshPackBuilder {
             meshes.push_back(mesh);
         }
 
-        std::vector<Vertex> vertices{};
-        vertices.reserve(vertexOffset);
-        std::vector<GLuint> indices{};
-        indices.reserve(indexOffset);
+        std::vector<Vertex> vertices(vertexOffset);
+        std::vector<GLuint> indices(indexOffset);
 
-        for (auto&& meshData : std::move(meshDatas)) {
-            vertices.insert(vertices.end(),
-                            std::make_move_iterator(meshData.vertices.begin()),
-                            std::make_move_iterator(meshData.vertices.end()));
-            indices.insert(indices.end(),
-                           std::make_move_iterator(meshData.indices.begin()),
-                           std::make_move_iterator(meshData.indices.end()));
+        vertexOffset = 0;
+        indexOffset = 0;
+        for (const auto& meshData : meshDatas) {
+            auto numVertices = meshData.vertices.size();
+            auto numIndices = meshData.indices.size();
+            std::memcpy(&vertices[vertexOffset], meshData.vertices.data(),
+                        numVertices * sizeof(Vertex));
+            std::memcpy(&indices[indexOffset], meshData.indices.data(),
+                        numIndices * sizeof(GLuint));
+            for (size_t i = 0; i < numIndices; i++) {
+                indices[indexOffset + i] += vertexOffset;
+            }
+            vertexOffset += numVertices;
+            indexOffset += numIndices;
         }
 
         glCreateBuffers(2, &buffers.vbo);
@@ -287,70 +304,80 @@ class DrawPack {
     DrawPack& operator=(const DrawPack&) = delete;
 
     DrawPack(DrawPack&& other) noexcept {
-        drawData = std::move(other.drawData);
         buffers = other.buffers;
         vao = other.vao;
-        instanceBuffer = other.instanceBuffer;
+        meshes = std::move(other.meshes);
+        instanceBuffers = std::move(other.instanceBuffers);
 
         other.buffers = {};
         other.vao = 0;
-        other.instanceBuffer = 0;
+        other.meshes.clear();
+        other.instanceBuffers.clear();
     };
 
     DrawPack& operator=(DrawPack&& other) noexcept {
         if (this != &other) {
-            drawData = std::move(other.drawData);
             buffers = other.buffers;
             vao = other.vao;
-            instanceBuffer = other.instanceBuffer;
+            meshes = std::move(other.meshes);
+            instanceBuffers = std::move(other.instanceBuffers);
 
             other.buffers = {};
             other.vao = 0;
-            other.instanceBuffer = 0;
+            other.meshes.clear();
+            other.instanceBuffers.clear();
         }
         return *this;
     };
 
-    ~DrawPack() { glDeleteBuffers(1, &instanceBuffer); }
+    ~DrawPack() {
+        glDeleteBuffers(instanceBuffers.size(), instanceBuffers.data());
+    }
 
    private:
     friend class DrawPackBuilder<Vertex>;
     friend class Stage<Vertex>;
 
+    struct DrawInstanced {
+        Mesh mesh;
+        size_t numInstances;
+    };
+
     DrawPack(const std::unordered_map<Mesh, std::vector<glm::mat4>>& drawData,
              MeshBuffers buffers, GLuint vao) noexcept
-        : drawData(drawData), buffers(buffers), vao(vao) {
-        glCreateBuffers(1, &instanceBuffer);
-        const auto& maxInstances = std::max_element(
-            drawData.begin(), drawData.end(),
-            [](const auto& first, const auto& second) {
-                return first.second.size() > second.second.size();
-            });
-        glNamedBufferStorage(instanceBuffer,
-                             sizeof(glm::mat4) * maxInstances->second.size(),
-                             nullptr, GL_DYNAMIC_STORAGE_BIT);
+        : meshes(drawData.size()),
+          instanceBuffers(drawData.size()),
+          buffers(buffers),
+          vao(vao) {
+        glCreateBuffers(instanceBuffers.size(), instanceBuffers.data());
+        for (const auto& [i, meshDrawData] : std::views::enumerate(drawData)) {
+            const auto& [mesh, meshMatrices] = meshDrawData;
+            meshes[i] = {mesh, meshMatrices.size()};
+            glNamedBufferStorage(instanceBuffers[i],
+                                 sizeof(glm::mat4) * meshMatrices.size(),
+                                 meshMatrices.data(), GL_NONE);
+        }
     }
 
     void draw() {
         glBindVertexArray(vao);
         glVertexArrayVertexBuffer(vao, 0, buffers.vbo, 0, sizeof(Vertex));
-        glVertexArrayVertexBuffer(vao, 1, instanceBuffer, 0, sizeof(glm::mat4));
         glVertexArrayElementBuffer(vao, buffers.ebo);
-        for (const auto& [mesh, modelMatrices] : drawData) {
-            glNamedBufferSubData(instanceBuffer, 0,
-                                 sizeof(glm::mat4) * modelMatrices.size(),
-                                 modelMatrices.data());
+        for (const auto& [draw, instanceBuffer] :
+             std::views::zip(meshes, instanceBuffers)) {
+            glVertexArrayVertexBuffer(vao, 1, instanceBuffer, 0,
+                                      sizeof(glm::mat4));
             glDrawElementsInstanced(
-                GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT,
-                (void*)(mesh.indexOffset * sizeof(uint32_t)),
-                modelMatrices.size());
+                GL_TRIANGLES, draw.mesh.indexCount, GL_UNSIGNED_INT,
+                (void*)(draw.mesh.indexOffset * sizeof(GLuint)),
+                draw.numInstances);
         }
     }
 
-    std::unordered_map<Mesh, std::vector<glm::mat4>> drawData;
+    std::vector<DrawInstanced> meshes;
+    std::vector<GLuint> instanceBuffers;
     MeshBuffers buffers;
     GLuint vao;
-    GLuint instanceBuffer;
 };
 
 template <typename Vertex>

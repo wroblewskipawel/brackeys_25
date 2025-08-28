@@ -8,7 +8,6 @@
 #include <string>
 #include <unordered_map>
 
-
 enum class ShaderStage : GLenum {
     Vertex = GL_VERTEX_SHADER,
     Fragment = GL_FRAGMENT_SHADER

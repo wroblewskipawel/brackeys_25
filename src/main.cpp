@@ -10,6 +10,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <stdexcept>
 
+#include "gltf.h"
 #include "mesh.h"
 #include "model.h"
 #include "renderer.h"
@@ -43,37 +44,91 @@ int main(void) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
 
-    MeshPackBuilder<ColoredVertex> meshPackBuilder{};
-    auto cubeMesh = meshPackBuilder.addMesh(createCube());
-    auto meshPack = meshPackBuilder.build();
+    DocumentReader<UnlitVertex> unlitDocument{
+        "assets/WaterBottle/glTF/WaterBottle.gltf"};
 
-    ShaderBuilder shaderBuilder{};
-    shaderBuilder.addStage(ShaderStage::Vertex, "shaders/colored/shader.vert");
-    shaderBuilder.addStage(ShaderStage::Fragment,
-                           "shaders/colored/shader.frag");
-    auto shader = shaderBuilder.build();
+    MeshPackBuilder<UnlitVertex> unlitMeshPackBuilder{};
+    auto unlitCubeMesh =
+        unlitMeshPackBuilder.addMesh(createCube<UnlitVertex>());
+    auto documentMeshes =
+        unlitMeshPackBuilder.addMeshMulti(unlitDocument.takeMeshes());
+    auto unlitMeshPack = unlitMeshPackBuilder.build();
 
-    DrawPackBuilder<ColoredVertex> drawPackBuilder = meshPack.createDrawPack();
-    drawPackBuilder.addDraw(cubeMesh, glm::mat4(1.0f));
-    drawPackBuilder.addDraw(
-        cubeMesh, glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 2.0f)));
-    drawPackBuilder.addDraw(
-        cubeMesh,
+    ShaderBuilder unlitShaderBuilder{};
+    unlitShaderBuilder.addStage(ShaderStage::Vertex,
+                                "shaders/unlit/shader.vert");
+    unlitShaderBuilder.addStage(ShaderStage::Fragment,
+                                "shaders/unlit/shader.frag");
+    auto unlitShader = unlitShaderBuilder.build();
+
+    auto unlitDrawPack = unlitMeshPack.createDrawPack();
+    unlitDrawPack.addDraw(unlitCubeMesh, glm::mat4(1.0f));
+    unlitDrawPack.addDraw(
+        documentMeshes[0],
+        glm::scale(
+            glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 0.0f)),
+            glm::vec3(3.0f)));
+    unlitDrawPack.addDraw(
+        documentMeshes[0],
+        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 0.0f)),
+                   glm::vec3(3.0f)));
+    ;
+    auto unlitStage = Stage(std::move(unlitDrawPack));
+    unlitStage.setShader(unlitShader);
+
+    MeshPackBuilder<ColoredVertex> coloredMeshPackBuilder{};
+    auto coloredCubeMesh =
+        coloredMeshPackBuilder.addMesh(createCube<ColoredVertex>());
+    auto coloredMeshPack = coloredMeshPackBuilder.build();
+
+    ShaderBuilder coloredShaderBuilder{};
+    coloredShaderBuilder.addStage(ShaderStage::Vertex,
+                                  "shaders/colored/shader.vert");
+    coloredShaderBuilder.addStage(ShaderStage::Fragment,
+                                  "shaders/colored/shader.frag");
+    auto coloredShader = coloredShaderBuilder.build();
+
+    auto coloredDrawPackBuilder = coloredMeshPack.createDrawPack();
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
         glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
-    drawPackBuilder.addDraw(
-        cubeMesh, glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
-    drawPackBuilder.addDraw(
-        cubeMesh,
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
         glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f)));
-    drawPackBuilder.addDraw(
-        cubeMesh,
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
         glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 2.0f)));
-    drawPackBuilder.addDraw(
-        cubeMesh,
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
         glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, -2.0f)));
-    Stage<ColoredVertex> stage{std::move(drawPackBuilder)};
-    stage.setShader(shader);
-    Pipeline<ColoredVertex> pipeline{std::move(stage)};
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, -2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, -2.0f, 2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, -2.0f, -2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, 2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, -2.0f)));
+    auto coloredStage = Stage(std::move(coloredDrawPackBuilder));
+    coloredStage.setShader(coloredShader);
+
+    auto pipeline = Pipeline(std::move(coloredStage), std::move(unlitStage));
 
     CameraMatrices cameraMatrices{};
     cameraMatrices.view =

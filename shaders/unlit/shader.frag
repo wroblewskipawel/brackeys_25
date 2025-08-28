@@ -5,6 +5,9 @@ out vec4 frag_color;
 in VS_OUT { vec2 tex_coord; }
 fs_in;
 
-uniform sampler2D texture;
+// Temporary removed until image texture loading is implemented
+// uniform sampler2D texture;
 
-void main() { frag_color = texture(texture, fs_in.tex_coord); }
+void main() {
+    frag_color = vec4(fs_in.tex_coord, 0.0, 1.0);
+}

@@ -12,36 +12,31 @@
 template <typename... Stages>
 class Pipeline;
 
-template <typename Vertex, typename... Stages>
-class Pipeline<Vertex, Stages...> {
+template <typename Stage, typename... Stages>
+class Pipeline<Stage, Stages...> {
    public:
-    Pipeline(Stage<Vertex>&& stage, Stages&&... stages)
+    Pipeline(Stage&& stage, Stages&&... stages)
         : stage(std::forward<Stage>(stage)),
           stages(std::forward<Stages>(stages)...) {}
 
     void execute(const CameraMatrices& cameraMatrices) {
-        stages.execute(cameraMatrices);
         stage.execute(cameraMatrices);
+        stages.execute(cameraMatrices);
     }
 
    private:
-    Stage<Vertex> stage;
+    Stage stage;
     Pipeline<Stages...> stages;
 };
 
-template <typename Vertex>
-class Pipeline<Vertex> {
+template <>
+class Pipeline<> {
    public:
-    Pipeline(Stage<Vertex>&& stage)
-        : stage(std::forward<Stage<Vertex>>(stage)) {}
-
-    void execute(const CameraMatrices& cameraMatrices) {
-        stage.execute(cameraMatrices);
-    }
-
-   private:
-    Stage<Vertex> stage;
+    void execute(const CameraMatrices& cameraMatrices) {}
 };
+
+template <typename... Stages>
+Pipeline(Stages&&...) -> Pipeline<std::decay_t<Stages>...>;
 
 template <typename Vertex>
 class Stage {

@@ -1,0 +1,310 @@
+#pragma once
+
+#include <fx/gltf.h>
+#include <glad/glad.h>
+
+#include <concepts>
+#include <filesystem>
+#include <functional>
+#include <iostream>
+#include <optional>
+#include <string>
+#include <type_traits>
+
+#include "mesh.h"
+
+template <typename Data>
+fx::gltf::Accessor::Type getAccessorType() {
+    if constexpr (std::is_same_v<Data, float> ||
+                  std::is_same_v<Data, int32_t> ||
+                  std::is_same_v<Data, uint32_t> ||
+                  std::is_same_v<Data, int8_t> ||
+                  std::is_same_v<Data, uint8_t> ||
+                  std::is_same_v<Data, int16_t> ||
+                  std::is_same_v<Data, uint16_t>) {
+        return fx::gltf::Accessor::Type::Scalar;
+    } else if constexpr (std::is_same_v<Data, glm::vec2>) {
+        return fx::gltf::Accessor::Type::Vec2;
+    } else if constexpr (std::is_same_v<Data, glm::vec3>) {
+        return fx::gltf::Accessor::Type::Vec3;
+    } else if constexpr (std::is_same_v<Data, glm::vec4>) {
+        return fx::gltf::Accessor::Type::Vec4;
+    } else if constexpr (std::is_same_v<Data, glm::mat2>) {
+        return fx::gltf::Accessor::Type::Mat2;
+    } else if constexpr (std::is_same_v<Data, glm::mat3>) {
+        return fx::gltf::Accessor::Type::Mat3;
+    } else if constexpr (std::is_same_v<Data, glm::mat4>) {
+        return fx::gltf::Accessor::Type::Mat4;
+    } else {
+        static_assert(!std::is_same_v<Data, Data>, "Unsupported data type");
+    }
+}
+
+template <typename Target, typename Source = Target>
+std::function<bool(Target&)> getDataReader(const fx::gltf::Document& document,
+                                           const fx::gltf::Accessor& accessor) {
+    static_assert(std::is_trivially_copyable_v<Target> &&
+                  std::is_trivially_copyable_v<Source> &&
+                  std::constructible_from<Target, Source>);
+    if (accessor.type != getAccessorType<Target>()) {
+        return nullptr;
+    }
+
+    const auto& bufferView = document.bufferViews.at(accessor.bufferView);
+    const auto& buffer = document.buffers.at(bufferView.buffer);
+    const size_t count = accessor.count;
+
+    size_t offset = bufferView.byteOffset + accessor.byteOffset;
+    size_t stride =
+        bufferView.byteStride ? bufferView.byteStride : sizeof(Source);
+    size_t element = 0;
+
+    return [=](Target& item) mutable {
+        if (element >= count) {
+            return false;
+        }
+        if constexpr (std::is_same_v<Target, Source>) {
+            std::memcpy(&item, &buffer.data[offset + stride * element++],
+                        sizeof(Target));
+        } else {
+            Source temp;
+            std::memcpy(&temp, &buffer.data[offset + stride * element++],
+                        sizeof(Source));
+            item = temp;
+        }
+        return true;
+    };
+}
+
+template <typename Attribute>
+std::pair<std::function<bool(Attribute&)>, size_t> getAttributeReader(
+    const fx::gltf::Document& document, const fx::gltf::Primitive& primitive,
+    const std::string& attributeName);
+
+template <>
+std::pair<std::function<bool(glm::vec2&)>, size_t> getAttributeReader(
+    const fx::gltf::Document& document, const fx::gltf::Primitive& primitive,
+    const std::string& attributeName) {
+    const auto& accessor =
+        document.accessors[primitive.attributes.at(attributeName)];
+    auto reader = [&]() -> std::function<bool(glm::vec2&)> {
+        switch (accessor.componentType) {
+            case fx::gltf::Accessor::ComponentType::Float:
+                return getDataReader<glm::vec2>(document, accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedByte:
+                return getDataReader<glm::vec2, glm::u8vec2>(document,
+                                                             accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedShort:
+                return getDataReader<glm::vec2, glm::u16vec2>(document,
+                                                              accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedInt:
+                return getDataReader<glm::vec2, glm::u32vec2>(document,
+                                                              accessor);
+            default:
+                return nullptr;
+        }
+    }();
+    if (!reader) {
+        std::println(std::cerr,
+                     "getAttributeReader:  Failed to create attribute reader");
+        std::abort();
+    }
+    return {reader, accessor.count};
+}
+
+template <>
+std::pair<std::function<bool(glm::vec3&)>, size_t> getAttributeReader(
+    const fx::gltf::Document& document, const fx::gltf::Primitive& primitive,
+    const std::string& attributeName) {
+    const auto& accessor =
+        document.accessors[primitive.attributes.at(attributeName)];
+    auto reader = [&]() -> std::function<bool(glm::vec3&)> {
+        switch (accessor.componentType) {
+            case fx::gltf::Accessor::ComponentType::Float:
+                return getDataReader<glm::vec3>(document, accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedByte:
+                return getDataReader<glm::vec3, glm::u8vec3>(document,
+                                                             accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedShort:
+                return getDataReader<glm::vec3, glm::u16vec3>(document,
+                                                              accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedInt:
+                return getDataReader<glm::vec3, glm::u32vec3>(document,
+                                                              accessor);
+            default:
+                return nullptr;
+        }
+    }();
+    if (!reader) {
+        std::println(std::cerr,
+                     "getAttributeReader:  Failed to create attribute reader");
+        std::abort();
+    }
+    return {reader, accessor.count};
+}
+
+template <>
+std::pair<std::function<bool(glm::vec4&)>, size_t> getAttributeReader(
+    const fx::gltf::Document& document, const fx::gltf::Primitive& primitive,
+    const std::string& attributeName) {
+    const auto& accessor =
+        document.accessors[primitive.attributes.at(attributeName)];
+    auto reader = [&]() -> std::function<bool(glm::vec4&)> {
+        switch (accessor.componentType) {
+            case fx::gltf::Accessor::ComponentType::Float:
+                return getDataReader<glm::vec4>(document, accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedByte:
+                return getDataReader<glm::vec4, glm::u8vec4>(document,
+                                                             accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedShort:
+                return getDataReader<glm::vec4, glm::u16vec4>(document,
+                                                              accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedInt:
+                return getDataReader<glm::vec4, glm::u32vec4>(document,
+                                                              accessor);
+            default:
+                return nullptr;
+        }
+    }();
+    if (!reader) {
+        std::println(std::cerr,
+                     "getAttributeReader:  Failed to create attribute reader");
+        std::abort();
+    }
+    return {reader, accessor.count};
+}
+
+std::pair<std::function<bool(GLuint&)>, size_t> getIndexReader(
+    const fx::gltf::Document& document, const fx::gltf::Primitive& primitive) {
+    const auto& accessor = document.accessors[primitive.indices];
+    auto reader = [&]() -> std::function<bool(GLuint&)> {
+        switch (accessor.componentType) {
+            case fx::gltf::Accessor::ComponentType::UnsignedByte:
+                return getDataReader<GLuint, GLubyte>(document, accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedShort:
+                return getDataReader<GLuint, GLushort>(document, accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedInt:
+                return getDataReader<GLuint>(document, accessor);
+            default:
+                return nullptr;
+        }
+    }();
+    if (!reader) {
+        std::println(std::cerr,
+                     "getIndexReader:  Failed to create index reader");
+        std::abort();
+    }
+    return {reader, accessor.count};
+}
+
+template <typename Vertex>
+std::pair<std::function<bool(Vertex&)>, size_t> getVertexReader(
+    const fx::gltf::Document& document, const fx::gltf::Primitive& primitive);
+
+template <>
+std::pair<std::function<bool(UnlitVertex&)>, size_t> getVertexReader(
+    const fx::gltf::Document& document, const fx::gltf::Primitive& primitive) {
+    auto [positionReader, positionCount] =
+        getAttributeReader<glm::vec3>(document, primitive, "POSITION");
+    auto [texCoordReader, texCoordCount] =
+        getAttributeReader<glm::vec2>(document, primitive, "TEXCOORD_0");
+    auto reader = [positionReader,
+                   texCoordReader](UnlitVertex& vertex) mutable {
+        return positionReader(vertex.position) &&
+               texCoordReader(vertex.texCoord);
+    };
+    return {reader, std::min(positionCount, texCoordCount)};
+}
+
+template <>
+std::pair<std::function<bool(ColoredVertex&)>, size_t> getVertexReader(
+    const fx::gltf::Document& document, const fx::gltf::Primitive& primitive) {
+    auto [positionReader, positionCount] =
+        getAttributeReader<glm::vec3>(document, primitive, "POSITION");
+    // color attribute could also be a vec4,
+    // truncating to vec3 is fine as long as the stride
+    // for buffer reader equals to vec4 size, currently it is not handled
+    // properly
+    auto [colorReader, colorCount] =
+        getAttributeReader<glm::vec3>(document, primitive, "COLOR_0");
+    auto reader = [positionReader, colorReader](ColoredVertex& vertex) mutable {
+        return positionReader(vertex.position) && colorReader(vertex.color);
+    };
+    return {reader, std::min(positionCount, colorCount)};
+}
+
+template <typename Vertex>
+MeshData<Vertex> readMeshData(const fx::gltf::Document& document,
+                              const fx::gltf::Primitive& primitive) {
+    auto [vertexReader, vertexCount] =
+        getVertexReader<Vertex>(document, primitive);
+    auto [indexReader, indexCount] = getIndexReader(document, primitive);
+
+    std::vector<Vertex> vertices(vertexCount);
+    for (size_t vertex = 0; vertex < vertexCount; vertex++) {
+        if (!vertexReader(vertices[vertex])) {
+            std::println(std::cerr, "readMeshData: Failed to read vertex data");
+            std::abort();
+        }
+    }
+
+    std::vector<GLuint> indices(indexCount);
+    for (size_t index = 0; index < indexCount; index++) {
+        if (!indexReader(indices[index])) {
+            std::println(std::cerr, "readMeshData: Failed to read index data");
+            std::abort();
+        }
+    }
+    return MeshData<Vertex>{std::move(vertices), std::move(indices)};
+}
+
+template <typename Vertex>
+class DocumentReader {
+   public:
+    DocumentReader(const std::filesystem::path& filePath) {
+        auto document = [&]() -> std::optional<fx::gltf::Document> {
+            auto extension = filePath.extension();
+            if (extension == ".gltf") {
+                return fx::gltf::LoadFromText(filePath);
+            }
+            if (extension == ".glb") {
+                return fx::gltf::LoadFromBinary(filePath);
+            }
+            std::println(std::cerr, "DocumentReader: Unsupported file type");
+            return std::nullopt;
+        }();
+        if (document.has_value()) {
+            // Consider lazy loading on mesh access requests
+            loadDocument(*document);
+        }
+    }
+
+    DocumentReader(const DocumentReader&) = delete;
+    DocumentReader(DocumentReader&&) = delete;
+
+    DocumentReader& operator=(const DocumentReader&) = delete;
+    DocumentReader& operator=(DocumentReader&&) = delete;
+
+    const std::vector<MeshData<Vertex>>& getMeshes() const noexcept {
+        return meshes;
+    }
+
+    std::vector<MeshData<Vertex>> takeMeshes() noexcept {
+        return std::move(meshes);
+    }
+
+   private:
+    void loadDocument(const fx::gltf::Document& document) noexcept {
+        loadMeshes(document);
+    }
+
+    void loadMeshes(const fx::gltf::Document& document) noexcept {
+        for (const auto& mesh : document.meshes) {
+            for (const auto& primitive : mesh.primitives) {
+                meshes.emplace_back(readMeshData<Vertex>(document, primitive));
+            }
+        }
+    }
+
+    std::vector<MeshData<Vertex>> meshes;
+};
