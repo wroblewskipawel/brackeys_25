@@ -19,9 +19,10 @@ public:
     std::vector<T> components;
     std::vector<EntityID> entityIDs;
 
-    void add(EntityID id, const T& component) {
+    size_t add(EntityID id, const T& component) {
         entityIDs.push_back(id);
         components.push_back(component);
+        return components.size() - 1;
     }
 
     T* get(EntityID id) {

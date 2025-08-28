@@ -6,6 +6,7 @@
 #include <typeindex>
 #include <vector>
 #include "Storage/ComponentStorage.hpp"
+#include "Storage/EntityStorage.hpp"
 
 class ECS {
 public:
@@ -14,6 +15,7 @@ public:
 private:
     EntityID nextEntity = 0;
     std::unordered_map<std::type_index, std::shared_ptr<IStorage>> storages;
+    EntityStorage entityStorage{};
 
     struct Stage {
         StageType type;
@@ -39,7 +41,8 @@ public:
 
     template<typename T>
     void addComponent(EntityID entity, const T& component) {
-        getStorage<T>().add(entity, component);
+        auto component_index = getStorage<T>().add(entity, component);
+        entityStorage.addComponent<T>(entity, component_index);
     }
 };
 

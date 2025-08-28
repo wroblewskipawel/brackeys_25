@@ -4,6 +4,7 @@
 #include <future>
 
 EntityID ECS::createEntity() {
+    entityStorage.addEntity(nextEntity);
     return nextEntity++;
 }
 
