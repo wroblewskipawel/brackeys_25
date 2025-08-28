@@ -15,7 +15,6 @@ public:
 private:
     EntityID nextEntity = 0;
     std::unordered_map<std::type_index, std::shared_ptr<IStorage>> storages;
-    EntityStorage entityStorage{};
 
     struct Stage {
         StageType type;
@@ -24,6 +23,8 @@ private:
     std::vector<Stage> stages;
 
 public:
+    EntityStorage entityStorage{};
+
     EntityID createEntity();
     void removeEntity(EntityID id);
     ECS& nextStage(StageType type);
