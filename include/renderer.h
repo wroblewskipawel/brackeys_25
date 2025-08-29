@@ -38,10 +38,11 @@ class Pipeline<> {
 template <typename... Stages>
 Pipeline(Stages&&...) -> Pipeline<std::decay_t<Stages>...>;
 
-template <typename Vertex>
+template <typename Vertex, typename Material>
 class Stage {
    public:
-    Stage(DrawPackBuilder<Vertex>&& builder) : drawPack(builder.build()) {}
+    Stage(DrawPackBuilder<Vertex, Material>&& builder)
+        : drawPack(builder.build()) {}
 
     Stage& setShader(const Shader& shader) {
         shaderProgram = shader.program;
@@ -61,10 +62,10 @@ class Stage {
                                glm::value_ptr(cameraMatrices.view));
             glUniformMatrix4fv(locations.projectionMatrix, 1, GL_FALSE,
                                glm::value_ptr(cameraMatrices.projection));
+            drawPack.draw(locations);
         }
-        drawPack.draw();
     }
 
     GLuint shaderProgram{0};
-    DrawPack<Vertex> drawPack;
+    DrawPack<Vertex, Material> drawPack;
 };
