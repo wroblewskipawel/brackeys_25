@@ -11,6 +11,7 @@
 #include <string>
 #include <type_traits>
 
+#include "material.h"
 #include "mesh.h"
 
 template <typename Data>
@@ -258,7 +259,66 @@ MeshData<Vertex> readMeshData(const fx::gltf::Document& document,
     return MeshData<Vertex>{std::move(vertices), std::move(indices)};
 }
 
-template <typename Vertex>
+std::function<std::optional<TextureData>(void)> getTextureDataReader(
+    const std::filesystem::path& documentRootPath,
+    const fx::gltf::Document& document, const fx::gltf::Texture& texture) {
+    const auto& image = document.images.at(texture.source);
+    return [&]() -> std::optional<TextureData> {
+        if (!image.uri.empty()) {
+            if (image.IsEmbeddedResource()) {
+                std::vector<uint8_t> imageData{};
+                image.MaterializeData(imageData);
+                return TextureData::loadFromBuffer(
+                    imageData.data(), imageData.size(), TextureFormat::RGB);
+            } else {
+                auto filePath =
+                    fx::gltf::detail::GetDocumentRootPath(documentRootPath) /
+                    image.uri;
+                return TextureData::loadFromFile(filePath, TextureFormat::RGB);
+            }
+        } else {
+            const auto& bufferView = document.bufferViews[image.bufferView];
+            const auto& buffer = document.buffers[bufferView.buffer];
+            return TextureData::loadFromBuffer(
+                &buffer.data[bufferView.byteOffset], bufferView.byteLength,
+                TextureFormat::RGB);
+        }
+    };
+}
+
+template <typename Material>
+typename Material::BuilderType readMaterialData(
+    const std::filesystem::path& documentRootPath,
+    const fx::gltf::Document& document, const fx::gltf::Material& material);
+
+template <>
+typename UnlitMaterial::BuilderType readMaterialData<UnlitMaterial>(
+    const std::filesystem::path& documentRootPath,
+    const fx::gltf::Document& document, const fx::gltf::Material& material) {
+    // baseColorTexture could be empty, add support for handling such missing
+    // data cases
+    auto albedoTexture = document.textures.at(
+        material.pbrMetallicRoughness.baseColorTexture.index);
+    auto albedoTextureReader =
+        getTextureDataReader(documentRootPath, document, albedoTexture);
+
+    UnlitMaterial::BuilderType builder{};
+    builder.setAlbedoTextureData(albedoTextureReader());
+    return builder;
+}
+
+// Instead we could omit the EmptyMaterial creation entirely leveraging
+// constexpr conditional compilation For now leave this as it is to keep the
+// same DocumentReader behavior for any material type
+template <>
+typename EmptyMaterial::BuilderType readMaterialData<EmptyMaterial>(
+    const std::filesystem::path& documentRootPath,
+    const fx::gltf::Document& document, const fx::gltf::Material& material) {
+    EmptyMaterial::BuilderType builder{};
+    return builder;
+}
+
+template <typename Vertex, typename Material>
 class DocumentReader {
    public:
     DocumentReader(const std::filesystem::path& filePath) {
@@ -275,7 +335,7 @@ class DocumentReader {
         }();
         if (document.has_value()) {
             // Consider lazy loading on mesh access requests
-            loadDocument(*document);
+            loadDocument(filePath, *document);
         }
     }
 
@@ -293,9 +353,21 @@ class DocumentReader {
         return std::move(meshes);
     }
 
+    using MaterialBuilder = typename Material::BuilderType;
+
+    const std::vector<MaterialBuilder>& getMaterials() const noexcept {
+        return materials;
+    }
+
+    std::vector<MaterialBuilder> takeMaterials() noexcept {
+        return std::move(materials);
+    }
+
    private:
-    void loadDocument(const fx::gltf::Document& document) noexcept {
+    void loadDocument(const std::filesystem::path& documentRootPath,
+                      const fx::gltf::Document& document) noexcept {
         loadMeshes(document);
+        loadMaterials(documentRootPath, document);
     }
 
     void loadMeshes(const fx::gltf::Document& document) noexcept {
@@ -306,5 +378,14 @@ class DocumentReader {
         }
     }
 
+    void loadMaterials(const std::filesystem::path& documentRootPath,
+                       const fx::gltf::Document& document) noexcept {
+        for (const auto& material : document.materials) {
+            materials.emplace_back(readMaterialData<Material>(
+                documentRootPath, document, material));
+        }
+    }
+
     std::vector<MeshData<Vertex>> meshes;
+    std::vector<MaterialBuilder> materials;
 };

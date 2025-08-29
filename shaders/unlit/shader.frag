@@ -1,13 +1,25 @@
 #version 460 core
 
+#extension GL_ARB_bindless_texture : require
+
 out vec4 frag_color;
 
 in VS_OUT { vec2 tex_coord; }
 fs_in;
 
-// Temporary removed until image texture loading is implemented
-// uniform sampler2D texture;
+struct UnlitMaterial {
+    sampler2D albedo_tex;
+};
+
+layout(std140, binding = 0) readonly buffer MaterialPack {
+    UnlitMaterial materials[];
+}
+material_pack;
+
+uniform uint material;
 
 void main() {
-    frag_color = vec4(fs_in.tex_coord, 0.0, 1.0);
+    vec4 albedo =
+        texture(material_pack.materials[material].albedo_tex, fs_in.tex_coord);
+    frag_color = albedo;
 }

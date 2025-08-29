@@ -7,28 +7,44 @@
 #include <ranges>
 #include <vector>
 
+#include "shader.h"
+
 
 void setInstanceAttributes(GLuint vao, GLuint nextLocation) {
-    glVertexArrayAttribBinding(vao, nextLocation, 1);
+    // Instance Attrib: glm::mat4
+    constexpr size_t modelMatrixBufferIndex = 1;
+
+    glVertexArrayAttribBinding(vao, nextLocation, modelMatrixBufferIndex);
     glVertexArrayAttribFormat(vao, nextLocation, 4, GL_FLOAT, GL_FALSE,
                               0 * sizeof(glm::vec4));
     glEnableVertexArrayAttrib(vao, nextLocation++);
 
-    glVertexArrayAttribBinding(vao, nextLocation, 1);
+    glVertexArrayAttribBinding(vao, nextLocation, modelMatrixBufferIndex);
     glVertexArrayAttribFormat(vao, nextLocation, 4, GL_FLOAT, GL_FALSE,
                               1 * sizeof(glm::vec4));
     glEnableVertexArrayAttrib(vao, nextLocation++);
 
-    glVertexArrayAttribBinding(vao, nextLocation, 1);
+    glVertexArrayAttribBinding(vao, nextLocation, modelMatrixBufferIndex);
     glVertexArrayAttribFormat(vao, nextLocation, 4, GL_FLOAT, GL_FALSE,
                               2 * sizeof(glm::vec4));
     glEnableVertexArrayAttrib(vao, nextLocation++);
 
-    glVertexArrayAttribBinding(vao, nextLocation, 1);
+    glVertexArrayAttribBinding(vao, nextLocation, modelMatrixBufferIndex);
     glVertexArrayAttribFormat(vao, nextLocation, 4, GL_FLOAT, GL_FALSE,
                               3 * sizeof(glm::vec4));
     glEnableVertexArrayAttrib(vao, nextLocation++);
-    glVertexArrayBindingDivisor(vao, 1, 1);
+    glVertexArrayBindingDivisor(vao, modelMatrixBufferIndex, 1);
+
+    // Consider in future for glMultiDrawElements
+    // // Instance Attrib: GLuint64 materialPackIndex
+    // constexpr size_t materialPackIndexBufferIndex = 2;
+
+    // glVertexArrayAttribBinding(vao, nextLocation,
+    // materialPackIndexBufferIndex); glVertexArrayAttribIFormat(vao,
+    // nextLocation, 1, GL_UNSIGNED_INT,
+    //                            0 * sizeof(GLuint));
+    // glEnableVertexArrayAttrib(vao, nextLocation++);
+    // glVertexArrayBindingDivisor(vao, materialPackIndexBufferIndex, 1);
 }
 
 template <typename Vertex>
@@ -160,7 +176,7 @@ struct hash<Mesh> {
 };
 }  // namespace std
 
-template <typename Vertex>
+template <typename Vertex, typename Material>
 class DrawPackBuilder;
 
 template <typename Vertex>
@@ -194,13 +210,16 @@ class MeshPack {
         return *this;
     }
 
-    DrawPackBuilder<Vertex> createDrawPack() const noexcept {
-        return DrawPackBuilder<Vertex>(*this);
+    template <typename Material>
+    DrawPackBuilder<Vertex, Material> createDrawPack(
+        const MaterialPack<Material>& materialPack) const noexcept {
+        return DrawPackBuilder<Vertex, Material>(*this, materialPack);
     }
 
    private:
     friend class MeshPackBuilder<Vertex>;
-    friend class DrawPackBuilder<Vertex>;
+    template <typename, typename>
+    friend class DrawPackBuilder;
 
     MeshPack(MeshBuffers buffers, std::vector<Mesh>&& meshes, size_t packIndex)
         : buffers(buffers), meshes(std::move(meshes)), packIndex(packIndex) {}
@@ -237,10 +256,9 @@ class MeshPackBuilder {
     std::vector<MeshHandle<Vertex>> addMeshMulti(
         std::vector<MeshData<Vertex>>&& meshes) {
         std::vector<MeshHandle<Vertex>> handles;
+        handles.reserve(meshes.size());
         for (auto&& mesh : meshes) {
-            meshDatas.emplace_back(std::move(mesh));
-            handles.emplace_back(
-                MeshHandle<Vertex>{packIndex, meshDatas.size() - 1});
+            handles.emplace_back(addMesh(std::move(mesh)));
         }
         return handles;
     }
@@ -294,10 +312,31 @@ class MeshPackBuilder {
     std::vector<MeshData<Vertex>> meshDatas;
 };
 
-template <typename Vertex>
+template <typename Vertex, typename Material>
 class Stage;
 
-template <typename Vertex>
+struct DrawInfo {
+    Mesh mesh;
+    size_t materialIndex;
+
+    bool operator==(const DrawInfo& other) const noexcept {
+        return mesh == other.mesh &&
+               materialIndex == other.materialIndex;
+    }
+};
+
+namespace std {
+template <>
+struct hash<DrawInfo> {
+    std::size_t operator()(const DrawInfo& drawInfo) const noexcept {
+        std::size_t h1 = std::hash<Mesh>{}(drawInfo.mesh);
+        std::size_t h2 = std::hash<size_t>{}(drawInfo.materialIndex);
+        return h1 ^ (h2 << 1);
+    }
+};
+}  // namespace std
+
+template <typename Vertex, typename Material>
 class DrawPack {
    public:
     DrawPack(const DrawPack&) = delete;
@@ -306,11 +345,13 @@ class DrawPack {
     DrawPack(DrawPack&& other) noexcept {
         buffers = other.buffers;
         vao = other.vao;
+        materialPackRef = other.materialPackRef;
         meshes = std::move(other.meshes);
         instanceBuffers = std::move(other.instanceBuffers);
 
         other.buffers = {};
         other.vao = 0;
+        other.materialPackRef = {};
         other.meshes.clear();
         other.instanceBuffers.clear();
     };
@@ -319,11 +360,13 @@ class DrawPack {
         if (this != &other) {
             buffers = other.buffers;
             vao = other.vao;
+            materialPackRef = other.materialPackRef;
             meshes = std::move(other.meshes);
             instanceBuffers = std::move(other.instanceBuffers);
 
             other.buffers = {};
             other.vao = 0;
+            other.materialPackRef = {};
             other.meshes.clear();
             other.instanceBuffers.clear();
         }
@@ -335,87 +378,107 @@ class DrawPack {
     }
 
    private:
-    friend class DrawPackBuilder<Vertex>;
-    friend class Stage<Vertex>;
+    friend class DrawPackBuilder<Vertex, Material>;
+    friend class Stage<Vertex, Material>;
 
     struct DrawInstanced {
-        Mesh mesh;
+        DrawInfo drawInfo;
         size_t numInstances;
     };
 
-    DrawPack(const std::unordered_map<Mesh, std::vector<glm::mat4>>& drawData,
-             MeshBuffers buffers, GLuint vao) noexcept
+    DrawPack(
+        const std::unordered_map<DrawInfo, std::vector<glm::mat4>>& drawData,
+        MaterialPackRef<Material> materialPackRef, MeshBuffers buffers,
+        GLuint vao) noexcept
         : meshes(drawData.size()),
           instanceBuffers(drawData.size()),
+          materialPackRef(materialPackRef),
           buffers(buffers),
           vao(vao) {
         glCreateBuffers(instanceBuffers.size(), instanceBuffers.data());
         for (const auto& [i, meshDrawData] : std::views::enumerate(drawData)) {
-            const auto& [mesh, meshMatrices] = meshDrawData;
-            meshes[i] = {mesh, meshMatrices.size()};
+            const auto& [drawInfo, instances] = meshDrawData;
+            meshes[i] = DrawInstanced(drawInfo, instances.size());
             glNamedBufferStorage(instanceBuffers[i],
-                                 sizeof(glm::mat4) * meshMatrices.size(),
-                                 meshMatrices.data(), GL_NONE);
+                                 sizeof(glm::mat4) * instances.size(),
+                                 instances.data(), GL_NONE);
         }
     }
 
-    void draw() {
+    void draw(const UniformLocations& uniformLocations) {
         glBindVertexArray(vao);
         glVertexArrayVertexBuffer(vao, 0, buffers.vbo, 0, sizeof(Vertex));
         glVertexArrayElementBuffer(vao, buffers.ebo);
+        MaterialPack<Material>::bind(materialPackRef);
         for (const auto& [draw, instanceBuffer] :
              std::views::zip(meshes, instanceBuffers)) {
+            glUniform1ui(uniformLocations.materialIndex,
+                         static_cast<GLuint>(draw.drawInfo.materialIndex));
             glVertexArrayVertexBuffer(vao, 1, instanceBuffer, 0,
                                       sizeof(glm::mat4));
             glDrawElementsInstanced(
-                GL_TRIANGLES, draw.mesh.indexCount, GL_UNSIGNED_INT,
-                (void*)(draw.mesh.indexOffset * sizeof(GLuint)),
+                GL_TRIANGLES, draw.drawInfo.mesh.indexCount, GL_UNSIGNED_INT,
+                (void*)(draw.drawInfo.mesh.indexOffset * sizeof(GLuint)),
                 draw.numInstances);
         }
     }
 
     std::vector<DrawInstanced> meshes;
     std::vector<GLuint> instanceBuffers;
+    MaterialPackRef<Material> materialPackRef;
     MeshBuffers buffers;
     GLuint vao;
 };
 
-template <typename Vertex>
+template <typename Vertex, typename Material>
 class DrawPackBuilder {
    public:
+    DrawPackBuilder(const MeshPack<Vertex>& meshPack,
+                    const MaterialPack<Material>& materialPack) noexcept
+        : meshPack(meshPack), materialPack(materialPack) {}
+
     DrawPackBuilder& addDraw(MeshHandle<Vertex> meshHandle,
+                             MaterialHandle<Material> materialHandle,
                              glm::mat4 modelMatrix) {
         Mesh mesh = meshPack.getMesh(meshHandle);
-        if (drawData.find(mesh) != drawData.end()) {
-            drawData[mesh].emplace_back(modelMatrix);
+        DrawInfo drawInfo{mesh, materialHandle.uniformIndex};
+        auto drawDataIt = drawData.find(drawInfo);
+        if (drawDataIt != drawData.end()) {
+            drawDataIt->second.emplace_back(modelMatrix);
         } else {
-            drawData[mesh] = {std::move(modelMatrix)};
+            std::vector<glm::mat4> modelMatrices{modelMatrix};
+            drawData.emplace(std::piecewise_construct,
+                             std::forward_as_tuple(drawInfo),
+                             std::forward_as_tuple(std::move(modelMatrices)));
         }
         return *this;
     }
 
     DrawPackBuilder& addDrawMulti(MeshHandle<Vertex> meshHandle,
+                                  MaterialHandle<Material> materialHandle,
                                   std::vector<glm::mat4>&& modelMatrices) {
         Mesh mesh = meshPack.getMesh(meshHandle);
-        if (drawData.find(mesh) != drawData.end()) {
-            drawData[mesh].insert(drawData[mesh].end(),
-                                  std::move(modelMatrices));
+        DrawInfo drawInfo{mesh, materialHandle.uniformIndex};
+        auto drawDataIt = drawData.find(drawInfo);
+        if (drawDataIt != drawData.end()) {
+            drawDataIt->second.insert(drawDataIt->second.end(),
+                                      std::move(modelMatrices));
         } else {
-            drawData[mesh] = std::move(modelMatrices);
+            drawData.emplace(std::piecewise_construct,
+                             std::forward_as_tuple(drawInfo),
+                             std::forward_as_tuple(std::move(modelMatrices)));
         }
         return *this;
     }
 
-    DrawPack<Vertex> build() {
+    DrawPack<Vertex, Material> build() {
         GLuint vao = getVertexArray<Vertex>();
-        return DrawPack<Vertex>{drawData, meshPack.buffers, vao};
+        return DrawPack<Vertex, Material>{drawData, materialPack.getPackRef(),
+                                          meshPack.buffers, vao};
     }
 
    private:
-    friend class MeshPack<Vertex>;
-    DrawPackBuilder(const MeshPack<Vertex>& meshPack) noexcept
-        : meshPack(meshPack) {}
-
     const MeshPack<Vertex>& meshPack;
-    std::unordered_map<Mesh, std::vector<glm::mat4>> drawData;
+    const MaterialPack<Material>& materialPack;
+    std::unordered_map<DrawInfo, std::vector<glm::mat4>> drawData;
 };
