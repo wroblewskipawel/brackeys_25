@@ -19,6 +19,8 @@ struct CameraMatrices {
 };
 
 struct UniformLocations {
+    GLint materialIndex{-1};
+    GLint materialPack{-1};
     GLint modelMatrix{-1};
     GLint viewMatrix{-1};
     GLint projectionMatrix{-1};
@@ -48,7 +50,7 @@ class Shader {
     ~Shader() noexcept { glDeleteProgram(program); }
 
    private:
-    template <typename Vertex>
+    template <typename Vertex, typename Material>
     friend class Stage;
     friend class ShaderBuilder;
 
@@ -71,6 +73,8 @@ class Shader {
         locations.viewMatrix = glGetUniformLocation(program, "view");
         locations.projectionMatrix =
             glGetUniformLocation(program, "projection");
+        locations.materialIndex = glGetUniformLocation(program, "material");
+        locations.materialPack = glGetUniformLocation(program, "materialPack");
         uniformLocations[program] = locations;
     }
 

@@ -10,11 +10,14 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <stdexcept>
 
+#include "debug.h"
 #include "gltf.h"
+#include "material.h"
 #include "mesh.h"
 #include "model.h"
 #include "renderer.h"
 #include "shader.h"
+#include "std140.h"
 
 int main(void) {
     GLFWwindow* window;
@@ -37,6 +40,23 @@ int main(void) {
         throw std::runtime_error("Failed to initialize OpenGL");
     };
 
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_FRAMEBUFFER_SRGB);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    glClearDepth(1.0f);
+    glDepthFunc(GL_LEQUAL);
+
+#ifndef NDEBUG
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(glDebugOutput, nullptr);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr,
+                          GL_TRUE);
+#endif
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
@@ -44,8 +64,13 @@ int main(void) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
 
-    DocumentReader<UnlitVertex> unlitDocument{
+    DocumentReader<UnlitVertex, UnlitMaterial> unlitDocument{
         "assets/WaterBottle/glTF/WaterBottle.gltf"};
+
+    MaterialPackBuilder<EmptyMaterial> emptyMaterialPackBuilder{};
+    auto emptyMaterial =
+        emptyMaterialPackBuilder.addMaterial(MaterialBuilder<EmptyMaterial>{});
+    auto emptyMaterialPack = emptyMaterialPackBuilder.build();
 
     MeshPackBuilder<UnlitVertex> unlitMeshPackBuilder{};
     auto unlitCubeMesh =
@@ -54,6 +79,21 @@ int main(void) {
         unlitMeshPackBuilder.addMeshMulti(unlitDocument.takeMeshes());
     auto unlitMeshPack = unlitMeshPackBuilder.build();
 
+    MaterialPackBuilder<UnlitMaterial> unlitMaterialPackBuilder{};
+    MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
+    unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(
+        "assets/textures/tile_1.png", TextureFormat::RGB));
+    auto unlitMaterial_1 =
+        unlitMaterialPackBuilder.addMaterial(unlitMaterialBuilder_1);
+    MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_2{};
+    unlitMaterialBuilder_2.setAlbedoTextureData(TextureData::loadFromFile(
+        "assets/textures/tile_2.png", TextureFormat::RGB));
+    auto unlitMaterial_2 =
+        unlitMaterialPackBuilder.addMaterial(unlitMaterialBuilder_2);
+    auto documentMaterials = unlitMaterialPackBuilder.addMaterialMulti(
+        unlitDocument.takeMaterials());
+    auto unlitMaterialPack = unlitMaterialPackBuilder.build();
+
     ShaderBuilder unlitShaderBuilder{};
     unlitShaderBuilder.addStage(ShaderStage::Vertex,
                                 "shaders/unlit/shader.vert");
@@ -61,17 +101,23 @@ int main(void) {
                                 "shaders/unlit/shader.frag");
     auto unlitShader = unlitShaderBuilder.build();
 
-    auto unlitDrawPack = unlitMeshPack.createDrawPack();
-    unlitDrawPack.addDraw(unlitCubeMesh, glm::mat4(1.0f));
+    auto unlitDrawPack = unlitMeshPack.createDrawPack(unlitMaterialPack);
+    unlitDrawPack.addDraw(unlitCubeMesh, unlitMaterial_1, glm::mat4(1.0f));
     unlitDrawPack.addDraw(
-        documentMeshes[0],
+        unlitCubeMesh, unlitMaterial_2,
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 2.0f)));
+    unlitDrawPack.addDraw(
+        unlitCubeMesh, unlitMaterial_2,
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
+    unlitDrawPack.addDraw(
+        documentMeshes[0], documentMaterials[0],
         glm::scale(
             glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 0.0f)),
-            glm::vec3(3.0f)));
+            glm::vec3(6.0f)));
     unlitDrawPack.addDraw(
-        documentMeshes[0],
+        documentMeshes[0], documentMaterials[0],
         glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 0.0f)),
-                   glm::vec3(3.0f)));
+                   glm::vec3(6.0f)));
     ;
     auto unlitStage = Stage(std::move(unlitDrawPack));
     unlitStage.setShader(unlitShader);
@@ -88,42 +134,37 @@ int main(void) {
                                   "shaders/colored/shader.frag");
     auto coloredShader = coloredShaderBuilder.build();
 
-    auto coloredDrawPackBuilder = coloredMeshPack.createDrawPack();
+    auto coloredDrawPackBuilder =
+        coloredMeshPack.createDrawPack(emptyMaterialPack);
     coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh,
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh,
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh,
+        coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
     coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh,
+        coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f)));
     coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh,
+        coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 2.0f)));
     coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh,
+        coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, -2.0f)));
     coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh,
+        coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 2.0f)));
     coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh,
+        coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, -2.0f)));
     coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh,
+        coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, -2.0f, 2.0f)));
     coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh,
+        coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, -2.0f, -2.0f)));
     coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh,
+        coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, 2.0f)));
     coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh,
+        coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, -2.0f)));
     auto coloredStage = Stage(std::move(coloredDrawPackBuilder));
     coloredStage.setShader(coloredShader);
@@ -136,15 +177,6 @@ int main(void) {
                     glm::vec3(0.0f, 0.0f, 1.0f));
     cameraMatrices.projection =
         glm::perspective(glm::radians(45.0f), 480.0f / 640.0f, 1e-1f, 1e3f);
-
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_FRAMEBUFFER_SRGB);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
-    glClearDepth(1.0f);
-    glDepthFunc(GL_LEQUAL);
 
     while (!glfwWindowShouldClose(window)) {
         ImGui_ImplOpenGL3_NewFrame();
