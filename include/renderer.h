@@ -69,3 +69,35 @@ class Stage {
     GLuint shaderProgram{0};
     DrawPack<Vertex, Material> drawPack;
 };
+
+template <typename Vertex, typename Material>
+class DynamicStage {
+   public:
+    DynamicStage(DynamicDrawPack<Vertex, Material>&& dynamicDrawPack)
+        : dynamicDrawPack(std::move(dynamicDrawPack)) {}
+
+    DynamicStage& setShader(const Shader& shader) {
+        shaderProgram = shader.program;
+        return *this;
+    }
+
+   private:
+    template <typename... Stages>
+    friend class Pipeline;
+
+    void execute(const CameraMatrices& cameraMatrices) {
+        if (shaderProgram) {
+            glUseProgram(shaderProgram);
+            const auto& locations =
+                Shader::getProgramUniformLocations(shaderProgram);
+            glUniformMatrix4fv(locations.viewMatrix, 1, GL_FALSE,
+                               glm::value_ptr(cameraMatrices.view));
+            glUniformMatrix4fv(locations.projectionMatrix, 1, GL_FALSE,
+                               glm::value_ptr(cameraMatrices.projection));
+            dynamicDrawPack.draw(locations);
+        }
+    }
+
+    GLuint shaderProgram{0};
+    DynamicDrawPack<Vertex, Material> dynamicDrawPack;
+};

@@ -5,13 +5,17 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <stdexcept>
 #include <iostream>
+#include <stdexcept>
 
+#include "EntityComponentSystem/Components/MovableComponent.hpp"
+#include "EntityComponentSystem/ECS.hpp"
+#include "EntityComponentSystem/Systems/MovementSystem.hpp"
 #include "ImGui/ImGui.hpp"
 #include "InputHandler/InputHandler.hpp"
 #include "MusicManager/MusicManager.hpp"
 #include "debug.h"
+#include "draw.h"
 #include "gltf.h"
 #include "material.h"
 #include "mesh.h"
@@ -20,14 +24,9 @@
 #include "shader.h"
 #include "std140.h"
 
-#include "EntityComponentSystem/ECS.hpp"
-#include "EntityComponentSystem/Components/MovableComponent.hpp"
-#include "EntityComponentSystem/Systems/MovementSystem.hpp"
-
-
 void debugSystem(ECS& ecs, const float& deltaTime) {
     auto& movables = ecs.getEntitiesWithComponent<MovableComponent>().get();
-    std::cout << "Debug: " << movables.size() << " movables tracked.\n";
+    // std::cout << "Debug: " << movables.size() << " movables tracked.\n";
 }
 
 int main() {
@@ -76,15 +75,15 @@ int main() {
     ECS ecs;
 
     EntityID player = ecs.createEntity();
-    EntityID enemy  = ecs.createEntity();
+    EntityID enemy = ecs.createEntity();
 
-    ecs.addComponent(player, MovableComponent{0,0,1.0f,1.0f});
-    ecs.addComponent(enemy, MovableComponent{5,5,1.0f,1.0f});
+    ecs.addComponent(player, MovableComponent{0.0f, 0.0f, 1.0f, 1.0f});
+    ecs.addComponent(enemy, MovableComponent{5, 5, 1.0f, 1.0f});
 
     ecs.nextStage(ECS::StageType::Parallel)
-          .addSystem(movementSystem)
-       .nextStage(ECS::StageType::Sequential)
-          .addSystem(debugSystem);
+        .addSystem(movementSystem)
+        .nextStage(ECS::StageType::Sequential)
+        .addSystem(debugSystem);
 
     DocumentReader<UnlitVertex, UnlitMaterial> unlitDocument{
         "assets/WaterBottle/glTF/WaterBottle.gltf"};
@@ -116,15 +115,22 @@ int main() {
         unlitDocument.takeMaterials());
     auto unlitMaterialPack = unlitMaterialPackBuilder.build();
 
-    ShaderBuilder unlitShaderBuilder{};
-    unlitShaderBuilder.addStage(ShaderStage::Vertex,
-                                "shaders/unlit/shader.vert");
-    unlitShaderBuilder.addStage(ShaderStage::Fragment,
-                                "shaders/unlit/shader.frag");
-    auto unlitShader = unlitShaderBuilder.build();
+    ShaderBuilder unlitStaticShaderBuilder{};
+    unlitStaticShaderBuilder.addStage(ShaderStage::Vertex,
+                                      "shaders/unlit/shader.vert");
+    unlitStaticShaderBuilder.addStage(ShaderStage::Fragment,
+                                      "shaders/unlit/shader.frag");
+    auto unlitStaticShader = unlitStaticShaderBuilder.build();
+
+    ShaderBuilder unlitDynamicShaderBuilder{};
+    unlitDynamicShaderBuilder.addStage(ShaderStage::Vertex,
+                                       "shaders/dynamic/unlit/shader.vert");
+    unlitDynamicShaderBuilder.addStage(ShaderStage::Fragment,
+                                       "shaders/dynamic/unlit/shader.frag");
+    auto unlitDynamicShader = unlitDynamicShaderBuilder.build();
 
     auto unlitDrawPack = unlitMeshPack.createDrawPack(unlitMaterialPack);
-    unlitDrawPack.addDraw(unlitCubeMesh, unlitMaterial_1, glm::mat4(1.0f));
+    // unlitDrawPack.addDraw(unlitCubeMesh, unlitMaterial_1, glm::mat4(1.0f));
     unlitDrawPack.addDraw(
         unlitCubeMesh, unlitMaterial_2,
         glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 2.0f)));
@@ -141,20 +147,33 @@ int main() {
         glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 0.0f)),
                    glm::vec3(6.0f)));
     ;
-    auto unlitStage = Stage(std::move(unlitDrawPack));
-    unlitStage.setShader(unlitShader);
+    auto unlitStaticStage = Stage(std::move(unlitDrawPack));
+    unlitStaticStage.setShader(unlitStaticShader);
+
+    DynamicDrawPack<UnlitVertex, UnlitMaterial> dynamicUnlitDrawPack(
+        unlitMeshPack, unlitMaterialPack);
+    auto dynamicUnlitQueue = dynamicUnlitDrawPack.getDrawQueue();
+    auto dynamicUnlitStage = DynamicStage(std::move(dynamicUnlitDrawPack));
+    dynamicUnlitStage.setShader(unlitDynamicShader);
 
     MeshPackBuilder<ColoredVertex> coloredMeshPackBuilder{};
     auto coloredCubeMesh =
         coloredMeshPackBuilder.addMesh(createCube<ColoredVertex>());
     auto coloredMeshPack = coloredMeshPackBuilder.build();
 
-    ShaderBuilder coloredShaderBuilder{};
-    coloredShaderBuilder.addStage(ShaderStage::Vertex,
-                                  "shaders/colored/shader.vert");
-    coloredShaderBuilder.addStage(ShaderStage::Fragment,
-                                  "shaders/colored/shader.frag");
-    auto coloredShader = coloredShaderBuilder.build();
+    ShaderBuilder coloredStaticShaderBuilder{};
+    coloredStaticShaderBuilder.addStage(ShaderStage::Vertex,
+                                        "shaders/colored/shader.vert");
+    coloredStaticShaderBuilder.addStage(ShaderStage::Fragment,
+                                        "shaders/colored/shader.frag");
+    auto coloredStaticShader = coloredStaticShaderBuilder.build();
+
+    ShaderBuilder coloredDynamicShaderBuilder{};
+    coloredDynamicShaderBuilder.addStage(ShaderStage::Vertex,
+                                         "shaders/dynamic/colored/shader.vert");
+    coloredDynamicShaderBuilder.addStage(ShaderStage::Fragment,
+                                         "shaders/dynamic/colored/shader.frag");
+    auto coloredDynamicShader = coloredDynamicShaderBuilder.build();
 
     auto coloredDrawPackBuilder =
         coloredMeshPack.createDrawPack(emptyMaterialPack);
@@ -188,10 +207,18 @@ int main() {
     coloredDrawPackBuilder.addDraw(
         coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, -2.0f)));
-    auto coloredStage = Stage(std::move(coloredDrawPackBuilder));
-    coloredStage.setShader(coloredShader);
+    auto coloredStaticStage = Stage(std::move(coloredDrawPackBuilder));
+    coloredStaticStage.setShader(coloredStaticShader);
 
-    auto pipeline = Pipeline(std::move(coloredStage), std::move(unlitStage));
+    DynamicDrawPack<ColoredVertex, EmptyMaterial> dynamicColoredDrawPack(
+        coloredMeshPack, emptyMaterialPack);
+    auto dynamicColoredQueue = dynamicColoredDrawPack.getDrawQueue();
+    auto dynamicColoredStage = DynamicStage(std::move(dynamicColoredDrawPack));
+    dynamicColoredStage.setShader(coloredDynamicShader);
+
+    auto pipeline =
+        Pipeline(std::move(coloredStaticStage), std::move(unlitStaticStage),
+                 std::move(dynamicColoredStage), std::move(dynamicUnlitStage));
 
     CameraMatrices cameraMatrices{};
     cameraMatrices.view =
@@ -200,6 +227,22 @@ int main() {
     cameraMatrices.projection =
         glm::perspective(glm::radians(45.0f), 480.0f / 640.0f, 1e-1f, 1e3f);
 
+    DrawCommandBuilder coloredCommandbuilder(coloredMeshPack,
+                                             emptyMaterialPack);
+    auto cubeColoredPartial =
+        coloredCommandbuilder.getCommandPartial(coloredCubeMesh, emptyMaterial);
+
+    DrawCommandBuilder unlitCommandbuilder(unlitMeshPack, unlitMaterialPack);
+    auto cubeUnlitPartial_1 =
+        unlitCommandbuilder.getCommandPartial(unlitCubeMesh, unlitMaterial_1);
+    auto cubeUnlitPartial_2 =
+        unlitCommandbuilder.getCommandPartial(unlitCubeMesh, unlitMaterial_2);
+
+    auto documentUnlitPartial = unlitCommandbuilder.getCommandPartial(
+        documentMeshes[0], documentMaterials[0]);
+
+    auto cubePosition = glm::vec3(0.0);
+
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
@@ -207,11 +250,22 @@ int main() {
 
         ecs.update(deltaTime);
 
+        auto* playerMovement = ecs.getComponent<MovableComponent>(player);
+        cubePosition.x = playerMovement->x;
+        cubePosition.y = playerMovement->y;
+
+        dynamicUnlitQueue->emplace_back(cubeUnlitPartial_1.withTransform(
+            glm::translate(glm::mat4(1.0), cubePosition)));
+        // dynamicUnlitQueue->emplace_back(cubeUnlitPartial_2.withTransform(
+        //     glm::translate(glm::mat4(1.0), glm::vec3(-3.0, -3.0, -3.0))));
+        // dynamicUnlitQueue->emplace_back(documentUnlitPartial.withTransform(
+        //     glm::translate(glm::mat4(1.0), glm::vec3(-3.0, -5.0, -3.0))));
+
         updateImGui(window);
 
         if (gInputHandler.isClicked(Key::R)) gMusicManager.play(SoundID::Coin);
         if (gInputHandler.isPressed(Key::Space))
-        gMusicManager.play(SoundID::Explosion);
+            gMusicManager.play(SoundID::Explosion);
 
         gInputHandler.update();
 
@@ -219,6 +273,7 @@ int main() {
 
         pipeline.execute(cameraMatrices);
         renderImGui();
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
