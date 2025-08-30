@@ -15,7 +15,7 @@ public:
 
 private:
     EntityID nextEntity = 0;
-    std::unordered_map<std::type_index, std::shared_ptr<IStorage>> storages;
+    std::unordered_map<std::type_index, std::unique_ptr<IStorage>> storages;
 
     struct Stage {
         StageType type;
@@ -27,9 +27,9 @@ private:
     ComponentStorage<T>& getStorage() {
         auto type = std::type_index(typeid(T));
         if (storages.find(type) == storages.end()) {
-            storages[type] = std::make_shared<ComponentStorage<T>>();
+            storages[type] = std::make_unique<ComponentStorage<T>>();
         }
-        return *std::static_pointer_cast<ComponentStorage<T>>(storages[type]);
+        return *static_cast<ComponentStorage<T>*>(storages[type].get());
     }
 
 public:
