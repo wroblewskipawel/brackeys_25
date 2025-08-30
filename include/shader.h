@@ -52,6 +52,8 @@ class Shader {
    private:
     template <typename Vertex, typename Material>
     friend class Stage;
+    template <typename Vertex, typename Material>
+    friend class DynamicStage;
     friend class ShaderBuilder;
 
     static Shader invalid() noexcept { return Shader(0); }

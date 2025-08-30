@@ -179,6 +179,9 @@ struct hash<Mesh> {
 template <typename Vertex, typename Material>
 class DrawPackBuilder;
 
+template <typename Vertex, typename Material>
+class DynamicDrawPack;
+
 template <typename Vertex>
 class MeshPackBuilder;
 
@@ -220,6 +223,10 @@ class MeshPack {
     friend class MeshPackBuilder<Vertex>;
     template <typename, typename>
     friend class DrawPackBuilder;
+    template <typename, typename>
+    friend class DynamicDrawPack;
+    template <typename, typename>
+    friend class DrawCommandBuilder;
 
     MeshPack(MeshBuffers buffers, std::vector<Mesh>&& meshes, size_t packIndex)
         : buffers(buffers), meshes(std::move(meshes)), packIndex(packIndex) {}
@@ -462,7 +469,8 @@ class DrawPackBuilder {
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
             drawDataIt->second.insert(drawDataIt->second.end(),
-                                      std::move(modelMatrices));
+                                      std::make_move_iterator(modelMatrices.begin()),
+                                      std::make_move_iterator(modelMatrices.end()));
         } else {
             drawData.emplace(std::piecewise_construct,
                              std::forward_as_tuple(drawInfo),
