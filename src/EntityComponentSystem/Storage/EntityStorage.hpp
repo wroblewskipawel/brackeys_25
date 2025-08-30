@@ -1,5 +1,4 @@
-#ifndef ENTITYSTORAGE_HPP
-#define ENTITYSTORAGE_HPP
+#pragma once
 
 #include <array>
 #include <bitset>
@@ -116,13 +115,13 @@ public:
     size_t getComponentIndex(EntityID id) const {
         auto it = entities.find(id);
         if (it == entities.end()) {
-            throw std::runtime_error("Entity does not exist!");
+            return std::numeric_limits<size_t>::max();
         }
 
         constexpr auto typeIndex = static_cast<size_t>(ComponentToType<T>::index);
         auto& optIndex = it->second.componentIndices[typeIndex];
         if (!optIndex.has_value()) {
-            throw std::runtime_error("Entity does not have this component!");
+            return std::numeric_limits<size_t>::max();
         }
         return optIndex.value();
     }
@@ -139,5 +138,3 @@ public:
     template<typename T>
     friend class ComponentStorage;
 };
-
-#endif // ENTITYSTORAGE_HPP

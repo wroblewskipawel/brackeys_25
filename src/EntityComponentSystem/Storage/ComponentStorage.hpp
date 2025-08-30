@@ -1,5 +1,4 @@
-#ifndef COMPONENTSTORAGE_HPP
-#define COMPONENTSTORAGE_HPP
+#pragma once
 
 #include <cstddef>
 #include <memory>
@@ -91,5 +90,3 @@ public:
     std::vector<T>& getAll() { return components; }
     std::vector<Cell>& getEntities() { return entityIDs; }
 };
-
-#endif //COMPONENTSTORAGE_HPP

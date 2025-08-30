@@ -1,5 +1,4 @@
-#ifndef MUSICMANAGER_HPP
-#define MUSICMANAGER_HPP
+#pragma once
 
 #include "miniaudio.h"
 #include <array>
@@ -26,5 +25,3 @@ public:
 };
 
 extern MusicManager gMusicManager;
-
-#endif // MUSICMANAGER_HPP

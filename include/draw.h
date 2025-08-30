@@ -44,19 +44,20 @@ struct DrawCommandBuilder {
     const MaterialPack<Material>& materialPack;
 };
 
+template<typename Vertex, typename Material>
+using DrawQueue = std::vector<DrawCommand<Vertex, Material>>;
+
 template <typename Vertex, typename Material>
 class DynamicDrawPack {
    public:
-    using DrawQueue = std::vector<DrawCommand<Vertex, Material>>;
-
     DynamicDrawPack(const MeshPack<Vertex>& meshPack,
                     const MaterialPack<Material>& materialPack)
         : materialPackRef{materialPack.getPackRef()},
           buffers{meshPack.buffers},
           vao{getVertexArray<Vertex>()},
-          drawQueue{std::make_shared<DrawQueue>()} {};
+          drawQueue{std::make_shared<DrawQueue<Vertex, Material>>()} {};
 
-    std::shared_ptr<DrawQueue> getDrawQueue() const { return drawQueue; }
+    std::shared_ptr<DrawQueue<Vertex, Material>> getDrawQueue() const { return drawQueue; }
 
     void draw(const UniformLocations& uniformLocations) {
         glBindVertexArray(vao);
@@ -76,7 +77,7 @@ class DynamicDrawPack {
     }
 
    private:
-    std::shared_ptr<DrawQueue> drawQueue;
+    std::shared_ptr<DrawQueue<Vertex, Material>> drawQueue;
 
     MaterialPackRef<Material> materialPackRef;
     MeshBuffers buffers;

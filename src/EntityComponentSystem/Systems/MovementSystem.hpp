@@ -1,11 +1,9 @@
-#ifndef MOVEMENTSYSTEM_HPP
-#define MOVEMENTSYSTEM_HPP
-
+#pragma once
 #include "../ECS.hpp"
 #include "../Components/MovableComponent.hpp"
-#include "../../InputHandler/InputHandler.hpp"
+#include "InputHandler/InputHandler.hpp"
 
-inline void movementSystem(ECS& ecs, const float& deltaTime) {
+inline void movementSystem(ECS& ecs, const float& deltaTime, RenderingQueues& renderingQueues) {
     auto entities = ecs.getEntitiesWithComponent<MovableComponent>().get();
     for (const auto& entity : entities) {
         auto component = ecs.getComponent<MovableComponent>(entity);
@@ -18,5 +16,3 @@ inline void movementSystem(ECS& ecs, const float& deltaTime) {
         if (gInputHandler.isPressed(Key::D)) x += speedX * deltaTime;
     }
 }
-
-#endif //MOVEMENTSYSTEM_HPP

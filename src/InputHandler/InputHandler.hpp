@@ -1,5 +1,4 @@
-#ifndef INPUTHANDLER_HPP
-#define INPUTHANDLER_HPP
+#pragma once
 
 #include <array>
 #include <GLFW/glfw3.h>
@@ -42,5 +41,3 @@ public:
 extern InputHandler gInputHandler;
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
-
-#endif // INPUTHANDLER_HPP
