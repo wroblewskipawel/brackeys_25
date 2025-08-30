@@ -3,33 +3,24 @@
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
 
-#include <cmath>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <stdexcept>
 #include <iostream>
 
 #include "ImGui/ImGui.hpp"
 #include "InputHandler/InputHandler.hpp"
 #include "MusicManager/MusicManager.hpp"
+#include "gltf.h"
+#include "mesh.h"
+#include "model.h"
+#include "renderer.h"
+#include "shader.h"
 
 #include "EntityComponentSystem/ECS.hpp"
 #include "EntityComponentSystem/Components/MovableComponent.hpp"
 #include "EntityComponentSystem/Systems/MovementSystem.hpp"
 
-// Vertex Shader source code
-const char* vertexShaderSource = "#version 330 core\n"
-"layout (location = 0) in vec3 aPos;\n"
-"uniform vec2 offset;\n"
-"void main()\n"
-"{\n"
-"   gl_Position = vec4(aPos.xy + offset, aPos.z, 1.0);\n"
-"}\0";
-//Fragment Shader source code
-const char* fragmentShaderSource = "#version 330 core\n"
-"out vec4 FragColor;\n"
-"void main()\n"
-"{\n"
-"   FragColor = vec4(0.8f, 0.3f, 0.02f, 1.0f);\n"
-"}\n\0";
 
 void debugSystem(ECS& ecs, const float& deltaTime) {
     auto& movables = ecs.getEntitiesWithComponent<MovableComponent>().get();
@@ -59,47 +50,6 @@ int main() {
     glfwSetKeyCallback(window, keyCallback);
     setupImGui(window);
 
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    GLint offsetLoc = glGetUniformLocation(shaderProgram, "offset");
-
-    GLfloat vertices[] =
-    {
-        -0.5f, -0.5f * float(std::sqrt(3)) / 3, 0.0f, // Lower left corner
-        0.5f, -0.5f * float(std::sqrt(3)) / 3, 0.0f, // Lower right corner
-        0.0f, 0.5f * float(std::sqrt(3)) * 2 / 3, 0.0f // Upper corner
-    };
-
-    GLuint VAO, VBO;
-
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 
@@ -116,6 +66,108 @@ int main() {
        .nextStage(ECS::StageType::Sequential)
           .addSystem(debugSystem);
 
+    DocumentReader<UnlitVertex> unlitDocument{
+        "assets/WaterBottle/glTF/WaterBottle.gltf"};
+
+    MeshPackBuilder<UnlitVertex> unlitMeshPackBuilder{};
+    auto unlitCubeMesh =
+        unlitMeshPackBuilder.addMesh(createCube<UnlitVertex>());
+    auto documentMeshes =
+        unlitMeshPackBuilder.addMeshMulti(unlitDocument.takeMeshes());
+    auto unlitMeshPack = unlitMeshPackBuilder.build();
+
+    ShaderBuilder unlitShaderBuilder{};
+    unlitShaderBuilder.addStage(ShaderStage::Vertex,
+                                "shaders/unlit/shader.vert");
+    unlitShaderBuilder.addStage(ShaderStage::Fragment,
+                                "shaders/unlit/shader.frag");
+    auto unlitShader = unlitShaderBuilder.build();
+
+    auto unlitDrawPack = unlitMeshPack.createDrawPack();
+    unlitDrawPack.addDraw(unlitCubeMesh, glm::mat4(1.0f));
+    unlitDrawPack.addDraw(
+        documentMeshes[0],
+        glm::scale(
+            glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 0.0f)),
+            glm::vec3(3.0f)));
+    unlitDrawPack.addDraw(
+        documentMeshes[0],
+        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 0.0f)),
+                   glm::vec3(3.0f)));
+    ;
+    auto unlitStage = Stage(std::move(unlitDrawPack));
+    unlitStage.setShader(unlitShader);
+
+    MeshPackBuilder<ColoredVertex> coloredMeshPackBuilder{};
+    auto coloredCubeMesh =
+        coloredMeshPackBuilder.addMesh(createCube<ColoredVertex>());
+    auto coloredMeshPack = coloredMeshPackBuilder.build();
+
+    ShaderBuilder coloredShaderBuilder{};
+    coloredShaderBuilder.addStage(ShaderStage::Vertex,
+                                  "shaders/colored/shader.vert");
+    coloredShaderBuilder.addStage(ShaderStage::Fragment,
+                                  "shaders/colored/shader.frag");
+    auto coloredShader = coloredShaderBuilder.build();
+
+    auto coloredDrawPackBuilder = coloredMeshPack.createDrawPack();
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, -2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, -2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, -2.0f, 2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, -2.0f, -2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, 2.0f)));
+    coloredDrawPackBuilder.addDraw(
+        coloredCubeMesh,
+        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, -2.0f)));
+    auto coloredStage = Stage(std::move(coloredDrawPackBuilder));
+    coloredStage.setShader(coloredShader);
+
+    auto pipeline = Pipeline(std::move(coloredStage), std::move(unlitStage));
+
+    CameraMatrices cameraMatrices{};
+    cameraMatrices.view =
+        glm::lookAt(glm::vec3(5.0f, 5.0f, 5.0f), glm::vec3(0.0f),
+                    glm::vec3(0.0f, 0.0f, 1.0f));
+    cameraMatrices.projection =
+        glm::perspective(glm::radians(45.0f), 480.0f / 640.0f, 1e-1f, 1e3f);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_FRAMEBUFFER_SRGB);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    glClearDepth(1.0f);
+    glDepthFunc(GL_LEQUAL);
+
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
@@ -125,36 +177,22 @@ int main() {
 
         updateImGui(window);
 
-        // Music test
         if (gInputHandler.isClicked(Key::R)) gMusicManager.play(SoundID::Coin);
         if (gInputHandler.isPressed(Key::Space))
-            gMusicManager.play(SoundID::Explosion);
-
-        const auto component = ecs.getComponent<MovableComponent>(player);
-        auto x = *component;
-        glUniform2f(offsetLoc, x.x, x.y);
+        gMusicManager.play(SoundID::Explosion);
 
         gInputHandler.update();
 
-        // Clear
-        glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(shaderProgram);
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-
-        // Render
+        pipeline.execute(cameraMatrices);
         renderImGui();
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
     destroyImGui();
-
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteProgram(shaderProgram);
+    destroyVertexArrays();
 
     glfwDestroyWindow(window);
     glfwTerminate();
