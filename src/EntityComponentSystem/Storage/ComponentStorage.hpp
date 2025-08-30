@@ -31,10 +31,16 @@ template<typename T>
 class ComponentStorage : public IStorage {
 private:
     static constexpr size_t npos = static_cast<size_t>(-1);
+    static constexpr size_t initial_reserve_size = 1024;
 public:
     std::vector<T> components;
     std::vector<Cell> entityIDs;
     size_t firstFreeCell = npos;
+
+    ComponentStorage() {
+        components.reserve(initial_reserve_size);
+        entityIDs.reserve(initial_reserve_size);
+    }
 
     size_t add(EntityID id, const T& component) {
         if (firstFreeCell == npos) {
