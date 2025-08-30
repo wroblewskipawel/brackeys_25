@@ -26,6 +26,11 @@ inline bool is_subset(const ComponentBitMask& a, const ComponentBitMask& b) {
     return (a & b) == a;
 }
 
+// TODO:
+// 1. Add entity builder.
+//      a. Add addComponentWithBuilder method.
+//      b. Add flushComponents method that will write bitmask to the components after the entity is fully built.
+
 class EntityStorage {
 private:
     std::unordered_map<EntityID, EntityData> entities;
