@@ -8,20 +8,28 @@
 #include <stdexcept>
 #include <typeindex>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "../Components/ComponentIndexes.hpp"
 
 using EntityID = std::size_t;
+using ComponentBitMask = std::bitset<COMPONENT_COUNT>;
 
 struct EntityData {
-    std::bitset<COMPONENT_COUNT> componentMask;                          // Which components the entity has
-    std::array<std::optional<size_t>, COMPONENT_COUNT> componentIndices; // Component index inside its storage
+    ComponentBitMask componentMask;  // Which components the entity has
+    std::array<std::optional<size_t>, COMPONENT_COUNT>
+        componentIndices;  // Component index inside its storage
 };
+
+inline bool is_subset(const ComponentBitMask& a, const ComponentBitMask& b) {
+    return (a & b) == a;
+}
 
 class EntityStorage {
 private:
     std::unordered_map<EntityID, EntityData> entities;
+    std::unordered_map<ComponentBitMask, std::unordered_set<EntityID>> components;
 
 public:
     void addEntity(EntityID id) {
@@ -29,6 +37,20 @@ public:
             throw std::runtime_error("Entity already exists!");
         }
         entities[id] = EntityData{};
+    }
+
+    const std::unordered_set<EntityID>& query(const ComponentBitMask& bitMask) {
+        auto result = components.find(bitMask);
+        if (result == components.end()) {
+            std::unordered_set<EntityID> set;
+            for (auto& [entityId, entityData] : entities) {
+                if (is_subset(bitMask, entityData.componentMask)) {
+                    set.insert(entityId);
+                }
+            }
+            components[bitMask] = set;
+        }
+        return components[bitMask];
     }
 
     void removeEntity(EntityID id) {
@@ -46,6 +68,13 @@ public:
 
         it->second.componentMask.set(typeIndex, true);
         it->second.componentIndices[typeIndex] = componentIndex;
+
+        const auto entityBitMaks = it->second.componentMask;
+        for (auto& [bitmask, ids] : components) {
+            if (is_subset(entityBitMaks, bitmask)) {
+                ids.insert(id);
+            }
+        }
     }
 
     template<typename T>
@@ -55,8 +84,19 @@ public:
 
         constexpr auto typeIndex = static_cast<size_t>(ComponentToType<T>::index);
 
+        const auto maskBefore = it->second.componentMask;
         it->second.componentMask.set(typeIndex, false);
         it->second.componentIndices[typeIndex].reset();
+        const auto maskAfter = it->second.componentMask;
+
+        for (auto& [bitmask, ids] : components) {
+            if (is_subset(maskBefore, bitmask)) {
+                ids.erase(id);
+            }
+            if (is_subset(maskAfter, bitmask)) {
+                ids.insert(id);
+            }
+        }
     }
 
     bool hasEntity(EntityID id) const {

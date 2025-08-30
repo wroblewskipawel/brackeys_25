@@ -7,6 +7,7 @@
 #include <vector>
 #include "Storage/ComponentStorage.hpp"
 #include "Storage/EntityStorage.hpp"
+#include "Storage/QueryBuilder.hpp"
 
 class ECS {
 public:
@@ -22,6 +23,15 @@ private:
     };
     std::vector<Stage> stages;
 
+    template<typename T>
+    ComponentStorage<T>& getStorage() {
+        auto type = std::type_index(typeid(T));
+        if (storages.find(type) == storages.end()) {
+            storages[type] = std::make_shared<ComponentStorage<T>>();
+        }
+        return *std::static_pointer_cast<ComponentStorage<T>>(storages[type]);
+    }
+
 public:
     EntityStorage entityStorage{};
 
@@ -32,12 +42,16 @@ public:
     void update(const float& deltaTime);
 
     template<typename T>
-    ComponentStorage<T>& getStorage() {
-        auto type = std::type_index(typeid(T));
-        if (storages.find(type) == storages.end()) {
-            storages[type] = std::make_shared<ComponentStorage<T>>();
-        }
-        return *std::static_pointer_cast<ComponentStorage<T>>(storages[type]);
+    T* getComponent(EntityID id) {
+        auto indexInStorage = entityStorage.getComponentIndex<T>(id);
+        return getStorage<T>().getByIndex(indexInStorage);
+    }
+
+    template<typename T>
+    QueryBuilder getEntitiesWithComponent() {
+        QueryBuilder qb(entityStorage);
+        qb.andHas<T>();
+        return qb;
     }
 
     template<typename T>

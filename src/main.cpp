@@ -32,8 +32,8 @@ const char* fragmentShaderSource = "#version 330 core\n"
 "}\n\0";
 
 void debugSystem(ECS& ecs, const float& deltaTime) {
-    auto& movables = ecs.getStorage<MovableComponent>();
-    std::cout << "Debug: " << movables.getAll().size() << " movables tracked.\n";
+    auto& movables = ecs.getEntitiesWithComponent<MovableComponent>().get();
+    std::cout << "Debug: " << movables.size() << " movables tracked.\n";
 }
 
 int main() {
@@ -44,7 +44,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     GLFWwindow* window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
     if (!window) {
         glfwTerminate();
@@ -130,7 +130,8 @@ int main() {
         if (gInputHandler.isPressed(Key::Space))
             gMusicManager.play(SoundID::Explosion);
 
-        const auto x = ecs.getStorage<MovableComponent>().getAll()[player];
+        const auto component = ecs.getComponent<MovableComponent>(player);
+        auto x = *component;
         glUniform2f(offsetLoc, x.x, x.y);
 
         gInputHandler.update();

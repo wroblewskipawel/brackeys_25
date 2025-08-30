@@ -6,9 +6,11 @@
 #include "../../InputHandler/InputHandler.hpp"
 
 inline void movementSystem(ECS& ecs, const float& deltaTime) {
-    auto& movables = ecs.getStorage<MovableComponent>();
-    for (size_t i = 0; i < movables.getAll().size(); ++i) {
-        auto& [x, y, speedX, speedY] = movables.getAll()[i];
+    auto entities = ecs.getEntitiesWithComponent<MovableComponent>().get();
+    for (const auto& entity : entities) {
+        auto component = ecs.getComponent<MovableComponent>(entity);
+
+        auto& [x, y, speedX, speedY] = *component;
 
         if (gInputHandler.isPressed(Key::W)) y += speedY * deltaTime;
         if (gInputHandler.isPressed(Key::S)) y -= speedY * deltaTime;
