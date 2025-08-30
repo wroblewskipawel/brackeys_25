@@ -1,17 +1,29 @@
-#ifndef ECS_HPP
-#define ECS_HPP
+#pragma once
 
 #include <unordered_map>
 #include <functional>
 #include <typeindex>
 #include <vector>
+#include <memory>
 #include "Storage/ComponentStorage.hpp"
 #include "Storage/EntityStorage.hpp"
 #include "Storage/QueryBuilder.hpp"
+#include "mesh.h"
+#include "material.h"
+#include "draw.h"
+
+
+struct RenderingQueues {
+    std::shared_ptr<DrawQueue<UnlitVertex, UnlitMaterial>> unlitQueue{nullptr};
+    std::shared_ptr<DrawQueue<ColoredVertex, EmptyMaterial>> coloredQueue{nullptr};
+};
+
 
 class ECS {
 public:
     enum class StageType { Sequential, Parallel };
+
+    ECS(RenderingQueues&& renderingQueues): renderingQueues(std::move(renderingQueues)) {}
 
 private:
     EntityID nextEntity = 0;
@@ -19,7 +31,7 @@ private:
 
     struct Stage {
         StageType type;
-        std::vector<std::function<void(ECS&, const float&)>> systems;
+        std::vector<std::function<void(ECS&, const float&, RenderingQueues&)>> systems;
     };
     std::vector<Stage> stages;
 
@@ -32,18 +44,23 @@ private:
         return *static_cast<ComponentStorage<T>*>(storages[type].get());
     }
 
+    RenderingQueues renderingQueues;
+
 public:
     EntityStorage entityStorage{};
 
     EntityID createEntity();
     void removeEntity(EntityID id);
     ECS& nextStage(StageType type);
-    ECS& addSystem(std::function<void(ECS&, const float&)> fn);
+    ECS& addSystem(std::function<void(ECS&, const float&, RenderingQueues&)> fn);
     void update(const float& deltaTime);
 
     template<typename T>
     T* getComponent(EntityID id) {
         auto indexInStorage = entityStorage.getComponentIndex<T>(id);
+        if (indexInStorage == std::numeric_limits<size_t>::max()) {
+            return nullptr;
+        }
         return getStorage<T>().getByIndex(indexInStorage);
     }
 
@@ -60,5 +77,3 @@ public:
         entityStorage.addComponent<T>(entity, component_index);
     }
 };
-
-#endif //ECS_HPP

@@ -1,5 +1,4 @@
-#ifndef QUERYBUILDER_HPP
-#define QUERYBUILDER_HPP
+#pragma once
 
 #include "EntityStorage.hpp"
 
@@ -22,5 +21,3 @@ public:
         return storage.query(bitMask);
     }
 };
-
-#endif //QUERYBUILDER_HPP

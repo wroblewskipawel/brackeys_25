@@ -1,7 +1,7 @@
 #include "CppUTest/TestHarness.h"
 #include "CppUTest/MemoryLeakDetectorNewMacros.h"
 
-#include "EntityComponentSystem/ECS.hpp"
+#include "../EntityComponentSystem/ECS.hpp"
 
 TEST_GROUP(EntityComponentSystemGroup) {
     void setup() {
@@ -13,7 +13,7 @@ TEST_GROUP(EntityComponentSystemGroup) {
 };
 
 TEST(EntityComponentSystemGroup, SimpleTest) {
-    ECS ecs;
+    ECS ecs(RenderingQueues{nullptr, nullptr});
 
     size_t numOfEntities = 10;
 

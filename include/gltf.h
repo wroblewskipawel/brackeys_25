@@ -83,7 +83,7 @@ std::pair<std::function<bool(Attribute&)>, size_t> getAttributeReader(
     const std::string& attributeName);
 
 template <>
-std::pair<std::function<bool(glm::vec2&)>, size_t> getAttributeReader(
+inline  std::pair<std::function<bool(glm::vec2&)>, size_t> getAttributeReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive,
     const std::string& attributeName) {
     const auto& accessor =
@@ -114,7 +114,7 @@ std::pair<std::function<bool(glm::vec2&)>, size_t> getAttributeReader(
 }
 
 template <>
-std::pair<std::function<bool(glm::vec3&)>, size_t> getAttributeReader(
+inline std::pair<std::function<bool(glm::vec3&)>, size_t> getAttributeReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive,
     const std::string& attributeName) {
     const auto& accessor =
@@ -145,7 +145,7 @@ std::pair<std::function<bool(glm::vec3&)>, size_t> getAttributeReader(
 }
 
 template <>
-std::pair<std::function<bool(glm::vec4&)>, size_t> getAttributeReader(
+inline  std::pair<std::function<bool(glm::vec4&)>, size_t> getAttributeReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive,
     const std::string& attributeName) {
     const auto& accessor =
@@ -175,7 +175,7 @@ std::pair<std::function<bool(glm::vec4&)>, size_t> getAttributeReader(
     return {reader, accessor.count};
 }
 
-std::pair<std::function<bool(GLuint&)>, size_t> getIndexReader(
+inline std::pair<std::function<bool(GLuint&)>, size_t> getIndexReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive) {
     const auto& accessor = document.accessors[primitive.indices];
     auto reader = [&]() -> std::function<bool(GLuint&)> {
@@ -203,7 +203,7 @@ std::pair<std::function<bool(Vertex&)>, size_t> getVertexReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive);
 
 template <>
-std::pair<std::function<bool(UnlitVertex&)>, size_t> getVertexReader(
+inline std::pair<std::function<bool(UnlitVertex&)>, size_t> getVertexReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive) {
     auto [positionReader, positionCount] =
         getAttributeReader<glm::vec3>(document, primitive, "POSITION");
@@ -218,7 +218,7 @@ std::pair<std::function<bool(UnlitVertex&)>, size_t> getVertexReader(
 }
 
 template <>
-std::pair<std::function<bool(ColoredVertex&)>, size_t> getVertexReader(
+inline std::pair<std::function<bool(ColoredVertex&)>, size_t> getVertexReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive) {
     auto [positionReader, positionCount] =
         getAttributeReader<glm::vec3>(document, primitive, "POSITION");
@@ -259,7 +259,7 @@ MeshData<Vertex> readMeshData(const fx::gltf::Document& document,
     return MeshData<Vertex>{std::move(vertices), std::move(indices)};
 }
 
-std::function<std::optional<TextureData>(void)> getTextureDataReader(
+inline  std::function<std::optional<TextureData>(void)> getTextureDataReader(
     const std::filesystem::path& documentRootPath,
     const fx::gltf::Document& document, const fx::gltf::Texture& texture) {
     const auto& image = document.images.at(texture.source);
@@ -292,7 +292,7 @@ typename Material::BuilderType readMaterialData(
     const fx::gltf::Document& document, const fx::gltf::Material& material);
 
 template <>
-typename UnlitMaterial::BuilderType readMaterialData<UnlitMaterial>(
+inline typename UnlitMaterial::BuilderType readMaterialData<UnlitMaterial>(
     const std::filesystem::path& documentRootPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material) {
     // baseColorTexture could be empty, add support for handling such missing
@@ -311,7 +311,7 @@ typename UnlitMaterial::BuilderType readMaterialData<UnlitMaterial>(
 // constexpr conditional compilation For now leave this as it is to keep the
 // same DocumentReader behavior for any material type
 template <>
-typename EmptyMaterial::BuilderType readMaterialData<EmptyMaterial>(
+inline typename EmptyMaterial::BuilderType readMaterialData<EmptyMaterial>(
     const std::filesystem::path& documentRootPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material) {
     EmptyMaterial::BuilderType builder{};

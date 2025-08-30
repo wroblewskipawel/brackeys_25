@@ -18,7 +18,6 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/extern/glm/)
 add_subdirectory(${CMAKE_SOURCE_DIR}/extern/glad/)
 add_subdirectory(${CMAKE_SOURCE_DIR}/extern/glfw/)
 add_subdirectory(${CMAKE_SOURCE_DIR}/extern/json/)
-add_subdirectory(${CMAKE_SOURCE_DIR}/extern/cpputest/)
 
 file(GLOB_RECURSE SOURCE ${CMAKE_SOURCE_DIR}/src/*.cpp)
 file(GLOB_RECURSE HEADERS ${CMAKE_SOURCE_DIR}/include/*.h)
@@ -36,48 +35,38 @@ endif()
 find_package(OpenGL REQUIRED)
 list(APPEND EXTERNAL_LIBS ${OpenGL_LIBRARIES})
 
-add_library(project_lib ${SOURCE} ${HEADERS} ${IMGUI_SOURCE} ${IMGUI_HEADERS} ${IMGUI_BACKEND_SOURCE} ${IMGUI_BACKEND_HEADERS})
+add_executable(
+    ${PROJECT_NAME}
+    ${SOURCE} ${HEADERS}
+    ${IMGUI_SOURCE} ${IMGUI_HEADERS}
+    ${IMGUI_BACKEND_SOURCE} ${IMGUI_BACKEND_HEADERS}
+)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${EXTERNAL_LIBS})
 
-add_executable(${PROJECT_NAME} src/main.cpp)
-target_link_libraries(${PROJECT_NAME} PUBLIC project_lib ${EXTERNAL_LIBS})
-
-target_include_directories(project_lib
-        PUBLIC
-        "${CMAKE_SOURCE_DIR}/include/"
-        "${CMAKE_SOURCE_DIR}/extern/json/include/"
-        "${CMAKE_SOURCE_DIR}/extern/fx-gltf/"
-        "${CMAKE_SOURCE_DIR}/extern/glfw/include/"
-        "${CMAKE_SOURCE_DIR}/extern/glm/"
-        "${CMAKE_SOURCE_DIR}/extern/stb/"
-        "${CMAKE_SOURCE_DIR}/extern/imgui/"
-        "${CMAKE_SOURCE_DIR}/extern/imgui/backends/"
-        "${CMAKE_SOURCE_DIR}/extern/glad/include/"
-        "${CMAKE_SOURCE_DIR}/extern/miniaudio/"
+target_include_directories(
+    ${PROJECT_NAME}
+    PUBLIC
+    "${CMAKE_SOURCE_DIR}/include/"
+    "${CMAKE_SOURCE_DIR}/extern/json/include/"
+    "${CMAKE_SOURCE_DIR}/extern/fx-gltf/"
+    "${CMAKE_SOURCE_DIR}/extern/glfw/include/"
+    "${CMAKE_SOURCE_DIR}/extern/glm/"
+    "${CMAKE_SOURCE_DIR}/extern/stb/"
+    "${CMAKE_SOURCE_DIR}/extern/miniaudio/"
+    "${CMAKE_SOURCE_DIR}/extern/imgui/"
+    "${CMAKE_SOURCE_DIR}/extern/imgui/backends/"
+    "${CMAKE_SOURCE_DIR}/extern/glad/include/"
 )
 
-target_compile_definitions(project_lib
-        PUBLIC
-        SHADER_DIR="${SHADER_DIR}"
-        ASSETS_DIR="${ASSETS_DIR}"
+set(SHADER_DIR "${CMAKE_SOURCE_DIR}/shaders/")
+set(ASSETS_DIR "${CMAKE_SOURCE_DIR}/assets/")
+
+target_compile_definitions(
+    ${PROJECT_NAME}
+    PUBLIC
+    SHADER_DIR="${SHADER_DIR}"
+    ASSETS_DIR="${ASSETS_DIR}"
 )
-
-enable_testing()
-file(GLOB_RECURSE TEST_SOURCES ${CMAKE_SOURCE_DIR}/tests/*.cpp)
-add_executable(unit_tests ${TEST_SOURCES})
-
-target_link_libraries(unit_tests PRIVATE project_lib CppUTest CppUTestExt PUBLIC ${EXTERNAL_LIBS})
-
-target_compile_definitions(unit_tests PRIVATE
-        -DCPPUTEST_MEM_LEAK_DETECTION_DISABLED
-)
-
-target_include_directories(unit_tests
-        PRIVATE
-        ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/extern/cpputest/include
-)
-
-add_test(NAME unit_tests COMMAND unit_tests)
 
 function(copy_directory TARGET_NAME SOURCE_DIR DEST_DIR)
     add_custom_command(

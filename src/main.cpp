@@ -9,22 +9,23 @@
 #include <stdexcept>
 
 #include "EntityComponentSystem/Components/MovableComponent.hpp"
+#include "EntityComponentSystem/Components/RenderableComponent.hpp"
 #include "EntityComponentSystem/ECS.hpp"
 #include "EntityComponentSystem/Systems/MovementSystem.hpp"
+#include "EntityComponentSystem/Systems/RenderingSystem.hpp"
 #include "ImGui/ImGui.hpp"
 #include "InputHandler/InputHandler.hpp"
 #include "MusicManager/MusicManager.hpp"
 #include "debug.h"
-#include "draw.h"
 #include "gltf.h"
-#include "material.h"
-#include "mesh.h"
 #include "model.h"
 #include "renderer.h"
 #include "shader.h"
 #include "std140.h"
 
-void debugSystem(ECS& ecs, const float& deltaTime) {
+
+void debugSystem(ECS& ecs, const float& deltaTime,
+                 RenderingQueues& renderingQueues) {
     auto& movables = ecs.getEntitiesWithComponent<MovableComponent>().get();
     // std::cout << "Debug: " << movables.size() << " movables tracked.\n";
 }
@@ -68,22 +69,6 @@ int main() {
 
     glfwSetKeyCallback(window, keyCallback);
     setupImGui(window);
-
-    float deltaTime = 0.0f;
-    float lastFrame = 0.0f;
-
-    ECS ecs;
-
-    EntityID player = ecs.createEntity();
-    EntityID enemy = ecs.createEntity();
-
-    ecs.addComponent(player, MovableComponent{0.0f, 0.0f, 1.0f, 1.0f});
-    ecs.addComponent(enemy, MovableComponent{5, 5, 1.0f, 1.0f});
-
-    ecs.nextStage(ECS::StageType::Parallel)
-        .addSystem(movementSystem)
-        .nextStage(ECS::StageType::Sequential)
-        .addSystem(debugSystem);
 
     DocumentReader<UnlitVertex, UnlitMaterial> unlitDocument{
         "assets/WaterBottle/glTF/WaterBottle.gltf"};
@@ -243,6 +228,25 @@ int main() {
 
     auto cubePosition = glm::vec3(0.0);
 
+    float deltaTime = 0.0f;
+    float lastFrame = 0.0f;
+
+    ECS ecs(RenderingQueues{std::move(dynamicUnlitQueue),
+                            std::move(dynamicColoredQueue)});
+
+    EntityID player = ecs.createEntity();
+    EntityID enemy = ecs.createEntity();
+
+    ecs.addComponent(player, MovableComponent{0.0f, 0.0f, 1.0f, 1.0f});
+    ecs.addComponent(player, RenderableComponent{cubeUnlitPartial_1});
+    ecs.addComponent(enemy, MovableComponent{5, 5, 1.0f, 1.0f});
+
+    ecs.nextStage(ECS::StageType::Parallel)
+        .addSystem(movementSystem)
+        .nextStage(ECS::StageType::Sequential)
+        .addSystem(debugSystem)
+        .addSystem(renderingSystem);
+
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
@@ -254,8 +258,8 @@ int main() {
         cubePosition.x = playerMovement->x;
         cubePosition.y = playerMovement->y;
 
-        dynamicUnlitQueue->emplace_back(cubeUnlitPartial_1.withTransform(
-            glm::translate(glm::mat4(1.0), cubePosition)));
+        // dynamicUnlitQueue->emplace_back(cubeUnlitPartial_1.withTransform(
+        //     glm::translate(glm::mat4(1.0), cubePosition)));
         // dynamicUnlitQueue->emplace_back(cubeUnlitPartial_2.withTransform(
         //     glm::translate(glm::mat4(1.0), glm::vec3(-3.0, -3.0, -3.0))));
         // dynamicUnlitQueue->emplace_back(documentUnlitPartial.withTransform(
