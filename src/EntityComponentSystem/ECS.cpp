@@ -10,8 +10,9 @@ EntityID ECS::createEntity() {
 
 void ECS::removeEntity(EntityID id) {
     for (auto& [type, storage] : storages) {
-        storage->remove(id);
+        storage->removeEntity(id, entityStorage);
     }
+    entityStorage.removeEntity(id);
 }
 
 ECS& ECS::nextStage(StageType type) {

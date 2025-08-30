@@ -15,6 +15,7 @@ constexpr size_t MAX_COMPONENTS = 64;
 struct EntityData {
     std::bitset<MAX_COMPONENTS> componentMask;                      // Which components the entity has
     std::unordered_map<std::type_index, size_t> componentIndices;   // Component index inside its storage
+    // TODO: Change unordered_map to array (vector for now)
 };
 
 class EntityStorage {
@@ -95,6 +96,9 @@ public:
         }
         return ids;
     }
+
+    template<typename T>
+    friend class ComponentStorage;
 };
 
 #endif // ENTITYSTORAGE_HPP
