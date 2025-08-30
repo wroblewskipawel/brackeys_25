@@ -1,21 +1,22 @@
 #ifndef ENTITYSTORAGE_HPP
 #define ENTITYSTORAGE_HPP
 
-#include <unordered_map>
+#include <array>
 #include <bitset>
-#include <typeindex>
 #include <cstddef>
+#include <optional>
 #include <stdexcept>
+#include <typeindex>
+#include <unordered_map>
 #include <vector>
+
+#include "../Components/ComponentIndexes.hpp"
 
 using EntityID = std::size_t;
 
-constexpr size_t MAX_COMPONENTS = 64;
-
 struct EntityData {
-    std::bitset<MAX_COMPONENTS> componentMask;                      // Which components the entity has
-    std::unordered_map<std::type_index, size_t> componentIndices;   // Component index inside its storage
-    // TODO: Change unordered_map to array (vector for now)
+    std::bitset<COMPONENT_COUNT> componentMask;                          // Which components the entity has
+    std::array<std::optional<size_t>, COMPONENT_COUNT> componentIndices; // Component index inside its storage
 };
 
 class EntityStorage {
@@ -41,11 +42,10 @@ public:
             throw std::runtime_error("Entity does not exist!");
         }
 
-        auto& data = it->second;
-        size_t typeHash = std::hash<std::type_index>{}(std::type_index(typeid(T))) % MAX_COMPONENTS;
+        constexpr auto typeIndex = static_cast<size_t>(ComponentToType<T>::index);
 
-        data.componentMask.set(typeHash, true);
-        data.componentIndices[std::type_index(typeid(T))] = componentIndex;
+        it->second.componentMask.set(typeIndex, true);
+        it->second.componentIndices[typeIndex] = componentIndex;
     }
 
     template<typename T>
@@ -53,11 +53,10 @@ public:
         auto it = entities.find(id);
         if (it == entities.end()) return;
 
-        auto& data = it->second;
-        size_t typeHash = std::hash<std::type_index>{}(std::type_index(typeid(T))) % MAX_COMPONENTS;
+        constexpr auto typeIndex = static_cast<size_t>(ComponentToType<T>::index);
 
-        data.componentMask.set(typeHash, false);
-        data.componentIndices.erase(std::type_index(typeid(T)));
+        it->second.componentMask.set(typeIndex, false);
+        it->second.componentIndices[typeIndex].reset();
     }
 
     bool hasEntity(EntityID id) const {
@@ -69,8 +68,8 @@ public:
         auto it = entities.find(id);
         if (it == entities.end()) return false;
 
-        size_t typeHash = std::hash<std::type_index>{}(std::type_index(typeid(T))) % MAX_COMPONENTS;
-        return it->second.componentMask.test(typeHash);
+        constexpr auto typeIndex = static_cast<size_t>(ComponentToType<T>::index);
+        return it->second.componentMask.test(typeIndex);
     }
 
     template<typename T>
@@ -80,12 +79,12 @@ public:
             throw std::runtime_error("Entity does not exist!");
         }
 
-        auto compIt = it->second.componentIndices.find(std::type_index(typeid(T)));
-        if (compIt == it->second.componentIndices.end()) {
+        constexpr auto typeIndex = static_cast<size_t>(ComponentToType<T>::index);
+        auto& optIndex = it->second.componentIndices[typeIndex];
+        if (!optIndex.has_value()) {
             throw std::runtime_error("Entity does not have this component!");
         }
-
-        return compIt->second;
+        return optIndex.value();
     }
 
     std::vector<EntityID> getAllEntities() const {
