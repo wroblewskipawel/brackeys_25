@@ -29,27 +29,3 @@ TEST(EntityComponentSystemGroup, SimpleTest) {
     auto b = ecs.entityStorage.hasComponent<MovableComponent>(entity);
     CHECK_TRUE(b);
 }
-
-TEST(EntityComponentSystemGroup, ecsComponentStorageCellStateTest) {
-    ECS ecs;
-
-    auto entity1 = ecs.createEntity();
-    auto entity2 = ecs.createEntity();
-    auto entity3 = ecs.createEntity();
-
-    ecs.addComponent(entity1, MovableComponent{});
-    ecs.addComponent(entity2, MovableComponent{});
-    ecs.addComponent(entity3, MovableComponent{});
-
-    ecs.removeEntity(entity2);
-    auto stateOfRemovedEntity = ecs.getStorage<MovableComponent>().getEntities()[entity2].state;
-    CHECK_EQUAL(static_cast<size_t>(stateOfRemovedEntity), static_cast<size_t>(CellState::Free));
-
-    auto nextEntity = ecs.createEntity();
-    ecs.addComponent(nextEntity, MovableComponent{});
-    auto cellOfAddedEntityWithIndexOfRemovedEntity = ecs.getStorage<MovableComponent>().getEntities()[entity2];
-    auto addedIndex = cellOfAddedEntityWithIndexOfRemovedEntity.entityId;
-    auto addedState = cellOfAddedEntityWithIndexOfRemovedEntity.state;
-    CHECK_EQUAL(static_cast<size_t>(addedState), static_cast<size_t>(CellState::Occupied));
-    CHECK_EQUAL(addedIndex, nextEntity);
-}

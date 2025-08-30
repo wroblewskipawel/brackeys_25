@@ -59,6 +59,13 @@ public:
         return nullptr;
     }
 
+    T* getByIndex(size_t index) {
+        if (entityIDs[index].state == CellState::Free) {
+            return nullptr;
+        }
+        return &components[index];
+    }
+
     void removeEntity(EntityID id, EntityStorage& es) override {
         for (size_t i = 0; i < entityIDs.size(); ++i) {
             if (entityIDs[i].entityId == id) {

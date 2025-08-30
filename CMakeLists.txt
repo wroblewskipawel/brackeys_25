@@ -81,15 +81,21 @@ add_test(NAME unit_tests COMMAND unit_tests)
 
 function(copy_directory TARGET_NAME SOURCE_DIR DEST_DIR)
     add_custom_command(
-            TARGET ${TARGET_NAME}
-            PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E remove_directory ${DEST_DIR}
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${SOURCE_DIR} ${DEST_DIR}
+        TARGET ${TARGET_NAME}
+        PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${DEST_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${SOURCE_DIR} ${DEST_DIR}
     )
 endfunction()
 
 copy_directory(
-        ${PROJECT_NAME}
-        ${CMAKE_SOURCE_DIR}/assets/
-        ${CMAKE_BINARY_DIR}/assets/
+    ${PROJECT_NAME}
+    ${CMAKE_SOURCE_DIR}/assets/
+    ${CMAKE_BINARY_DIR}/assets/
+)
+
+copy_directory(
+    ${PROJECT_NAME}
+    ${CMAKE_SOURCE_DIR}/shaders/
+    ${CMAKE_BINARY_DIR}/shaders/
 )
