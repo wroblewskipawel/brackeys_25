@@ -36,6 +36,12 @@ fx::gltf::Accessor::Type getAccessorType() {
         return fx::gltf::Accessor::Type::Vec3;
     } else if constexpr (std::is_same_v<Data, glm::vec4>) {
         return fx::gltf::Accessor::Type::Vec4;
+    } else if constexpr (std::is_same_v<Data, glm::uvec2>) {
+        return fx::gltf::Accessor::Type::Vec2;
+    } else if constexpr (std::is_same_v<Data, glm::uvec3>) {
+        return fx::gltf::Accessor::Type::Vec3;
+    } else if constexpr (std::is_same_v<Data, glm::uvec4>) {
+        return fx::gltf::Accessor::Type::Vec4;
     } else if constexpr (std::is_same_v<Data, glm::quat>) {
         return fx::gltf::Accessor::Type::Vec4;
     } else if constexpr (std::is_same_v<Data, glm::mat2>) {
@@ -111,6 +117,39 @@ inline std::pair<std::function<bool(glm::vec2&)>, size_t> getAttributeReader(
             case fx::gltf::Accessor::ComponentType::UnsignedInt:
                 return getDataReader<glm::vec2, glm::u32vec2>(document,
                                                               accessor);
+            default:
+                return std::nullopt;
+        }
+    }();
+    if (!reader.has_value()) {
+        std::println(std::cerr,
+                     "getAttributeReader:  Failed to create attribute reader");
+        std::abort();
+    }
+    return *reader;
+}
+
+// Consider how to handle getAttributeReader for vec types
+// without need for explicit specializations for float/integer vec types
+template <>
+inline std::pair<std::function<bool(glm::uvec4&)>, size_t> getAttributeReader(
+    const fx::gltf::Document& document, const fx::gltf::Primitive& primitive,
+    const std::string& attributeName) {
+    const auto& accessor =
+        document.accessors[primitive.attributes.at(attributeName)];
+    auto reader = [&]()
+        -> std::optional<std::pair<std::function<bool(glm::uvec4&)>, size_t>> {
+        switch (accessor.componentType) {
+            case fx::gltf::Accessor::ComponentType::Float:
+                return getDataReader<glm::uvec4, glm::vec4>(document, accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedByte:
+                return getDataReader<glm::uvec4, glm::u8vec4>(document,
+                                                              accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedShort:
+                return getDataReader<glm::uvec4, glm::u16vec4>(document,
+                                                               accessor);
+            case fx::gltf::Accessor::ComponentType::UnsignedInt:
+                return getDataReader<glm::uvec4>(document, accessor);
             default:
                 return std::nullopt;
         }
@@ -238,15 +277,15 @@ getVertexReader(const fx::gltf::Document& document,
         getAttributeReader<glm::vec3>(document, primitive, "POSITION");
     auto [texCoordReader, texCoordCount] =
         getAttributeReader<glm::vec2>(document, primitive, "TEXCOORD_0");
-    auto [jointsdReader, jointsCount] =
-        getAttributeReader<glm::vec4>(document, primitive, "JOINTS_0");
+    auto [jointsReader, jointsCount] =
+        getAttributeReader<glm::uvec4>(document, primitive, "JOINTS_0");
     auto [weightsReader, weightsCount] =
         getAttributeReader<glm::vec4>(document, primitive, "WEIGHTS_0");
-    auto reader = [positionReader, texCoordReader, jointsdReader,
+    auto reader = [positionReader, texCoordReader, jointsReader,
                    weightsReader](UnlitAnimatedVertex& vertex) mutable {
         return positionReader(vertex.position) &&
-               texCoordReader(vertex.texCoord) &&
-               jointsdReader(vertex.joints) && weightsReader(vertex.weights);
+               texCoordReader(vertex.texCoord) && jointsReader(vertex.joints) &&
+               weightsReader(vertex.weights);
     };
     return {reader, std::min({positionCount, texCoordCount, jointsCount,
                               weightsCount})};
@@ -509,15 +548,15 @@ inline Animation readAnimation(const SkinData& skinData,
             auto& nodeChannels = nodeChannelsMap[target.node];
             if (target.path == "translation") {
                 nodeChannels.translationSampler = channel.sampler;
-                break;
+                continue;
             }
             if (target.path == "scale") {
                 nodeChannels.scaleSampler = channel.sampler;
-                break;
+                continue;
             }
             if (target.path == "rotation") {
                 nodeChannels.rotationSampler = channel.sampler;
-                break;
+                continue;
             }
         }
     }
@@ -575,6 +614,14 @@ class DocumentReader {
 
     std::vector<MaterialBuilder> takeMaterials() noexcept {
         return std::move(materials);
+    }
+
+    const std::vector<Animation>& getAnimations() const noexcept {
+        return animations;
+    }
+
+    std::vector<Animation> takeAnimations() noexcept {
+        return std::move(animations);
     }
 
    private:

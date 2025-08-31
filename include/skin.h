@@ -48,22 +48,26 @@ struct Keyframes {
 
     // Add debug assertions for currentKeyIndex in keys.size() rage check
     size_t getKeyframeIndex(float currentTime, size_t currentKeyIndex) const {
-        if (times[currentKeyIndex + 1] < currentTime) {
-            currentKeyIndex = currentKeyIndex == keys.size() - 1
-                                  ? currentKeyIndex
-                                  : currentKeyIndex + 1;
+        auto nextKeyIndex = currentKeyIndex;
+        while (nextKeyIndex < keys.size() &&
+               times[nextKeyIndex] < currentTime) {
+            nextKeyIndex++;
         }
-        return currentKeyIndex;
+        return nextKeyIndex < 0 ? 0 : nextKeyIndex;
     }
 
     Item getCurrentValue(float currentTime, size_t currentKeyIndex) const {
         auto currentKey = keys[currentKeyIndex];
         if (currentKeyIndex < keys.size() - 1) {
-            float interpolateRatio =
-                (currentTime - times[currentKeyIndex]) /
-                (times[currentKeyIndex + 1] - times[currentKeyIndex]);
-            auto nextKey = keys[currentKeyIndex + 1];
-            return interpolate(Sample{currentKey, nextKey, interpolateRatio});
+            auto deltaTime = currentTime - times[currentKeyIndex];
+            if (deltaTime > 0.0) {
+                float interpolateRatio =
+                    deltaTime /
+                    (times[currentKeyIndex + 1] - times[currentKeyIndex]);
+                auto nextKey = keys[currentKeyIndex + 1];
+                return interpolate(
+                    Sample{currentKey, nextKey, interpolateRatio});
+            }
         }
         return currentKey;
     }
@@ -84,7 +88,6 @@ struct KeyframeIndices {
     size_t scaleKey;
     size_t rotationKey;
 };
-
 
 struct Channels {
     Keyframes<glm::vec3> translationKeys;
@@ -194,7 +197,8 @@ class Skin {
           skinIndex(skinIndex) {}
 
     void applyJointRelations(std::vector<glm::mat4>& transforms) const {
-        for (const auto& [i, parent] : std::views::enumerate(jointsTree)) {
+        for (const auto& [i, parent] :
+             std::views::enumerate(jointsTree) | std::views::drop(1)) {
             transforms[i] = transforms[parent.getIndex()] * transforms[i];
         }
     }
@@ -202,7 +206,7 @@ class Skin {
     void applyBindPose(std::vector<glm::mat4>& transforms) const {
         for (const auto& [i, bind] :
              std::views::enumerate(inverseBindMatrices)) {
-            transforms[i] *= bind;
+            transforms[i] = bind * transforms[i];
         }
     }
 
@@ -254,6 +258,9 @@ class AnimationBuilder;
 class AnimationPlayer;
 
 class Animation {
+   public:
+    size_t numJoints() const { return joints.size(); }
+
    private:
     friend class AnimationPlayer;
     friend class AnimationBuilder;
@@ -293,7 +300,6 @@ class AnimationBuilder {
    private:
     friend class Skin;
 
-
     inline static uint32_t nextAnimationIndex = 0;
 
     const Skin& skin;
@@ -305,7 +311,8 @@ class AnimationBuilder {
 class AnimationPlayer {
    public:
     AnimationPlayer(const Animation& animationData, bool loops)
-        : animationIndex(animationData.animationIndex),
+        : currentKeyframes(animationData.joints.size()),
+          animationIndex(animationData.animationIndex),
           currentTime(0.0),
           loops(loops) {
         auto durations =
@@ -325,7 +332,7 @@ class AnimationPlayer {
         if (currentTime < duration) {
             currentTime += deltaTime;
             if (loops && currentTime >= duration) {
-                currentTime -= duration;
+                reset();
             }
             for (auto [joint, currentKeyframe] :
                  std::views::zip(animationData.joints, currentKeyframes)) {
@@ -346,7 +353,8 @@ class AnimationPlayer {
 
     void loopAnimation(bool shouldLoop) { loops = shouldLoop; }
 
-    std::vector<glm::mat4> getJointTransforms(const Animation& animationData) const {
+    std::vector<glm::mat4> getJointTransforms(
+        const Animation& animationData) const {
         if (animationData.animationIndex != animationIndex) {
             std::println(std::cerr,
                          "AnimationPlayer: Player doesn't originate from "

@@ -105,7 +105,7 @@ inline GLuint getVertexArray<UnlitVertex>() {
 struct UnlitAnimatedVertex {
     glm::vec3 position;
     glm::vec2 texCoord;
-    glm::vec4 joints;
+    glm::uvec4 joints;
     glm::vec4 weights;
 };
 
@@ -126,7 +126,7 @@ inline GLuint getVertexArray<UnlitAnimatedVertex>() {
         glVertexArrayAttribBinding(vao, nextLocation, 0);
         glEnableVertexArrayAttrib(vao, nextLocation++);
 
-        glVertexArrayAttribFormat(vao, nextLocation, 4, GL_FLOAT, GL_FALSE,
+        glVertexArrayAttribIFormat(vao, nextLocation, 4, GL_UNSIGNED_INT,
                                   offsetof(UnlitAnimatedVertex, joints));
         glVertexArrayAttribBinding(vao, nextLocation, 0);
         glEnableVertexArrayAttrib(vao, nextLocation++);

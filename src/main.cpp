@@ -5,6 +5,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <chrono>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -20,6 +21,7 @@
 #include "skin.h"
 #include "std140.h"
 
+constexpr size_t jointMatrixBufferBinding = 1;
 
 int main(void) {
     GLFWwindow* window;
@@ -184,7 +186,30 @@ int main(void) {
     cameraMatrices.projection =
         glm::perspective(glm::radians(45.0f), 480.0f / 640.0f, 1e-1f, 1e3f);
 
+    auto animations = cesiumMan.takeAnimations();
+    auto animationPlayer = AnimationPlayer(animations[0], true);
+
+    auto jointMatrices = animationPlayer.getJointTransforms(animations[0]);
+
+    auto jointMatrixBufferBuilder = std140::UniformArrayBuilder<glm::mat4>();
+    jointMatrixBufferBuilder.pushMulti(jointMatrices);
+    auto jointMatrixBuffer = jointMatrixBufferBuilder.build();
+
+    jointMatrixBuffer.bind(GL_SHADER_STORAGE_BUFFER, jointMatrixBufferBinding);
+
+    std::chrono::steady_clock clock{};
+    auto lastFrameTime = clock.now();
+
     while (!glfwWindowShouldClose(window)) {
+        auto currentFrameTime = clock.now();
+        auto deltaTime = std::chrono::duration<float>(currentFrameTime - lastFrameTime).count();
+        lastFrameTime = currentFrameTime;
+
+        animationPlayer.update(animations[0], deltaTime);
+        auto jointMatrices = animationPlayer.getJointTransforms(animations[0]);
+
+        jointMatrixBuffer.updateRange(jointMatrices, 0);
+
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();

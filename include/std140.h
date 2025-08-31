@@ -226,6 +226,11 @@ class UniformArrayBuilder {
         return *this;
     }
 
+    UniformArrayBuilder& pushMulti(const std::vector<Item>& items) {
+        buffer.insert(buffer.end(), items.begin(), items.end());
+        return *this;
+    }
+
     const std::vector<Item>& getBuffer() const { return buffer; }
 
     UniformArray<Item> build() const { return UniformArray<Item>(buffer); }
