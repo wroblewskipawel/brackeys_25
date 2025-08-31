@@ -175,9 +175,10 @@ class BuilderJoint {
 
 class Skin {
    public:
-    void apply(std::vector<glm::mat4> localTransforms) const {
+    void apply(std::vector<glm::mat4>& localTransforms) const {
         applyJointRelations(localTransforms);
         applyBindPose(localTransforms);
+        applyJointOrdering(localTransforms);
     }
 
     Skin(const Skin&) = default;
@@ -191,9 +192,11 @@ class Skin {
     friend class AnimationBuilder;
 
     Skin(std::vector<glm::mat4>&& inverseBindMatrices,
-         std::vector<SkinJoint>&& jointsTree, uint32_t skinIndex)
+         std::vector<SkinJoint>&& jointsTree,
+         std::vector<uint32_t>&& outputLocations, uint32_t skinIndex)
         : inverseBindMatrices(std::move(inverseBindMatrices)),
           jointsTree(std::move(jointsTree)),
+          outputLocations(std::move(outputLocations)),
           skinIndex(skinIndex) {}
 
     void applyJointRelations(std::vector<glm::mat4>& transforms) const {
@@ -206,14 +209,27 @@ class Skin {
     void applyBindPose(std::vector<glm::mat4>& transforms) const {
         for (const auto& [i, bind] :
              std::views::enumerate(inverseBindMatrices)) {
-            transforms[i] = bind * transforms[i];
+            transforms[i] *= bind;
         }
+    }
+
+    // Consider updating mesh vertices joints index data instead of
+    // reordering matrices to adhere to original gltf2.0 document node ordering
+    // each frame Is it possible to maintain both current "linear" update logic
+    // and origial ordering??
+    void applyJointOrdering(std::vector<glm::mat4>& transforms) const {
+        std::vector<glm::mat4> orderedTransforms(transforms.size());
+        for (const auto& [i, transform] : std::views::enumerate(transforms)) {
+            orderedTransforms[outputLocations[i]] = transform;
+        }
+        transforms = std::move(orderedTransforms);
     }
 
     // This should be const
     uint32_t skinIndex;
-    std::vector<SkinJoint> jointsTree;
     std::vector<glm::mat4> inverseBindMatrices;
+    std::vector<SkinJoint> jointsTree;
+    std::vector<uint32_t> outputLocations;
 };
 
 class SkinBuilder {
@@ -228,7 +244,8 @@ class SkinBuilder {
 
     BuilderJoint getRoot() const { return BuilderJoint(-1, builderIndex); }
 
-    BuilderJoint addJoint(glm::mat4 inverseBindMatrix, BuilderJoint parent) {
+    BuilderJoint addJoint(glm::mat4 inverseBindMatrix, BuilderJoint parent,
+                          uint32_t outputLocation) {
         if (parent.builderIndex != builderIndex) {
             std::println(std::cerr,
                          "SkinBuilder: addJoint parent BuilderJoint doesn't "
@@ -238,20 +255,22 @@ class SkinBuilder {
         auto jointIndex = static_cast<int32_t>(inverseBindMatrices.size());
         inverseBindMatrices.emplace_back(inverseBindMatrix);
         jointsTree.emplace_back(parent.getIndex());
+        outputLocations.emplace_back(outputLocation);
         return BuilderJoint(jointIndex, builderIndex);
     };
 
     Skin build() {
         return Skin(std::move(inverseBindMatrices), std::move(jointsTree),
-                    builderIndex);
+                    std::move(outputLocations), builderIndex);
     }
 
    private:
     inline static uint32_t nextBuilderIndex = 0;
 
     uint32_t builderIndex;
-    std::vector<SkinJoint> jointsTree;
     std::vector<glm::mat4> inverseBindMatrices;
+    std::vector<SkinJoint> jointsTree;
+    std::vector<uint32_t> outputLocations;
 };
 
 class AnimationBuilder;

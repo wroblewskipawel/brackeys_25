@@ -411,11 +411,13 @@ struct SkinData {
 
 inline SkinData readSkinData(const fx::gltf::Document& document,
                              const fx::gltf::Skin& skin) {
-    auto jointBindMap = std::unordered_map<int32_t, glm::mat4>();
+    auto jointDataMap =
+        std::unordered_map<int32_t, std::pair<uint32_t, glm::mat4>>();
     auto invserseBind = readInverseBindMatrices(document, skin);
-    for (const auto& [jointIndex, bindMatrix] :
-         std::views::zip(skin.joints, invserseBind)) {
-        jointBindMap.emplace(jointIndex, bindMatrix);
+    for (const auto& [i, jointData] :
+         std::views::zip(skin.joints, invserseBind) | std::views::enumerate) {
+        const auto& [jointIndex, bindMatrix] = jointData;
+        jointDataMap[jointIndex] = {static_cast<uint32_t>(i), bindMatrix};
     }
 
     SkinBuilder skinBuilder{};
@@ -426,8 +428,9 @@ inline SkinData readSkinData(const fx::gltf::Document& document,
     while (!toVisit.empty()) {
         auto [nodeId, parentJoint] = toVisit.front();
         toVisit.pop();
+        const auto& [jointLocation, bindMatrix] = jointDataMap[nodeId];
         auto skinJoint =
-            skinBuilder.addJoint(jointBindMap[nodeId], parentJoint);
+            skinBuilder.addJoint(bindMatrix, parentJoint, jointLocation);
         nodeJointMap.insert({nodeId, skinJoint});
         const auto& node = document.nodes[nodeId];
         for (auto child : node.children) {
