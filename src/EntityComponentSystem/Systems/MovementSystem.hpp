@@ -1,18 +1,24 @@
 #pragma once
 #include "../ECS.hpp"
-#include "../Components/MovableComponent.hpp"
-#include "InputHandler/InputHandler.hpp"
 
 inline void movementSystem(ECS& ecs, const float& deltaTime, RenderingQueues& renderingQueues) {
-    auto entities = ecs.getEntitiesWithComponent<MovableComponent>().get();
+    auto entities = ecs.getEntitiesWithComponent<MovableComponent>().andHas<PositionComponent>().get();
     for (const auto& entity : entities) {
-        auto component = ecs.getComponent<MovableComponent>(entity);
+        auto mComponent = ecs.getComponent<MovableComponent>(entity);
+        auto pComponent = ecs.getComponent<PositionComponent>(entity);
 
-        auto& [x, y, speedX, speedY] = *component;
+        auto& [dx, dy, speed, acceleration] = *mComponent;
+        auto& [x, y, z] = *pComponent;
 
-        if (gInputHandler.isPressed(Key::W)) y += speedY * deltaTime;
-        if (gInputHandler.isPressed(Key::S)) y -= speedY * deltaTime;
-        if (gInputHandler.isPressed(Key::A)) x -= speedX * deltaTime;
-        if (gInputHandler.isPressed(Key::D)) x += speedX * deltaTime;
+        float actSpeed = std::sqrt((dx * dx) + (dy * dy));
+        if (actSpeed > speed) {
+            dx *= speed / actSpeed;
+            dy *= speed / actSpeed;
+        }
+        dx *= 1 - (2*deltaTime);
+        dy *= 1 - (2*deltaTime);
+
+        x += dx * deltaTime;
+        y += dy * deltaTime;
     }
 }

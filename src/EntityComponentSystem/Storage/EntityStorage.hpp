@@ -54,6 +54,9 @@ public:
 
     void removeEntity(EntityID id) {
         entities.erase(id);
+        for (auto& ids : components | std::views::values) {
+            ids.erase(id);
+        }
     }
 
     template<typename T>
