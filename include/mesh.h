@@ -6,9 +6,9 @@
 #include <glm/glm.hpp>
 #include <ranges>
 #include <vector>
+#include <type_traits>
 
 #include "shader.h"
-
 
 void setInstanceAttributes(GLuint vao, GLuint nextLocation) {
     // Instance Attrib: glm::mat4
@@ -50,46 +50,17 @@ void setInstanceAttributes(GLuint vao, GLuint nextLocation) {
 template <typename Vertex>
 GLuint getVertexArray();
 
-struct UnlitVertex {
-    glm::vec3 position;
-    glm::vec2 texCoord;
-};
-
-template <>
-GLuint getVertexArray<UnlitVertex>() {
-    static GLuint vao{0};
-    if (vao == 0) {
-        GLuint nextLocation{0};
-        glCreateVertexArrays(1, &vao);
-        glBindVertexArray(vao);
-        glVertexArrayAttribFormat(vao, nextLocation, 3, GL_FLOAT, GL_FALSE,
-                                  offsetof(UnlitVertex, position));
-        glVertexArrayAttribBinding(vao, nextLocation, 0);
-        glEnableVertexArrayAttrib(vao, nextLocation++);
-        glVertexArrayAttribFormat(vao, nextLocation, 2, GL_FLOAT, GL_FALSE,
-                                  offsetof(UnlitVertex, texCoord));
-        glVertexArrayAttribBinding(vao, nextLocation, 0);
-        glEnableVertexArrayAttrib(vao, nextLocation++);
-
-        setInstanceAttributes(vao, nextLocation);
-
-        glBindVertexArray(0);
-    }
-    return vao;
-}
-
 struct ColoredVertex {
     glm::vec3 position;
     glm::vec3 color;
 };
 
 template <>
-GLuint getVertexArray<ColoredVertex>() {
+inline GLuint getVertexArray<ColoredVertex>() {
     static GLuint vao{0};
     if (vao == 0) {
         GLuint nextLocation{0};
         glCreateVertexArrays(1, &vao);
-        glBindVertexArray(vao);
         glVertexArrayAttribFormat(vao, nextLocation, 3, GL_FLOAT, GL_FALSE,
                                   offsetof(ColoredVertex, position));
         glVertexArrayAttribBinding(vao, nextLocation, 0);
@@ -100,21 +71,96 @@ GLuint getVertexArray<ColoredVertex>() {
         glEnableVertexArrayAttrib(vao, nextLocation++);
 
         setInstanceAttributes(vao, nextLocation);
+    }
+    return vao;
+}
 
-        glBindVertexArray(0);
+struct UnlitVertex {
+    glm::vec3 position;
+    glm::vec2 texCoord;
+};
+
+template <>
+inline GLuint getVertexArray<UnlitVertex>() {
+    static GLuint vao{0};
+    if (vao == 0) {
+        GLuint nextLocation{0};
+        glCreateVertexArrays(1, &vao);
+
+        glVertexArrayAttribFormat(vao, nextLocation, 3, GL_FLOAT, GL_FALSE,
+                                  offsetof(UnlitVertex, position));
+        glVertexArrayAttribBinding(vao, nextLocation, 0);
+        glEnableVertexArrayAttrib(vao, nextLocation++);
+
+        glVertexArrayAttribFormat(vao, nextLocation, 2, GL_FLOAT, GL_FALSE,
+                                  offsetof(UnlitVertex, texCoord));
+        glVertexArrayAttribBinding(vao, nextLocation, 0);
+        glEnableVertexArrayAttrib(vao, nextLocation++);
+
+        setInstanceAttributes(vao, nextLocation);
+    }
+    return vao;
+}
+
+struct UnlitAnimatedVertex {
+    glm::vec3 position;
+    glm::vec2 texCoord;
+    glm::vec4 joints;
+    glm::vec4 weights;
+};
+
+template <>
+inline GLuint getVertexArray<UnlitAnimatedVertex>() {
+    static GLuint vao{0};
+    if (vao == 0) {
+        GLuint nextLocation{0};
+        glCreateVertexArrays(1, &vao);
+
+        glVertexArrayAttribFormat(vao, nextLocation, 3, GL_FLOAT, GL_FALSE,
+                                  offsetof(UnlitAnimatedVertex, position));
+        glVertexArrayAttribBinding(vao, nextLocation, 0);
+        glEnableVertexArrayAttrib(vao, nextLocation++);
+
+        glVertexArrayAttribFormat(vao, nextLocation, 2, GL_FLOAT, GL_FALSE,
+                                  offsetof(UnlitAnimatedVertex, texCoord));
+        glVertexArrayAttribBinding(vao, nextLocation, 0);
+        glEnableVertexArrayAttrib(vao, nextLocation++);
+
+        glVertexArrayAttribFormat(vao, nextLocation, 4, GL_FLOAT, GL_FALSE,
+                                  offsetof(UnlitAnimatedVertex, joints));
+        glVertexArrayAttribBinding(vao, nextLocation, 0);
+        glEnableVertexArrayAttrib(vao, nextLocation++);
+
+        glVertexArrayAttribFormat(vao, nextLocation, 4, GL_FLOAT, GL_FALSE,
+                                  offsetof(UnlitAnimatedVertex, weights));
+        glVertexArrayAttribBinding(vao, nextLocation, 0);
+        glEnableVertexArrayAttrib(vao, nextLocation++);
+
+        setInstanceAttributes(vao, nextLocation);
     }
     return vao;
 }
 
 template <typename Vertex>
-void destroyVertexArray() {
+inline void destroyVertexArray() {
     GLuint vao = getVertexArray<Vertex>();
     glDeleteVertexArrays(1, &vao);
 }
 
-void destroyVertexArrays() {
-    destroyVertexArray<UnlitVertex>();
+inline void destroyVertexArrays() {
     destroyVertexArray<ColoredVertex>();
+    destroyVertexArray<UnlitVertex>();
+    destroyVertexArray<UnlitAnimatedVertex>();
+}
+
+template<typename Vertex>
+struct IsAnimatedVertex {
+    static constexpr bool value = std::is_same_v<Vertex, UnlitAnimatedVertex>;
+};
+
+template<typename Vertex>
+constexpr bool isAnimatedVertex() {
+    return IsAnimatedVertex<Vertex>::value;
 }
 
 struct MeshBuffers {
@@ -320,8 +366,7 @@ struct DrawInfo {
     size_t materialIndex;
 
     bool operator==(const DrawInfo& other) const noexcept {
-        return mesh == other.mesh &&
-               materialIndex == other.materialIndex;
+        return mesh == other.mesh && materialIndex == other.materialIndex;
     }
 };
 

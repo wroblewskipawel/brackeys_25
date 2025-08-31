@@ -17,7 +17,9 @@
 #include "model.h"
 #include "renderer.h"
 #include "shader.h"
+#include "skin.h"
 #include "std140.h"
+
 
 int main(void) {
     GLFWwindow* window;
@@ -64,8 +66,11 @@ int main(void) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
 
-    DocumentReader<UnlitVertex, UnlitMaterial> unlitDocument{
+    DocumentReader<UnlitVertex, UnlitMaterial> waterBottle{
         "assets/WaterBottle/glTF/WaterBottle.gltf"};
+
+    DocumentReader<UnlitAnimatedVertex, UnlitMaterial> cesiumMan{
+        "assets/CesiumMan/glTF/CesiumMan.gltf"};
 
     MaterialPackBuilder<EmptyMaterial> emptyMaterialPackBuilder{};
     auto emptyMaterial =
@@ -75,23 +80,34 @@ int main(void) {
     MeshPackBuilder<UnlitVertex> unlitMeshPackBuilder{};
     auto unlitCubeMesh =
         unlitMeshPackBuilder.addMesh(createCube<UnlitVertex>());
-    auto documentMeshes =
-        unlitMeshPackBuilder.addMeshMulti(unlitDocument.takeMeshes());
+    auto waterBottleMeshes =
+        unlitMeshPackBuilder.addMeshMulti(waterBottle.takeMeshes());
     auto unlitMeshPack = unlitMeshPackBuilder.build();
 
+    MeshPackBuilder<UnlitAnimatedVertex> unlitAnimatedMeshPackBuilder{};
+    auto cesiumManMeshes =
+        unlitAnimatedMeshPackBuilder.addMeshMulti(cesiumMan.takeMeshes());
+    auto unlitAnimatedMeshPack = unlitAnimatedMeshPackBuilder.build();
+
     MaterialPackBuilder<UnlitMaterial> unlitMaterialPackBuilder{};
-    MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
-    unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(
-        "assets/textures/tile_1.png", TextureFormat::RGB));
-    auto unlitMaterial_1 =
-        unlitMaterialPackBuilder.addMaterial(unlitMaterialBuilder_1);
-    MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_2{};
-    unlitMaterialBuilder_2.setAlbedoTextureData(TextureData::loadFromFile(
-        "assets/textures/tile_2.png", TextureFormat::RGB));
-    auto unlitMaterial_2 =
-        unlitMaterialPackBuilder.addMaterial(unlitMaterialBuilder_2);
-    auto documentMaterials = unlitMaterialPackBuilder.addMaterialMulti(
-        unlitDocument.takeMaterials());
+
+    // // There seems to be AccessVolation issue randomy occuring here
+    // MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
+    // unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(
+    //     "assets/textures/tile_1.png", TextureFormat::RGB));
+    // auto unlitMaterial_1 =
+    //     unlitMaterialPackBuilder.addMaterial(unlitMaterialBuilder_1);
+
+    // MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_2{};
+    // unlitMaterialBuilder_2.setAlbedoTextureData(TextureData::loadFromFile(
+    //     "assets/textures/tile_2.png", TextureFormat::RGB));
+    // auto unlitMaterial_2 =
+    //     unlitMaterialPackBuilder.addMaterial(unlitMaterialBuilder_2);
+
+    auto waterBottleMaterials =
+        unlitMaterialPackBuilder.addMaterialMulti(waterBottle.takeMaterials());
+    auto cesiumManMaterials =
+        unlitMaterialPackBuilder.addMaterialMulti(cesiumMan.takeMaterials());
     auto unlitMaterialPack = unlitMaterialPackBuilder.build();
 
     ShaderBuilder unlitShaderBuilder{};
@@ -102,25 +118,36 @@ int main(void) {
     auto unlitShader = unlitShaderBuilder.build();
 
     auto unlitDrawPack = unlitMeshPack.createDrawPack(unlitMaterialPack);
-    unlitDrawPack.addDraw(unlitCubeMesh, unlitMaterial_1, glm::mat4(1.0f));
+    // unlitDrawPack.addDraw(unlitCubeMesh, unlitMaterial_1, glm::mat4(1.0f));
+    // unlitDrawPack.addDraw(
+    //     unlitCubeMesh, unlitMaterial_2,
+    //     glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 2.0f)));
+    // unlitDrawPack.addDraw(
+    //     unlitCubeMesh, unlitMaterial_2,
+    //     glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
     unlitDrawPack.addDraw(
-        unlitCubeMesh, unlitMaterial_2,
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 2.0f)));
-    unlitDrawPack.addDraw(
-        unlitCubeMesh, unlitMaterial_2,
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
-    unlitDrawPack.addDraw(
-        documentMeshes[0], documentMaterials[0],
+        waterBottleMeshes[0], waterBottleMaterials[0],
         glm::scale(
             glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 0.0f)),
             glm::vec3(6.0f)));
-    unlitDrawPack.addDraw(
-        documentMeshes[0], documentMaterials[0],
-        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 0.0f)),
-                   glm::vec3(6.0f)));
-    ;
     auto unlitStage = Stage(std::move(unlitDrawPack));
     unlitStage.setShader(unlitShader);
+
+    ShaderBuilder unlitAnimatedShaderBuilder{};
+    unlitAnimatedShaderBuilder.addStage(ShaderStage::Vertex,
+                                "shaders/unlit_animated/shader.vert");
+    unlitAnimatedShaderBuilder.addStage(ShaderStage::Fragment,
+                                "shaders/unlit_animated/shader.frag");
+    auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
+
+    auto unlitAnimatedDrawPack = unlitAnimatedMeshPack.createDrawPack(unlitMaterialPack);
+    unlitAnimatedDrawPack.addDraw(
+        cesiumManMeshes[0], cesiumManMaterials[0],
+        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
+                   glm::vec3(2.0f)));
+    ;
+    auto unlitAnimatedStage = Stage(std::move(unlitAnimatedDrawPack));
+    unlitAnimatedStage.setShader(unlitAnimatedShader);
 
     MeshPackBuilder<ColoredVertex> coloredMeshPackBuilder{};
     auto coloredCubeMesh =
@@ -138,9 +165,6 @@ int main(void) {
         coloredMeshPack.createDrawPack(emptyMaterialPack);
     coloredDrawPackBuilder.addDraw(
         coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f)));
     coloredDrawPackBuilder.addDraw(
         coloredCubeMesh, emptyMaterial,
@@ -148,28 +172,10 @@ int main(void) {
     coloredDrawPackBuilder.addDraw(
         coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, -2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, -2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, -2.0f, 2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, -2.0f, -2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, 2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, -2.0f)));
     auto coloredStage = Stage(std::move(coloredDrawPackBuilder));
     coloredStage.setShader(coloredShader);
 
-    auto pipeline = Pipeline(std::move(coloredStage), std::move(unlitStage));
+    auto pipeline = Pipeline(std::move(coloredStage), std::move(unlitStage), std::move(unlitAnimatedStage));
 
     CameraMatrices cameraMatrices{};
     cameraMatrices.view =

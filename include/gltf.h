@@ -6,13 +6,19 @@
 #include <concepts>
 #include <filesystem>
 #include <functional>
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <iostream>
 #include <optional>
+#include <queue>
+#include <ranges>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 
 #include "material.h"
 #include "mesh.h"
+#include "skin.h"
 
 template <typename Data>
 fx::gltf::Accessor::Type getAccessorType() {
@@ -30,6 +36,8 @@ fx::gltf::Accessor::Type getAccessorType() {
         return fx::gltf::Accessor::Type::Vec3;
     } else if constexpr (std::is_same_v<Data, glm::vec4>) {
         return fx::gltf::Accessor::Type::Vec4;
+    } else if constexpr (std::is_same_v<Data, glm::quat>) {
+        return fx::gltf::Accessor::Type::Vec4;
     } else if constexpr (std::is_same_v<Data, glm::mat2>) {
         return fx::gltf::Accessor::Type::Mat2;
     } else if constexpr (std::is_same_v<Data, glm::mat3>) {
@@ -42,13 +50,13 @@ fx::gltf::Accessor::Type getAccessorType() {
 }
 
 template <typename Target, typename Source = Target>
-std::function<bool(Target&)> getDataReader(const fx::gltf::Document& document,
-                                           const fx::gltf::Accessor& accessor) {
+std::pair<std::function<bool(Target&)>, size_t> getDataReader(
+    const fx::gltf::Document& document, const fx::gltf::Accessor& accessor) {
     static_assert(std::is_trivially_copyable_v<Target> &&
                   std::is_trivially_copyable_v<Source> &&
                   std::constructible_from<Target, Source>);
     if (accessor.type != getAccessorType<Target>()) {
-        return nullptr;
+        return {nullptr, 0};
     }
 
     const auto& bufferView = document.bufferViews.at(accessor.bufferView);
@@ -60,7 +68,7 @@ std::function<bool(Target&)> getDataReader(const fx::gltf::Document& document,
         bufferView.byteStride ? bufferView.byteStride : sizeof(Source);
     size_t element = 0;
 
-    return [=](Target& item) mutable {
+    auto reader = [=](Target& item) mutable {
         if (element >= count) {
             return false;
         }
@@ -75,6 +83,7 @@ std::function<bool(Target&)> getDataReader(const fx::gltf::Document& document,
         }
         return true;
     };
+    return {reader, count};
 }
 
 template <typename Attribute>
@@ -83,12 +92,13 @@ std::pair<std::function<bool(Attribute&)>, size_t> getAttributeReader(
     const std::string& attributeName);
 
 template <>
-std::pair<std::function<bool(glm::vec2&)>, size_t> getAttributeReader(
+inline std::pair<std::function<bool(glm::vec2&)>, size_t> getAttributeReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive,
     const std::string& attributeName) {
     const auto& accessor =
         document.accessors[primitive.attributes.at(attributeName)];
-    auto reader = [&]() -> std::function<bool(glm::vec2&)> {
+    auto reader = [&]()
+        -> std::optional<std::pair<std::function<bool(glm::vec2&)>, size_t>> {
         switch (accessor.componentType) {
             case fx::gltf::Accessor::ComponentType::Float:
                 return getDataReader<glm::vec2>(document, accessor);
@@ -102,24 +112,25 @@ std::pair<std::function<bool(glm::vec2&)>, size_t> getAttributeReader(
                 return getDataReader<glm::vec2, glm::u32vec2>(document,
                                                               accessor);
             default:
-                return nullptr;
+                return std::nullopt;
         }
     }();
-    if (!reader) {
+    if (!reader.has_value()) {
         std::println(std::cerr,
                      "getAttributeReader:  Failed to create attribute reader");
         std::abort();
     }
-    return {reader, accessor.count};
+    return *reader;
 }
 
 template <>
-std::pair<std::function<bool(glm::vec3&)>, size_t> getAttributeReader(
+inline std::pair<std::function<bool(glm::vec3&)>, size_t> getAttributeReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive,
     const std::string& attributeName) {
     const auto& accessor =
         document.accessors[primitive.attributes.at(attributeName)];
-    auto reader = [&]() -> std::function<bool(glm::vec3&)> {
+    auto reader = [&]()
+        -> std::optional<std::pair<std::function<bool(glm::vec3&)>, size_t>> {
         switch (accessor.componentType) {
             case fx::gltf::Accessor::ComponentType::Float:
                 return getDataReader<glm::vec3>(document, accessor);
@@ -133,24 +144,25 @@ std::pair<std::function<bool(glm::vec3&)>, size_t> getAttributeReader(
                 return getDataReader<glm::vec3, glm::u32vec3>(document,
                                                               accessor);
             default:
-                return nullptr;
+                return std::nullopt;
         }
     }();
-    if (!reader) {
+    if (!reader.has_value()) {
         std::println(std::cerr,
                      "getAttributeReader:  Failed to create attribute reader");
         std::abort();
     }
-    return {reader, accessor.count};
+    return *reader;
 }
 
 template <>
-std::pair<std::function<bool(glm::vec4&)>, size_t> getAttributeReader(
+inline std::pair<std::function<bool(glm::vec4&)>, size_t> getAttributeReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive,
     const std::string& attributeName) {
     const auto& accessor =
         document.accessors[primitive.attributes.at(attributeName)];
-    auto reader = [&]() -> std::function<bool(glm::vec4&)> {
+    auto reader = [&]()
+        -> std::optional<std::pair<std::function<bool(glm::vec4&)>, size_t>> {
         switch (accessor.componentType) {
             case fx::gltf::Accessor::ComponentType::Float:
                 return getDataReader<glm::vec4>(document, accessor);
@@ -164,21 +176,22 @@ std::pair<std::function<bool(glm::vec4&)>, size_t> getAttributeReader(
                 return getDataReader<glm::vec4, glm::u32vec4>(document,
                                                               accessor);
             default:
-                return nullptr;
+                return std::nullopt;
         }
     }();
-    if (!reader) {
+    if (!reader.has_value()) {
         std::println(std::cerr,
                      "getAttributeReader:  Failed to create attribute reader");
         std::abort();
     }
-    return {reader, accessor.count};
+    return *reader;
 }
 
-std::pair<std::function<bool(GLuint&)>, size_t> getIndexReader(
+inline std::pair<std::function<bool(GLuint&)>, size_t> getIndexReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive) {
     const auto& accessor = document.accessors[primitive.indices];
-    auto reader = [&]() -> std::function<bool(GLuint&)> {
+    auto reader = [&]()
+        -> std::optional<std::pair<std::function<bool(GLuint&)>, size_t>> {
         switch (accessor.componentType) {
             case fx::gltf::Accessor::ComponentType::UnsignedByte:
                 return getDataReader<GLuint, GLubyte>(document, accessor);
@@ -187,15 +200,15 @@ std::pair<std::function<bool(GLuint&)>, size_t> getIndexReader(
             case fx::gltf::Accessor::ComponentType::UnsignedInt:
                 return getDataReader<GLuint>(document, accessor);
             default:
-                return nullptr;
+                return std::nullopt;
         }
     }();
-    if (!reader) {
+    if (!reader.has_value()) {
         std::println(std::cerr,
                      "getIndexReader:  Failed to create index reader");
         std::abort();
     }
-    return {reader, accessor.count};
+    return *reader;
 }
 
 template <typename Vertex>
@@ -203,7 +216,7 @@ std::pair<std::function<bool(Vertex&)>, size_t> getVertexReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive);
 
 template <>
-std::pair<std::function<bool(UnlitVertex&)>, size_t> getVertexReader(
+inline std::pair<std::function<bool(UnlitVertex&)>, size_t> getVertexReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive) {
     auto [positionReader, positionCount] =
         getAttributeReader<glm::vec3>(document, primitive, "POSITION");
@@ -218,7 +231,29 @@ std::pair<std::function<bool(UnlitVertex&)>, size_t> getVertexReader(
 }
 
 template <>
-std::pair<std::function<bool(ColoredVertex&)>, size_t> getVertexReader(
+inline std::pair<std::function<bool(UnlitAnimatedVertex&)>, size_t>
+getVertexReader(const fx::gltf::Document& document,
+                const fx::gltf::Primitive& primitive) {
+    auto [positionReader, positionCount] =
+        getAttributeReader<glm::vec3>(document, primitive, "POSITION");
+    auto [texCoordReader, texCoordCount] =
+        getAttributeReader<glm::vec2>(document, primitive, "TEXCOORD_0");
+    auto [jointsdReader, jointsCount] =
+        getAttributeReader<glm::vec4>(document, primitive, "JOINTS_0");
+    auto [weightsReader, weightsCount] =
+        getAttributeReader<glm::vec4>(document, primitive, "WEIGHTS_0");
+    auto reader = [positionReader, texCoordReader, jointsdReader,
+                   weightsReader](UnlitAnimatedVertex& vertex) mutable {
+        return positionReader(vertex.position) &&
+               texCoordReader(vertex.texCoord) &&
+               jointsdReader(vertex.joints) && weightsReader(vertex.weights);
+    };
+    return {reader, std::min({positionCount, texCoordCount, jointsCount,
+                              weightsCount})};
+}
+
+template <>
+inline std::pair<std::function<bool(ColoredVertex&)>, size_t> getVertexReader(
     const fx::gltf::Document& document, const fx::gltf::Primitive& primitive) {
     auto [positionReader, positionCount] =
         getAttributeReader<glm::vec3>(document, primitive, "POSITION");
@@ -318,6 +353,185 @@ typename EmptyMaterial::BuilderType readMaterialData<EmptyMaterial>(
     return builder;
 }
 
+inline std::vector<glm::mat4> readInverseBindMatrices(
+    const fx::gltf::Document& document, const fx::gltf::Skin& skin) {
+    auto inverseBindAccessor = document.accessors[skin.inverseBindMatrices];
+    auto [inverseBindReader, numMatrices] =
+        getDataReader<glm::mat4>(document, inverseBindAccessor);
+    std::vector<glm::mat4> inverseBindMatrices(numMatrices);
+    for (auto& bindMatrix : inverseBindMatrices) {
+        inverseBindReader(bindMatrix);
+    }
+    return inverseBindMatrices;
+}
+
+struct SkinData {
+    Skin skin;
+    std::unordered_map<int32_t, BuilderJoint> nodeJointMap;
+};
+
+inline SkinData readSkinData(const fx::gltf::Document& document,
+                             const fx::gltf::Skin& skin) {
+    auto jointBindMap = std::unordered_map<int32_t, glm::mat4>();
+    auto invserseBind = readInverseBindMatrices(document, skin);
+    for (const auto& [jointIndex, bindMatrix] :
+         std::views::zip(skin.joints, invserseBind)) {
+        jointBindMap.emplace(jointIndex, bindMatrix);
+    }
+
+    SkinBuilder skinBuilder{};
+
+    std::unordered_map<int32_t, BuilderJoint> nodeJointMap;
+    std::queue<std::pair<int32_t, BuilderJoint>> toVisit;
+    toVisit.push({skin.skeleton, skinBuilder.getRoot()});
+    while (!toVisit.empty()) {
+        auto [nodeId, parentJoint] = toVisit.front();
+        toVisit.pop();
+        auto skinJoint =
+            skinBuilder.addJoint(jointBindMap[nodeId], parentJoint);
+        nodeJointMap.insert({nodeId, skinJoint});
+        const auto& node = document.nodes[nodeId];
+        for (auto child : node.children) {
+            toVisit.push({child, skinJoint});
+        }
+    }
+
+    return SkinData{
+        .skin = skinBuilder.build(),
+        .nodeJointMap = nodeJointMap,
+    };
+}
+
+template <typename Item>
+struct SamplerReader {
+    std::pair<std::function<bool(float&)>, size_t> inputReader;
+    std::pair<std::function<bool(Item&)>, size_t> outputReader;
+
+    Keyframes<Item> readData() {
+        auto& [timeReader, numTimeKeys] = inputReader;
+        auto& [valueReader, numValueKeys] = outputReader;
+
+        if (numTimeKeys != numValueKeys) {
+            std::println(std::cerr,
+                         "SamplerReader: numTimeKeys, numValueKeys mismatch");
+            std::abort();
+        }
+
+        std::vector<float> timeKeys(numTimeKeys);
+        for (auto& time : timeKeys) {
+            timeReader(time);
+        }
+
+        std::vector<Item> valueKeys(numValueKeys);
+        for (auto& value : valueKeys) {
+            valueReader(value);
+        }
+
+        return Keyframes<Item>{std::move(valueKeys), std::move(timeKeys)};
+    }
+};
+
+template <typename Item>
+SamplerReader<Item> getSamplerReader(
+    const fx::gltf::Document& document,
+    const fx::gltf::Animation::Sampler& sampler) {
+    const auto& inputAccessor = document.accessors[sampler.input];
+    const auto& outputAccessor = document.accessors[sampler.output];
+
+    auto inputReader = getDataReader<float>(document, inputAccessor);
+    auto outputReader = getDataReader<Item>(document, outputAccessor);
+
+    return SamplerReader<Item>{inputReader, outputReader};
+}
+
+struct NodeChannels {
+    std::optional<size_t> translationSampler{std::nullopt};
+    std::optional<size_t> scaleSampler{std::nullopt};
+    std::optional<size_t> rotationSampler{std::nullopt};
+};
+
+inline AnimatedJoint readJointAnimation(const NodeChannels& channels,
+                                        const fx::gltf::Document& document,
+                                        const fx::gltf::Animation& animation) {
+    std::optional<SamplerReader<glm::vec3>> translationReader{std::nullopt};
+    std::optional<SamplerReader<glm::vec3>> scaleReader{std::nullopt};
+    std::optional<SamplerReader<glm::quat>> rotationReader{std::nullopt};
+
+    if (channels.translationSampler.has_value()) {
+        const auto& sampler = animation.samplers[*channels.translationSampler];
+        translationReader = getSamplerReader<glm::vec3>(document, sampler);
+    }
+
+    if (channels.scaleSampler.has_value()) {
+        const auto& sampler = animation.samplers[*channels.scaleSampler];
+        scaleReader = getSamplerReader<glm::vec3>(document, sampler);
+    }
+
+    if (channels.rotationSampler.has_value()) {
+        const auto& sampler = animation.samplers[*channels.rotationSampler];
+        rotationReader = getSamplerReader<glm::quat>(document, sampler);
+    }
+
+    auto translationKeys = translationReader.has_value()
+                               ? (*translationReader).readData()
+                               : constValueKeyframe(glm::vec3(0.0));
+    auto scaleKeys = scaleReader.has_value()
+                         ? (*scaleReader).readData()
+                         : constValueKeyframe(glm::vec3(1.0));
+    auto rotationKeys = rotationReader.has_value()
+                            ? (*rotationReader).readData()
+                            : constValueKeyframe(glm::quat(1.0, 0.0, 0.0, 0.0));
+
+    return AnimatedJoint(Channels{.translationKeys = translationKeys,
+                                  .scaleKeys = scaleKeys,
+                                  .rotationKeys = rotationKeys});
+}
+
+inline bool isSkinAnimation(const SkinData& skinData,
+                            const fx::gltf::Animation& animation) {
+    for (const auto& channel : animation.channels) {
+        const auto& target = channel.target;
+        if (!target.empty() && !skinData.nodeJointMap.contains(target.node)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline Animation readAnimation(const SkinData& skinData,
+                               const fx::gltf::Document& document,
+                               const fx::gltf::Animation& animation) {
+    std::unordered_map<int32_t, NodeChannels> nodeChannelsMap;
+
+    for (const auto& channel : animation.channels) {
+        const auto& target = channel.target;
+        if (!target.empty()) {
+            auto& nodeChannels = nodeChannelsMap[target.node];
+            if (target.path == "translation") {
+                nodeChannels.translationSampler = channel.sampler;
+                break;
+            }
+            if (target.path == "scale") {
+                nodeChannels.scaleSampler = channel.sampler;
+                break;
+            }
+            if (target.path == "rotation") {
+                nodeChannels.rotationSampler = channel.sampler;
+                break;
+            }
+        }
+    }
+
+    auto animationBuilder = AnimationBuilder(skinData.skin);
+
+    for (const auto& [nodeIndex, nodeChannels] : nodeChannelsMap) {
+        auto jointIndex = skinData.nodeJointMap.at(nodeIndex);
+        animationBuilder.animateJoint(
+            jointIndex, readJointAnimation(nodeChannels, document, animation));
+    }
+
+    return animationBuilder.build();
+}
 template <typename Vertex, typename Material>
 class DocumentReader {
    public:
@@ -368,12 +582,31 @@ class DocumentReader {
                       const fx::gltf::Document& document) noexcept {
         loadMeshes(document);
         loadMaterials(documentRootPath, document);
+        if constexpr (isAnimatedVertex<Vertex>()) {
+            loadAnimations(document);
+        }
     }
 
     void loadMeshes(const fx::gltf::Document& document) noexcept {
         for (const auto& mesh : document.meshes) {
             for (const auto& primitive : mesh.primitives) {
                 meshes.emplace_back(readMeshData<Vertex>(document, primitive));
+            }
+        }
+    }
+
+    void loadAnimations(const fx::gltf::Document& document) noexcept {
+        auto skinDatas = std::vector<SkinData>{};
+        skinDatas.reserve(document.skins.size());
+        for (const auto& skin : document.skins) {
+            skinDatas.emplace_back(readSkinData(document, skin));
+        }
+        for (const auto& animation : document.animations) {
+            for (const auto& skinData : skinDatas) {
+                if (isSkinAnimation(skinData, animation)) {
+                    animations.emplace_back(
+                        readAnimation(skinData, document, animation));
+                }
             }
         }
     }
@@ -388,4 +621,5 @@ class DocumentReader {
 
     std::vector<MeshData<Vertex>> meshes;
     std::vector<MaterialBuilder> materials;
+    std::vector<Animation> animations;
 };
