@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 #include <ranges>
 #include <vector>
+#include <cstring>
 
 #include "shader.h"
 #include "material.h"

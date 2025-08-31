@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <iostream>
 #include <optional>
+#include <vector>
 #include <array>
 
 struct SamplerConfig {

@@ -11,7 +11,9 @@
 #include "EntityComponentSystem/Components/MovableComponent.hpp"
 #include "EntityComponentSystem/Components/RenderableComponent.hpp"
 #include "EntityComponentSystem/ECS.hpp"
+#include "EntityComponentSystem/Systems/CollidingSystem.hpp"
 #include "EntityComponentSystem/Systems/MovementSystem.hpp"
+#include "EntityComponentSystem/Systems/PlayerMovementSystem.hpp"
 #include "EntityComponentSystem/Systems/RenderingSystem.hpp"
 #include "ImGui/ImGui.hpp"
 #include "InputHandler/InputHandler.hpp"
@@ -22,7 +24,6 @@
 #include "renderer.h"
 #include "shader.h"
 #include "std140.h"
-
 
 void debugSystem(ECS& ecs, const float& deltaTime,
                  RenderingQueues& renderingQueues) {
@@ -207,8 +208,9 @@ int main() {
 
     CameraMatrices cameraMatrices{};
     cameraMatrices.view =
-        glm::lookAt(glm::vec3(5.0f, 5.0f, 5.0f), glm::vec3(0.0f),
-                    glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::lookAt(glm::vec3(0.0f, 2.0f, 5.0f),
+                glm::vec3(0.0f, 0.0f, 0.0f),
+                glm::vec3(0.0f, 0.0f, 1.0f));
     cameraMatrices.projection =
         glm::perspective(glm::radians(45.0f), 480.0f / 640.0f, 1e-1f, 1e3f);
 
@@ -235,17 +237,30 @@ int main() {
                             std::move(dynamicColoredQueue)});
 
     EntityID player = ecs.createEntity();
-    EntityID enemy = ecs.createEntity();
+    EntityID ent1 = ecs.createEntity();
+    EntityID ent2 = ecs.createEntity();
 
-    ecs.addComponent(player, MovableComponent{0.0f, 0.0f, 1.0f, 1.0f});
+    ecs.addComponent(player, PositionComponent{0.f, 0.f, 0.f});
+    ecs.addComponent(player, MovableComponent(3.f, 5.f));
+    ecs.addComponent(player, CollidingComponent(0.5f));
+    ecs.addComponent(player, PlayerMovementComponent{});
     ecs.addComponent(player, RenderableComponent{cubeUnlitPartial_1});
-    ecs.addComponent(enemy, MovableComponent{5, 5, 1.0f, 1.0f});
 
-    ecs.nextStage(ECS::StageType::Parallel)
+    ecs.addComponent(ent1, PositionComponent{5.f, 5.f, 0.f});
+    ecs.addComponent(ent1, MovableComponent(1.f, 5.f));
+    ecs.addComponent(ent1, CollidingComponent(0.5f));
+    ecs.addComponent(ent1, RenderableComponent{cubeUnlitPartial_1});
+
+    ecs.addComponent(ent2, PositionComponent{2.5f, 5.f, 0.f});
+    ecs.addComponent(ent2, CollidingComponent(0.5f));
+    ecs.addComponent(ent2, RenderableComponent{cubeColoredPartial});
+
+    ecs.nextStage(ECS::StageType::Sequential)
+        .addSystem(collidingSystem)
+        .addSystem(playerMovementSystem)
         .addSystem(movementSystem)
-        .nextStage(ECS::StageType::Sequential)
-        .addSystem(debugSystem)
-        .addSystem(renderingSystem);
+        .addSystem(renderingSystem)
+        .addSystem(debugSystem);
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = static_cast<float>(glfwGetTime());
@@ -254,9 +269,9 @@ int main() {
 
         ecs.update(deltaTime);
 
-        auto* playerMovement = ecs.getComponent<MovableComponent>(player);
-        cubePosition.x = playerMovement->x;
-        cubePosition.y = playerMovement->y;
+        // auto* playerMovement = ecs.getComponent<MovableComponent>(player);
+        // cubePosition.x = playerMovement->x;
+        // cubePosition.y = playerMovement->y;
 
         // dynamicUnlitQueue->emplace_back(cubeUnlitPartial_1.withTransform(
         //     glm::translate(glm::mat4(1.0), cubePosition)));
@@ -275,6 +290,12 @@ int main() {
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        auto position = ecs.getComponent<PositionComponent>(player);
+        auto [x, y, z] = *position;
+        cameraMatrices.view =
+            glm::lookAt(glm::vec3(0.0f + x, 8.0f + y, 20.0f),
+                        glm::vec3(x, y, 0.0f),
+                        glm::vec3(0.0f, 0.0f, 1.0f));
         pipeline.execute(cameraMatrices);
         renderImGui();
 
