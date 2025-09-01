@@ -16,9 +16,11 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include "graphics/storage/animation.h"
 #include "graphics/resources/material.h"
 #include "graphics/resources/mesh.h"
-#include "graphics/resources/skin.h"
+#include "graphics/resources/animation/joint.h"
+#include "graphics/resources/animation.h"
 
 template <typename Data>
 fx::gltf::Accessor::Type getAccessorType() {
@@ -405,7 +407,7 @@ inline std::vector<glm::mat4> readInverseBindMatrices(
 }
 
 struct SkinData {
-    Skin skin;
+    SkinHandle skin;
     std::unordered_map<int32_t, BuilderJoint> nodeJointMap;
 };
 
@@ -540,7 +542,7 @@ inline bool isSkinAnimation(const SkinData& skinData,
     return true;
 }
 
-inline Animation readAnimation(const SkinData& skinData,
+inline AnimationHandle readAnimation(const SkinData& skinData,
                                const fx::gltf::Document& document,
                                const fx::gltf::Animation& animation) {
     std::unordered_map<int32_t, NodeChannels> nodeChannelsMap;
@@ -619,11 +621,11 @@ class DocumentReader {
         return std::move(materials);
     }
 
-    const std::vector<Animation>& getAnimations() const noexcept {
+    const std::vector<AnimationHandle>& getAnimations() const noexcept {
         return animations;
     }
 
-    std::vector<Animation> takeAnimations() noexcept {
+    std::vector<AnimationHandle> takeAnimations() noexcept {
         return std::move(animations);
     }
 
@@ -671,5 +673,5 @@ class DocumentReader {
 
     std::vector<MeshData<Vertex>> meshes;
     std::vector<MaterialBuilder> materials;
-    std::vector<Animation> animations;
+    std::vector<AnimationHandle> animations;
 };

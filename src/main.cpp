@@ -15,7 +15,7 @@
 #include "graphics/resources/mesh.h"
 #include "graphics/resources/model.h"
 #include "graphics/resources/shader.h"
-#include "graphics/resources/skin.h"
+#include "graphics/resources/animation.h"
 #include "graphics/buffer/std140.h"
 #include "graphics/assets/gltf.h"
 #include "graphics/renderer.h"
@@ -187,9 +187,10 @@ int main(void) {
         glm::perspective(glm::radians(45.0f), 480.0f / 640.0f, 1e-1f, 1e3f);
 
     auto animations = cesiumMan.takeAnimations();
-    auto animationPlayer = AnimationPlayer(animations[0], true);
+    auto animationPlayer = AnimationPlayer(animations[0]);
+    animationPlayer.loopAnimation(true);
 
-    auto jointMatrices = animationPlayer.getJointTransforms(animations[0]);
+    auto jointMatrices = animationPlayer.getJointTransforms();
 
     auto jointMatrixBufferBuilder = std140::UniformArrayBuilder<glm::mat4>();
     jointMatrixBufferBuilder.pushMulti(jointMatrices);
@@ -205,8 +206,8 @@ int main(void) {
         auto deltaTime = std::chrono::duration<float>(currentFrameTime - lastFrameTime).count();
         lastFrameTime = currentFrameTime;
 
-        animationPlayer.update(animations[0], deltaTime);
-        auto jointMatrices = animationPlayer.getJointTransforms(animations[0]);
+        animationPlayer.update(deltaTime);
+        auto jointMatrices = animationPlayer.getJointTransforms();
 
         jointMatrixBuffer.updateRange(jointMatrices, 0);
 
