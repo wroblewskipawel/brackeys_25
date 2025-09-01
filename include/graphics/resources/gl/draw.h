@@ -11,6 +11,7 @@
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/shader.h"
+#include "graphics/storage/gl/material.h"
 
 template <typename Vertex, typename Material>
 class DrawPackBuilder;
@@ -44,31 +45,28 @@ class DrawPack {
     DrawPack(const DrawPack&) = delete;
     DrawPack& operator=(const DrawPack&) = delete;
 
-    DrawPack(DrawPack&& other) noexcept {
-        buffers = other.buffers;
-        vao = other.vao;
-        materialPackRef = other.materialPackRef;
-        meshes = std::move(other.meshes);
-        instanceBuffers = std::move(other.instanceBuffers);
-
+    DrawPack(DrawPack&& other) noexcept
+        : buffers(other.buffers),
+          vao(other.vao),
+          materialPack(other.materialPack),
+          meshes(std::move(other.meshes)),
+          instanceBuffers(std::move(other.instanceBuffers)) {
         other.buffers = {};
         other.vao = 0;
-        other.materialPackRef = {};
-        other.meshes.clear();
-        other.instanceBuffers.clear();
+        other.materialPack = MaterialPackHandle<Material>::getInvalid();
     };
 
     DrawPack& operator=(DrawPack&& other) noexcept {
         if (this != &other) {
             buffers = other.buffers;
             vao = other.vao;
-            materialPackRef = other.materialPackRef;
+            materialPack = other.materialPack;
             meshes = std::move(other.meshes);
             instanceBuffers = std::move(other.instanceBuffers);
 
             other.buffers = {};
             other.vao = 0;
-            other.materialPackRef = {};
+            other.materialPack = MaterialPackHandle<Material>::getInvalid();
             other.meshes.clear();
             other.instanceBuffers.clear();
         }
@@ -90,11 +88,11 @@ class DrawPack {
 
     DrawPack(
         const std::unordered_map<DrawInfo, std::vector<glm::mat4>>& drawData,
-        MaterialPackRef<Material> materialPackRef, MeshBuffers buffers,
+        MaterialPackHandle<Material> materialPack, MeshBuffers buffers,
         GLuint vao) noexcept
         : meshes(drawData.size()),
           instanceBuffers(drawData.size()),
-          materialPackRef(materialPackRef),
+          materialPack(materialPack),
           buffers(buffers),
           vao(vao) {
         glCreateBuffers(instanceBuffers.size(), instanceBuffers.data());
@@ -111,7 +109,7 @@ class DrawPack {
         glBindVertexArray(vao);
         glVertexArrayVertexBuffer(vao, 0, buffers.vbo, 0, sizeof(Vertex));
         glVertexArrayElementBuffer(vao, buffers.ebo);
-        MaterialPack<Material>::bind(materialPackRef);
+        MaterialPack<Material>::bind(materialPack);
         for (const auto& [draw, instanceBuffer] :
              std::views::zip(meshes, instanceBuffers)) {
             glUniform1ui(uniformLocations.materialIndex,
@@ -127,7 +125,7 @@ class DrawPack {
 
     std::vector<DrawInstanced> meshes;
     std::vector<GLuint> instanceBuffers;
-    MaterialPackRef<Material> materialPackRef;
+    MaterialPackHandle<Material> materialPack;
     MeshBuffers buffers;
     GLuint vao;
 };
@@ -136,14 +134,14 @@ template <typename Vertex, typename Material>
 class DrawPackBuilder {
    public:
     DrawPackBuilder(const MeshPack<Vertex>& meshPack,
-                    const MaterialPack<Material>& materialPack) noexcept
+                    MaterialPackHandle<Material> materialPack) noexcept
         : meshPack(meshPack), materialPack(materialPack) {}
 
     DrawPackBuilder& addDraw(MeshHandle<Vertex> meshHandle,
                              MaterialHandle<Material> materialHandle,
                              glm::mat4 modelMatrix) {
         Mesh mesh = meshPack.getMesh(meshHandle);
-        DrawInfo drawInfo{mesh, materialHandle.uniformIndex};
+        DrawInfo drawInfo{mesh, materialHandle.materialIndex};
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
             drawDataIt->second.emplace_back(modelMatrix);
@@ -174,13 +172,13 @@ class DrawPackBuilder {
     }
 
     DrawPack<Vertex, Material> build() {
-        return DrawPack<Vertex, Material>{drawData, materialPack.getPackRef(),
+        return DrawPack<Vertex, Material>{drawData, materialPack,
                                           meshPack.getBuffers(),
                                           getVertexArray<Vertex>()};
     }
 
    private:
     const MeshPack<Vertex>& meshPack;
-    const MaterialPack<Material>& materialPack;
+    MaterialPackHandle<Material> materialPack;
     std::unordered_map<DrawInfo, std::vector<glm::mat4>> drawData;
 };

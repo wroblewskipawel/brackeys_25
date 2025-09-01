@@ -78,9 +78,9 @@ int main(void) {
         "assets/CesiumMan/glTF/CesiumMan.gltf"};
 
     MaterialPackBuilder<EmptyMaterial> emptyMaterialPackBuilder{};
-    auto emptyMaterial =
-        emptyMaterialPackBuilder.addMaterial(MaterialBuilder<EmptyMaterial>{});
+    emptyMaterialPackBuilder.addMaterial(MaterialBuilder<EmptyMaterial>{});
     auto emptyMaterialPack = emptyMaterialPackBuilder.build();
+    auto emptyMaterial = getPackHandles(emptyMaterialPack)[0];
 
     MeshPackBuilder<UnlitVertex> unlitMeshPackBuilder{};
     auto unlitCubeMesh =
@@ -109,11 +109,12 @@ int main(void) {
     // auto unlitMaterial_2 =
     //     unlitMaterialPackBuilder.addMaterial(unlitMaterialBuilder_2);
 
-    auto waterBottleMaterials =
-        unlitMaterialPackBuilder.addMaterialMulti(waterBottle.takeMaterials());
-    auto cesiumManMaterials =
-        unlitMaterialPackBuilder.addMaterialMulti(cesiumMan.takeMaterials());
+    unlitMaterialPackBuilder.addMaterialMulti(waterBottle.takeMaterials())
+        .addMaterialMulti(cesiumMan.takeMaterials());
     auto unlitMaterialPack = unlitMaterialPackBuilder.build();
+    auto unlitMaterials = getPackHandles(unlitMaterialPack);
+    auto waterBottleMaterial = unlitMaterials[0];
+    auto cesiumManMaterial = unlitMaterials[1];
 
     ShaderBuilder unlitShaderBuilder{};
     unlitShaderBuilder.addStage(ShaderStage::Vertex,
@@ -131,7 +132,7 @@ int main(void) {
     //     unlitCubeMesh, unlitMaterial_2,
     //     glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
     unlitDrawPack.addDraw(
-        waterBottleMeshes[0], waterBottleMaterials[0],
+        waterBottleMeshes[0], waterBottleMaterial,
         glm::scale(
             glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 0.0f)),
             glm::vec3(6.0f)));
@@ -148,7 +149,7 @@ int main(void) {
     auto unlitAnimatedDrawPack =
         DrawPackBuilder(unlitAnimatedMeshPack, unlitMaterialPack);
     unlitAnimatedDrawPack.addDraw(
-        cesiumManMeshes[0], cesiumManMaterials[0],
+        cesiumManMeshes[0], cesiumManMaterial,
         glm::scale(
             glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
             glm::vec3(2.0f)));

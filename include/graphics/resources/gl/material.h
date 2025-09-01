@@ -8,6 +8,7 @@
 #include "graphics/resources/gl/buffer/std140.h"
 #include "graphics/resources/gl/texture.h"
 #include "graphics/resources/material.h"
+#include "graphics/storage/gl/material.h"
 
 constexpr size_t materialPackBufferBinding = 0;
 
@@ -80,9 +81,28 @@ class EmptyMaterial {
 
 template <typename Material>
 struct MaterialHandle {
-    size_t uniformIndex;
-    size_t packIndex;
+    size_t materialIndex;
+    MaterialPackHandle<Material> packHandle;
+
+    static auto getPackHandles(
+        MaterialPackHandle<Material> packHandle) noexcept {
+        const auto& materialPack =
+            MaterialPackStorage<Material>::materialPackStorage.get(packHandle)
+                .get();
+        auto materialHandles = std::vector<MaterialHandle<Material>>();
+        for (size_t materialIndex = 0;
+             materialIndex < materialPack.numMaterials(); materialIndex++) {
+            materialHandles.emplace_back(
+                MaterialHandle(materialIndex, packHandle));
+        }
+        return materialHandles;
+    }
 };
+
+template <typename Material>
+inline auto getPackHandles(MaterialPackHandle<Material> packHandle) noexcept {
+    return MaterialHandle<Material>::getPackHandles(packHandle);
+}
 
 template <typename Material>
 class MaterialPackBuilder;
@@ -123,12 +143,6 @@ class MaterialData {
 };
 
 template <typename Material>
-struct MaterialPackRef {
-    size_t packIndex;
-    GLuint uniformBuffer;
-};
-
-template <typename Material>
 class MaterialPack {
    public:
     MaterialPack(const MaterialPack&) = delete;
@@ -137,62 +151,60 @@ class MaterialPack {
     MaterialPack(MaterialPack&&) = default;
     MaterialPack& operator=(MaterialPack&&) = default;
 
-    ~MaterialPack() {
-        auto packData = materialDataStorage.find(packIndex);
-        if (packData != materialDataStorage.end())
-            packData->second.setResident();
-        materialDataStorage.erase(packIndex);
-    };
-
-    static void bind(const MaterialPackRef<Material>& ref) {
-        if (currentMeshPack != ref.packIndex) {
-            if (currentMeshPack != std::numeric_limits<size_t>::max()) {
-                auto currentPackData =
-                    materialDataStorage.find(currentMeshPack);
-                if (currentPackData != materialDataStorage.end())
-                    currentPackData->second.setNotResident();
+    static void bind(MaterialPackHandle<Material> materialPack) {
+        if (currentPackIndex != materialPack) {
+            if (!currentPackIndex.isInvalid()) {
+                auto& currentPack =
+                    MaterialPackStorage<Material>::materialPackStorage
+                        .get(currentPackIndex)
+                        .get();
+                currentPack.materialData.setNotResident();
             }
-            auto newPackData = materialDataStorage.find(ref.packIndex);
-            if (newPackData != materialDataStorage.end())
-                newPackData->second.setResident();
-            currentMeshPack = ref.packIndex;
+            auto& newPack = MaterialPackStorage<Material>::materialPackStorage
+                                .get(materialPack)
+                                .get();
+            newPack.materialData.setResident();
+            currentPackIndex = materialPack;
         }
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, materialPackBufferBinding,
-                         ref.uniformBuffer);
+        auto& currentPack = MaterialPackStorage<Material>::materialPackStorage
+                                .get(currentPackIndex)
+                                .get();
+        currentPack.materialUniforms.bind(GL_SHADER_STORAGE_BUFFER,
+                                          materialPackBufferBinding);
     }
 
-    MaterialPackRef<Material> getPackRef() const {
-        return MaterialPackRef<Material>{packIndex,
-                                         materialUniforms.getBuffer()};
+    size_t numMaterials() const noexcept {
+        return materialUniforms.getNumElements();
     }
 
    private:
     using BufferType = typename Material::BufferType;
     friend class MaterialPackBuilder<Material>;
 
-    MaterialPack(std140::UniformArrayBuilder<BufferType>&& materialUniforms,
-                 std::vector<Material>&& materialData, size_t packIndex)
-        : materialUniforms(materialUniforms.build()),
-          packIndex{packIndex},
-          isResident{false} {
-        materialDataStorage.emplace(
-            std::piecewise_construct, std::forward_as_tuple(packIndex),
-            std::forward_as_tuple(std::move(materialData)));
+    static MaterialPackHandle<Material> registerMaterialPack(
+        MaterialPack&& materialPack) {
+        return MaterialPackStorage<Material>::materialPackStorage.emplace(
+            std::move(materialPack));
     }
 
-    inline static size_t currentMeshPack = std::numeric_limits<size_t>::max();
-    inline static std::unordered_map<size_t, MaterialData<Material>>
-        materialDataStorage;
+    MaterialPack(std140::UniformArrayBuilder<BufferType>&& materialUniforms,
+                 std::vector<Material>&& materialData)
+        : materialUniforms(materialUniforms.build()),
+          materialData(std::move(materialData)),
+          isResident{false} {}
+
+    inline static auto currentPackIndex =
+        MaterialPackHandle<Material>::getInvalid();
 
     std140::UniformArray<BufferType> materialUniforms;
-    size_t packIndex;
+    MaterialData<Material> materialData;
     bool isResident;
 };
 
 template <typename Material>
 class MaterialPackBuilder {
    public:
-    MaterialPackBuilder() { packIndex = nextPackIndex++; };
+    MaterialPackBuilder() = default;
 
     MaterialPackBuilder(const MaterialPackBuilder&) = delete;
     MaterialPackBuilder& operator=(const MaterialPackBuilder&) = delete;
@@ -204,32 +216,29 @@ class MaterialPackBuilder {
 
     using BuilderType = typename Material::BuilderType;
 
-    MaterialHandle<Material> addMaterial(const BuilderType& materialBuilder) {
+    MaterialPackBuilder& addMaterial(const BuilderType& materialBuilder) {
         materialData.emplace_back(materialBuilder);
         materialUniforms.push(materialData.back().getUniformBuffer());
-        return MaterialHandle<Material>{materialData.size() - 1, packIndex};
+        return *this;
     }
 
-    std::vector<MaterialHandle<Material>> addMaterialMulti(
+    MaterialPackBuilder& addMaterialMulti(
         const std::vector<BuilderType>& materialBuilders) {
-        std::vector<MaterialHandle<Material>> handles;
-        handles.reserve(materialBuilders.size());
         for (const auto& materialBuilder : materialBuilders) {
-            handles.emplace_back(addMaterial(materialBuilder));
+            addMaterial(materialBuilder);
         }
-        return handles;
+        return *this;
     }
 
-    MaterialPack<Material> build() {
-        return MaterialPack<Material>(std::move(materialUniforms),
-                                      std::move(materialData), packIndex);
+    MaterialPackHandle<Material> build() {
+        return MaterialPack<Material>::registerMaterialPack(
+            MaterialPack<Material>(std::move(materialUniforms),
+                                   std::move(materialData)));
     }
 
    private:
-    inline static size_t nextPackIndex = 0;
     using BufferType = typename Material::BufferType;
 
     std140::UniformArrayBuilder<BufferType> materialUniforms;
     std::vector<Material> materialData;
-    size_t packIndex;
 };

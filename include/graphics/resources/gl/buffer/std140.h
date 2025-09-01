@@ -177,7 +177,9 @@ class UniformArray {
         glBindBufferBase(target, index, uniformBlockBuffer);
     }
 
-    GLuint getBuffer() const { return uniformBlockBuffer; }
+    GLuint getBuffer() const noexcept { return uniformBlockBuffer; }
+
+    size_t getNumElements() const noexcept { return numElements; }
 
    private:
     friend class UniformArrayBuilder<Item>;

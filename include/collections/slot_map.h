@@ -25,6 +25,11 @@ class Handle {
 
     bool isInvalid() const noexcept { return storageIndex == invalidValue; }
 
+    bool operator==(const Handle& other) const noexcept {
+        return generation == other.generation &&
+               storageIndex == other.storageIndex;
+    }
+
    private:
     friend class SlotMap<Item>;
 
