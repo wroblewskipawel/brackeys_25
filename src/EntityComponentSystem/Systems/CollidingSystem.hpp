@@ -12,8 +12,7 @@ constexpr float repulsive_force = 3.f;
 inline void collidingSystem(ECS& ecs, const float& deltaTime, RenderingQueues& renderingQueues) {
     auto entities = ecs.getEntitiesWithComponent<CollidingComponent>().andHas<PositionComponent>().get();
 
-    // 1. Build QuadTree (assuming world bounds, adjust as needed)
-    AABB worldBounds{0.f, 0.f, 500.f, 500.f};  // center (0,0), half-width/height=500
+    AABB worldBounds{0.f, 0.f, 500.f, 500.f};
     QuadTree quadTree(worldBounds);
 
     for (auto entity : entities) {
@@ -23,12 +22,10 @@ inline void collidingSystem(ECS& ecs, const float& deltaTime, RenderingQueues& r
         }
     }
 
-    // 2. Collision check using spatial queries
     for (auto entity : entities) {
         auto pos = ecs.getComponent<PositionComponent>(entity);
         auto col = ecs.getComponent<CollidingComponent>(entity);
 
-        // Query nearby entities in an AABB around the circle
         AABB range{pos->x, pos->y, col->r, col->r};
         std::vector<EntityID> candidates;
         quadTree.query(range, candidates);
@@ -40,7 +37,6 @@ inline void collidingSystem(ECS& ecs, const float& deltaTime, RenderingQueues& r
             auto colB = ecs.getComponent<CollidingComponent>(other);
 
             if (collide(pos->x, pos->y, col->r, posB->x, posB->y, colB->r)) {
-                // Handle resolution (same as before)
                 float dx = posB->x - pos->x;
                 float dy = posB->y - pos->y;
                 float distSq = dx*dx + dy*dy;
