@@ -80,6 +80,31 @@ public:
     }
 
     template<typename T>
+    void addComponentWithBuilder(EntityID id, size_t componentIndex) {
+        auto it = entities.find(id);
+        if (it == entities.end()) {
+            throw std::runtime_error("Entity does not exist!");
+        }
+        constexpr auto typeIndex = static_cast<size_t>(ComponentToType<T>::index);
+        it->second.componentMask.set(typeIndex, true);
+        it->second.componentIndices[typeIndex] = componentIndex;
+    }
+
+    void doneBuildingEntity(EntityID id) {
+        auto it = entities.find(id);
+        if (it == entities.end()) {
+            throw std::runtime_error("Entity does not exist!");
+        }
+
+        const auto entityBitMaks = it->second.componentMask;
+        for (auto& [bitmask, ids] : components) {
+            if (is_subset(entityBitMaks, bitmask)) {
+                ids.insert(id);
+            }
+        }
+    }
+
+    template<typename T>
     void removeComponent(EntityID id) {
         auto it = entities.find(id);
         if (it == entities.end()) return;

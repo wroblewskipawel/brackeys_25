@@ -239,7 +239,6 @@ int main() {
 
     EntityID player = ecs.createEntity();
     EntityID ent1 = ecs.createEntity();
-    // EntityID ent2 = ecs.createEntity();
 
     ecs.addComponent(player, PositionComponent{0.f, 0.f, 0.f});
     ecs.addComponent(player, MovableComponent(7.f, 5.f));
@@ -251,10 +250,6 @@ int main() {
     ecs.addComponent(ent1, MovableComponent(1.f, 5.f));
     ecs.addComponent(ent1, CollidingComponent(0.5f));
     ecs.addComponent(ent1, RenderableComponent{cubeUnlitPartial_1});
-
-    // ecs.addComponent(ent2, PositionComponent{2.5f, 5.f, 0.f});
-    // ecs.addComponent(ent2, CollidingComponent(0.5f));
-    // ecs.addComponent(ent2, RenderableComponent{cubeColoredPartial});
 
     for (size_t i = 0; i < 10; ++i) {
         EntityID wall = ecs.createEntity();
