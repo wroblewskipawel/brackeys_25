@@ -17,6 +17,7 @@
 #include "graphics/renderer.h"
 #include "graphics/resources/animation.h"
 #include "graphics/resources/gl/buffer/std140.h"
+#include "graphics/resources/gl/draw.h"
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/shader.h"
@@ -121,7 +122,7 @@ int main(void) {
                                 "shaders/unlit/shader.frag");
     auto unlitShader = unlitShaderBuilder.build();
 
-    auto unlitDrawPack = unlitMeshPack.createDrawPack(unlitMaterialPack);
+    auto unlitDrawPack = DrawPackBuilder(unlitMeshPack, unlitMaterialPack);
     // unlitDrawPack.addDraw(unlitCubeMesh, unlitMaterial_1, glm::mat4(1.0f));
     // unlitDrawPack.addDraw(
     //     unlitCubeMesh, unlitMaterial_2,
@@ -145,7 +146,7 @@ int main(void) {
     auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
 
     auto unlitAnimatedDrawPack =
-        unlitAnimatedMeshPack.createDrawPack(unlitMaterialPack);
+        DrawPackBuilder(unlitAnimatedMeshPack, unlitMaterialPack);
     unlitAnimatedDrawPack.addDraw(
         cesiumManMeshes[0], cesiumManMaterials[0],
         glm::scale(
@@ -168,7 +169,7 @@ int main(void) {
     auto coloredShader = coloredShaderBuilder.build();
 
     auto coloredDrawPackBuilder =
-        coloredMeshPack.createDrawPack(emptyMaterialPack);
+        DrawPackBuilder(coloredMeshPack, emptyMaterialPack);
     coloredDrawPackBuilder.addDraw(
         coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f)));

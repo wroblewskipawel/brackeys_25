@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "graphics/resources/gl/draw.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/shader.h"
 
