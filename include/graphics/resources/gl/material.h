@@ -5,12 +5,11 @@
 #include <filesystem>
 #include <glm/glm.hpp>
 
-#include "graphics/resources/material.h"
-#include "graphics/resources/gl/texture.h"
 #include "graphics/resources/gl/buffer/std140.h"
+#include "graphics/resources/gl/texture.h"
+#include "graphics/resources/material.h"
 
 constexpr size_t materialPackBufferBinding = 0;
-
 
 template <typename Material>
 class MaterialPack;
@@ -24,7 +23,8 @@ class UnlitMaterial {
     using BuilderType = MaterialBuilder<UnlitMaterial>;
 
     UnlitMaterial(const BuilderType& builder)
-        : albedoTexture(tryLoadFromData(builder.albedoTexture, SamplerConfig{})) {}
+        : albedoTexture(
+              tryLoadFromData(builder.albedoTexture, SamplerConfig{})) {}
 
     UnlitMaterial(const UnlitMaterial&) = delete;
     UnlitMaterial& operator=(const UnlitMaterial&) = delete;
@@ -147,7 +147,8 @@ class MaterialPack {
     static void bind(const MaterialPackRef<Material>& ref) {
         if (currentMeshPack != ref.packIndex) {
             if (currentMeshPack != std::numeric_limits<size_t>::max()) {
-                auto currentPackData = materialDataStorage.find(currentMeshPack);
+                auto currentPackData =
+                    materialDataStorage.find(currentMeshPack);
                 if (currentPackData != materialDataStorage.end())
                     currentPackData->second.setNotResident();
             }
@@ -174,9 +175,9 @@ class MaterialPack {
         : materialUniforms(materialUniforms.build()),
           packIndex{packIndex},
           isResident{false} {
-        materialDataStorage.emplace(std::piecewise_construct,
-                                     std::forward_as_tuple(packIndex),
-                                     std::forward_as_tuple(std::move(materialData)));
+        materialDataStorage.emplace(
+            std::piecewise_construct, std::forward_as_tuple(packIndex),
+            std::forward_as_tuple(std::move(materialData)));
     }
 
     inline static size_t currentMeshPack = std::numeric_limits<size_t>::max();

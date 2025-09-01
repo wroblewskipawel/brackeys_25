@@ -1,8 +1,8 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <vector>
 #include <type_traits>
+#include <vector>
 
 #include "graphics/storage/mesh.h"
 struct ColoredVertex {
@@ -22,12 +22,12 @@ struct UnlitAnimatedVertex {
     glm::vec4 weights;
 };
 
-template<typename Vertex>
+template <typename Vertex>
 struct IsAnimatedVertex {
     static constexpr bool value = std::is_same_v<Vertex, UnlitAnimatedVertex>;
 };
 
-template<typename Vertex>
+template <typename Vertex>
 constexpr bool isAnimatedVertex() {
     return IsAnimatedVertex<Vertex>::value;
 }
@@ -35,7 +35,8 @@ constexpr bool isAnimatedVertex() {
 template <typename Vertex>
 struct MeshData {
     static MeshDataHandle<Vertex> registerMeshData(MeshData&& meshData) {
-        return MeshDataStorage<Vertex>::meshStorage.emplace(std::move(meshData));
+        return MeshDataStorage<Vertex>::meshStorage.emplace(
+            std::move(meshData));
     }
 
     MeshData(std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices)

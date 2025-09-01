@@ -5,11 +5,12 @@
 #include <functional>
 #include <glm/glm.hpp>
 #include <ranges>
-#include <vector>
 #include <type_traits>
+#include <vector>
 
-#include "graphics/resources/mesh.h"
+#include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/shader.h"
+#include "graphics/resources/mesh.h"
 
 void setInstanceAttributes(GLuint vao, GLuint nextLocation) {
     // Instance Attrib: glm::mat4
@@ -111,7 +112,7 @@ inline GLuint getVertexArray<UnlitAnimatedVertex>() {
         glEnableVertexArrayAttrib(vao, nextLocation++);
 
         glVertexArrayAttribIFormat(vao, nextLocation, 4, GL_UNSIGNED_INT,
-                                  offsetof(UnlitAnimatedVertex, joints));
+                                   offsetof(UnlitAnimatedVertex, joints));
         glVertexArrayAttribBinding(vao, nextLocation, 0);
         glEnableVertexArrayAttrib(vao, nextLocation++);
 
@@ -275,7 +276,8 @@ class MeshPackBuilder {
         size_t indexOffset = 0;
         size_t vertexOffset = 0;
         for (auto meshData : meshDatas) {
-            const auto& meshRef = MeshDataStorage<Vertex>::meshStorage.get(meshData).get();
+            const auto& meshRef =
+                MeshDataStorage<Vertex>::meshStorage.get(meshData).get();
 
             Mesh mesh{.indexCount = meshRef.indices.size(),
                       .indexOffset = indexOffset,
@@ -291,7 +293,8 @@ class MeshPackBuilder {
         vertexOffset = 0;
         indexOffset = 0;
         for (auto meshData : meshDatas) {
-            const auto& meshRef = MeshDataStorage<Vertex>::meshStorage.get(meshData).get();
+            const auto& meshRef =
+                MeshDataStorage<Vertex>::meshStorage.get(meshData).get();
 
             auto numVertices = meshRef.vertices.size();
             auto numIndices = meshRef.indices.size();

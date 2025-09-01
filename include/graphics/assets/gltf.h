@@ -16,12 +16,12 @@
 #include <type_traits>
 #include <unordered_map>
 
-#include "graphics/storage/animation.h"
-#include "graphics/storage/mesh.h"
+#include "graphics/resources/animation.h"
+#include "graphics/resources/animation/joint.h"
 #include "graphics/resources/material.h"
 #include "graphics/resources/mesh.h"
-#include "graphics/resources/animation/joint.h"
-#include "graphics/resources/animation.h"
+#include "graphics/storage/animation.h"
+#include "graphics/storage/mesh.h"
 
 template <typename Data>
 fx::gltf::Accessor::Type getAccessorType() {
@@ -313,7 +313,7 @@ inline std::pair<std::function<bool(ColoredVertex&)>, size_t> getVertexReader(
 
 template <typename Vertex>
 MeshDataHandle<Vertex> readMeshData(const fx::gltf::Document& document,
-                              const fx::gltf::Primitive& primitive) {
+                                    const fx::gltf::Primitive& primitive) {
     auto [vertexReader, vertexCount] =
         getVertexReader<Vertex>(document, primitive);
     auto [indexReader, indexCount] = getIndexReader(document, primitive);
@@ -333,7 +333,8 @@ MeshDataHandle<Vertex> readMeshData(const fx::gltf::Document& document,
             std::abort();
         }
     }
-    return MeshData<Vertex>::registerMeshData(MeshData(std::move(vertices), std::move(indices)));
+    return MeshData<Vertex>::registerMeshData(
+        MeshData(std::move(vertices), std::move(indices)));
 }
 
 std::function<std::optional<TextureData>(void)> getTextureDataReader(
@@ -364,12 +365,12 @@ std::function<std::optional<TextureData>(void)> getTextureDataReader(
 }
 
 template <typename Material>
-typename Material::BuilderType readMaterialData(
+typename MaterialBuilder<Material> readMaterialData(
     const std::filesystem::path& documentRootPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material);
 
 template <>
-typename UnlitMaterial::BuilderType readMaterialData<UnlitMaterial>(
+typename MaterialBuilder<UnlitMaterial> readMaterialData<UnlitMaterial>(
     const std::filesystem::path& documentRootPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material) {
     // baseColorTexture could be empty, add support for handling such missing
@@ -379,7 +380,7 @@ typename UnlitMaterial::BuilderType readMaterialData<UnlitMaterial>(
     auto albedoTextureReader =
         getTextureDataReader(documentRootPath, document, albedoTexture);
 
-    UnlitMaterial::BuilderType builder{};
+    MaterialBuilder<UnlitMaterial> builder{};
     builder.setAlbedoTextureData(albedoTextureReader());
     return builder;
 }
@@ -388,10 +389,10 @@ typename UnlitMaterial::BuilderType readMaterialData<UnlitMaterial>(
 // constexpr conditional compilation For now leave this as it is to keep the
 // same DocumentReader behavior for any material type
 template <>
-typename EmptyMaterial::BuilderType readMaterialData<EmptyMaterial>(
+typename MaterialBuilder<EmptyMaterial> readMaterialData<EmptyMaterial>(
     const std::filesystem::path& documentRootPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material) {
-    EmptyMaterial::BuilderType builder{};
+    MaterialBuilder<EmptyMaterial> builder{};
     return builder;
 }
 
@@ -544,8 +545,8 @@ inline bool isSkinAnimation(const SkinData& skinData,
 }
 
 inline AnimationHandle readAnimation(const SkinData& skinData,
-                               const fx::gltf::Document& document,
-                               const fx::gltf::Animation& animation) {
+                                     const fx::gltf::Document& document,
+                                     const fx::gltf::Animation& animation) {
     std::unordered_map<int32_t, NodeChannels> nodeChannelsMap;
 
     for (const auto& channel : animation.channels) {

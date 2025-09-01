@@ -2,10 +2,10 @@
 
 #include <glad/glad.h>
 
+#include <array>
 #include <filesystem>
 #include <iostream>
 #include <optional>
-#include <array>
 
 #include "graphics/resources/texture.h"
 

@@ -11,7 +11,7 @@ using SkinHandle = Handle<Skin>;
 using AnimationHandle = Handle<Animation>;
 
 class AnimationStorage {
-    private:
+   private:
     friend class Skin;
     friend class Animation;
     friend class AnimationPlayer;

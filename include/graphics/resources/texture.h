@@ -3,10 +3,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 
 #include <stb_image.h>
+
+#include <array>
 #include <filesystem>
 #include <iostream>
 #include <optional>
-#include <array>
 
 enum class TextureFormat : GLenum {
     Grey = 1,

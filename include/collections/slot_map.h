@@ -16,7 +16,7 @@ class Handle {
     static Handle getInvalid() noexcept {
         return Handle(invalidValue, invalidValue);
     }
-    
+
     Handle(const Handle&) = default;
     Handle& operator=(const Handle&) = default;
 
@@ -30,7 +30,6 @@ class Handle {
 
     Handle(uint32_t generation, uint32_t index)
         : generation(generation), storageIndex(index) {}
-
 
     uint32_t generation;
     uint32_t storageIndex;
@@ -113,11 +112,12 @@ class SlotMap {
 
     auto&& take() noexcept {
         freeCells = std::vector(storageCells.size());
-        for(auto& [i, generation]: std::views::enumerate(cellGenerations)) {
+        for (auto& [i, generation] : std::views::enumerate(cellGenerations)) {
             freeCells[i] = i;
             generation += 1;
         }
-        auto moveStorage = std::vector<std::optional<Item>>(storageCells.size());
+        auto moveStorage =
+            std::vector<std::optional<Item>>(storageCells.size());
         std::swap(moveStorage, storageCells);
         return std::move(moveStorage);
     }
@@ -131,7 +131,7 @@ class SlotMap {
         }
         return handle;
     }
- 
+
     void pop(Handle handle) noexcept {
         if (isHandleValid(handle)) {
             storageCells[handle.storageIndex] = std::nullopt;

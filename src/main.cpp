@@ -5,23 +5,23 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-#include <chrono>
 
+#include <chrono>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <stdexcept>
 
-#include "graphics/resources/material.h"
-#include "graphics/resources/gl/material.h"
-#include "graphics/resources/mesh.h"
-#include "graphics/resources/gl/mesh.h"
-#include "graphics/resources/gl/shader.h"
-#include "graphics/resources/animation.h"
-#include "graphics/resources/gl/buffer/std140.h"
 #include "graphics/assets/gltf.h"
 #include "graphics/assets/model.h"
-#include "graphics/renderer.h"
 #include "graphics/debug.h"
+#include "graphics/renderer.h"
+#include "graphics/resources/animation.h"
+#include "graphics/resources/gl/buffer/std140.h"
+#include "graphics/resources/gl/material.h"
+#include "graphics/resources/gl/mesh.h"
+#include "graphics/resources/gl/shader.h"
+#include "graphics/resources/material.h"
+#include "graphics/resources/mesh.h"
 
 constexpr size_t jointMatrixBufferBinding = 1;
 
@@ -139,16 +139,18 @@ int main(void) {
 
     ShaderBuilder unlitAnimatedShaderBuilder{};
     unlitAnimatedShaderBuilder.addStage(ShaderStage::Vertex,
-                                "shaders/unlit_animated/shader.vert");
+                                        "shaders/unlit_animated/shader.vert");
     unlitAnimatedShaderBuilder.addStage(ShaderStage::Fragment,
-                                "shaders/unlit_animated/shader.frag");
+                                        "shaders/unlit_animated/shader.frag");
     auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
 
-    auto unlitAnimatedDrawPack = unlitAnimatedMeshPack.createDrawPack(unlitMaterialPack);
+    auto unlitAnimatedDrawPack =
+        unlitAnimatedMeshPack.createDrawPack(unlitMaterialPack);
     unlitAnimatedDrawPack.addDraw(
         cesiumManMeshes[0], cesiumManMaterials[0],
-        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
-                   glm::vec3(2.0f)));
+        glm::scale(
+            glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
+            glm::vec3(2.0f)));
     ;
     auto unlitAnimatedStage = Stage(std::move(unlitAnimatedDrawPack));
     unlitAnimatedStage.setShader(unlitAnimatedShader);
@@ -179,7 +181,8 @@ int main(void) {
     auto coloredStage = Stage(std::move(coloredDrawPackBuilder));
     coloredStage.setShader(coloredShader);
 
-    auto pipeline = Pipeline(std::move(coloredStage), std::move(unlitStage), std::move(unlitAnimatedStage));
+    auto pipeline = Pipeline(std::move(coloredStage), std::move(unlitStage),
+                             std::move(unlitAnimatedStage));
 
     CameraMatrices cameraMatrices{};
     cameraMatrices.view =
@@ -205,7 +208,9 @@ int main(void) {
 
     while (!glfwWindowShouldClose(window)) {
         auto currentFrameTime = clock.now();
-        auto deltaTime = std::chrono::duration<float>(currentFrameTime - lastFrameTime).count();
+        auto deltaTime =
+            std::chrono::duration<float>(currentFrameTime - lastFrameTime)
+                .count();
         lastFrameTime = currentFrameTime;
 
         animationPlayer.update(deltaTime);
