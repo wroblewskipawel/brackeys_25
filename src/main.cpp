@@ -245,6 +245,12 @@ int main() {
     ecs.addComponent(player, PlayerMovementComponent{});
     ecs.addComponent(player, RenderableComponent{cubeUnlitPartial_1});
 
+    EntityID outEntity = ecs.createEntity();
+
+    ecs.addComponent(outEntity, PositionComponent{500.f, 501.f, 0.f});
+    ecs.addComponent(outEntity, CollidingComponent(0.5f));
+    ecs.addComponent(outEntity, RenderableComponent{cubeUnlitPartial_1});
+
     for (size_t i = 0; i < 30; ++i)
     {
         for (size_t j = 0; j < 40; ++j)

@@ -17,9 +17,13 @@ inline void collidingSystem(ECS& ecs, const float& deltaTime, RenderingQueues& r
 
     for (auto entity : entities) {
         auto pos = ecs.getComponent<PositionComponent>(entity);
-        if (pos) {
-            quadTree.insert(entity, pos->x, pos->y);
+#ifndef NDEBUG
+        if (!quadTree.insert(entity, pos->x, pos->y)) {
+            std::cout << "Entity " << entity << " out of world bounds" << std::endl;
         }
+#else
+        quadTree.insert(entity, pos->x, pos->y);
+#endif
     }
 
     for (auto entity : entities) {
