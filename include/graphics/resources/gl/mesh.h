@@ -11,6 +11,7 @@
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/shader.h"
 #include "graphics/resources/mesh.h"
+#include "graphics/storage/gl/mesh.h"
 
 void setInstanceAttributes(GLuint vao, GLuint nextLocation) {
     // Instance Attrib: glm::mat4
@@ -141,13 +142,27 @@ inline void destroyVertexArrays() {
 struct MeshBuffers {
     GLuint vbo{0};
     GLuint ebo{0};
+
+    MeshBuffers() = default;
+
+    MeshBuffers(const MeshBuffers&) = delete;
+    MeshBuffers& operator=(const MeshBuffers&) = delete;
+
+    MeshBuffers(MeshBuffers&& other) noexcept : vbo(other.vbo), ebo(other.ebo) {
+        other.vbo = 0;
+        other.ebo = 0;
+    };
+    MeshBuffers& operator=(MeshBuffers&& other) noexcept {
+        if (this != &other) {
+            vbo = other.vbo;
+            ebo = other.ebo;
+            other.vbo = 0;
+            other.ebo = 0;
+        }
+    };
 };
 
 struct Mesh {
-    static Mesh invalid() {
-        return Mesh{.indexCount = 0, .indexOffset = 0, .vertexOffset = 0};
-    }
-
     size_t indexCount;
     size_t indexOffset;
     size_t vertexOffset;
@@ -161,14 +176,25 @@ struct Mesh {
 
 template <typename Vertex>
 struct MeshHandle {
-    static MeshHandle invalid() {
-        return MeshHandle{std::numeric_limits<size_t>::max(),
-                          std::numeric_limits<size_t>::max()};
-    }
-
-    size_t packIndex;
     size_t meshIndex;
+    MeshPackHandle<Vertex> packHandle;
+
+    static auto getPackHandles(MeshPackHandle<Vertex> packHandle) noexcept {
+        const auto& meshPack =
+            MeshPackStorage<Vertex>::meshPackStorage.get(packHandle).get();
+        auto materialHandles = std::vector<MeshHandle<Vertex>>();
+        for (size_t meshIndex = 0; meshIndex < meshPack.numMeshes();
+             meshIndex++) {
+            materialHandles.emplace_back(MeshHandle(meshIndex, packHandle));
+        }
+        return materialHandles;
+    }
 };
+
+template <typename Vertex>
+inline auto getPackHandles(MeshPackHandle<Vertex> packHandle) noexcept {
+    return MeshHandle<Vertex>::getPackHandles(packHandle);
+}
 
 namespace std {
 template <>
@@ -188,56 +214,76 @@ class MeshPackBuilder;
 template <typename Vertex>
 class MeshPack {
    public:
+    static Mesh getMesh(MeshHandle<Vertex> meshHandle) noexcept {
+        return MeshPackStorage<Vertex>::meshPackStorage
+            .get(meshHandle.packHandle)
+            .get()
+            .getMesh(meshHandle.meshIndex);
+    }
+
+    static void bind(MeshPackHandle<Vertex> meshPack) {
+        auto vao = getVertexArray<Vertex>();
+        if (currentPackIndex != meshPack) {
+            auto& newPack =
+                MeshPackStorage<Vertex>::meshPackStorage.get(meshPack).get();
+            glVertexArrayVertexBuffer(vao, 0, newPack.buffers.vbo, 0,
+                                      sizeof(Vertex));
+            glVertexArrayElementBuffer(vao, newPack.buffers.ebo);
+            currentPackIndex = meshPack;
+        };
+        glBindVertexArray(vao);
+    }
+
     ~MeshPack() { glDeleteBuffers(2, &buffers.vbo); }
 
     MeshPack(const MeshPack&) = delete;
     MeshPack& operator=(const MeshPack&) = delete;
 
     MeshPack(MeshPack&& other) noexcept
-        : buffers(other.buffers),
-          meshes(std::move(other.meshes)),
-          packIndex(other.packIndex) {
-        other.packIndex = std::numeric_limits<size_t>::max();
-        other.buffers = {};
-    }
+        : buffers(std::move(other.buffers)), meshes(std::move(other.meshes)) {}
 
     MeshPack& operator=(MeshPack&& other) noexcept {
         if (this != &other) {
             glDeleteBuffers(2, &buffers.vbo);
-            buffers = other.buffers;
+            buffers = std::move(other.buffers);
             meshes = std::move(other.meshes);
-            packIndex = other.packIndex;
-            other.packIndex = std::numeric_limits<size_t>::max();
-            other.buffers = {};
         }
         return *this;
     }
 
-    Mesh getMesh(MeshHandle<Vertex> handle) const noexcept {
-        if (handle.packIndex != packIndex ||
-            handle.meshIndex >= meshes.size()) {
-            return Mesh::invalid();
-        }
-        return meshes[handle.meshIndex];
-    }
-
     MeshBuffers getBuffers() const noexcept { return buffers; }
+
+    size_t numMeshes() const noexcept { return meshes.size(); }
 
    private:
     friend class MeshPackBuilder<Vertex>;
 
-    MeshPack(MeshBuffers buffers, std::vector<Mesh>&& meshes, size_t packIndex)
-        : buffers(buffers), meshes(std::move(meshes)), packIndex(packIndex) {}
+    static MeshPackHandle<Vertex> registerMeshPack(
+        MeshPack&& meshPack) noexcept {
+        return MeshPackStorage<Vertex>::meshPackStorage.emplace(
+            std::move(meshPack));
+    }
+
+    MeshPack(MeshBuffers&& buffers, std::vector<Mesh>&& meshes)
+        : buffers(std::move(buffers)), meshes(std::move(meshes)) {}
+
+    Mesh getMesh(size_t meshIndex) const noexcept { return meshes[meshIndex]; }
+
+    inline static auto currentPackIndex = MeshPackHandle<Vertex>::getInvalid();
 
     MeshBuffers buffers;
     std::vector<Mesh> meshes;
-    size_t packIndex;
 };
+
+template <typename Vertex>
+inline Mesh getMesh(MeshHandle<Vertex> meshHandle) noexcept {
+    return MeshPack<Vertex>::getMesh(meshHandle);
+}
 
 template <typename Vertex>
 class MeshPackBuilder {
    public:
-    MeshPackBuilder() : packIndex(packCount++) {}
+    MeshPackBuilder() = default;
 
     MeshPackBuilder(const MeshPackBuilder&) = delete;
     MeshPackBuilder& operator=(const MeshPackBuilder&) = delete;
@@ -245,22 +291,20 @@ class MeshPackBuilder {
     MeshPackBuilder(MeshPackBuilder&&) = delete;
     MeshPackBuilder& operator=(MeshPackBuilder&&) = delete;
 
-    MeshHandle<Vertex> addMesh(MeshDataHandle<Vertex> mesh) {
+    MeshPackBuilder& addMesh(MeshDataHandle<Vertex> mesh) {
         meshDatas.emplace_back(mesh);
-        return MeshHandle<Vertex>{packIndex, meshDatas.size() - 1};
+        return *this;
     }
 
-    std::vector<MeshHandle<Vertex>> addMeshMulti(
+    MeshPackBuilder& addMeshMulti(
         const std::vector<MeshDataHandle<Vertex>>& meshes) {
-        std::vector<MeshHandle<Vertex>> handles;
-        handles.reserve(meshes.size());
         for (auto mesh : meshes) {
-            handles.emplace_back(addMesh(mesh));
+            addMesh(mesh);
         }
-        return handles;
+        return *this;
     }
 
-    MeshPack<Vertex> build() {
+    MeshPackHandle<Vertex> build() {
         MeshBuffers buffers{};
         std::vector<Mesh> meshes;
 
@@ -306,11 +350,10 @@ class MeshPackBuilder {
         glNamedBufferStorage(buffers.ebo, indices.size() * sizeof(GLuint),
                              indices.data(), GL_DYNAMIC_STORAGE_BIT);
 
-        return MeshPack<Vertex>(buffers, std::move(meshes), packIndex);
+        return MeshPack<Vertex>::registerMeshPack(
+            MeshPack<Vertex>(std::move(buffers), std::move(meshes)));
     }
 
    private:
-    inline static size_t packCount{0};
-    size_t packIndex;
     std::vector<MeshDataHandle<Vertex>> meshDatas;
 };

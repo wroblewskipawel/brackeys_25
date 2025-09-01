@@ -83,16 +83,18 @@ int main(void) {
     auto emptyMaterial = getPackHandles(emptyMaterialPack)[0];
 
     MeshPackBuilder<UnlitVertex> unlitMeshPackBuilder{};
-    auto unlitCubeMesh =
-        unlitMeshPackBuilder.addMesh(getCubeMesh<UnlitVertex>());
-    auto waterBottleMeshes =
-        unlitMeshPackBuilder.addMeshMulti(waterBottle.takeMeshes());
+    unlitMeshPackBuilder.addMesh(getCubeMesh<UnlitVertex>())
+        .addMeshMulti(waterBottle.takeMeshes());
     auto unlitMeshPack = unlitMeshPackBuilder.build();
+    auto unlitMeshes = getPackHandles(unlitMeshPack);
+    auto unlitCubeMesh = unlitMeshes[0];
+    auto waterBottleMesh = unlitMeshes[1];
 
     MeshPackBuilder<UnlitAnimatedVertex> unlitAnimatedMeshPackBuilder{};
-    auto cesiumManMeshes =
-        unlitAnimatedMeshPackBuilder.addMeshMulti(cesiumMan.takeMeshes());
+    unlitAnimatedMeshPackBuilder.addMeshMulti(cesiumMan.takeMeshes());
     auto unlitAnimatedMeshPack = unlitAnimatedMeshPackBuilder.build();
+    auto unlitAnimatedMeshes = getPackHandles(unlitAnimatedMeshPack);
+    auto cesiumManMesh = unlitAnimatedMeshes[0];
 
     MaterialPackBuilder<UnlitMaterial> unlitMaterialPackBuilder{};
 
@@ -132,7 +134,7 @@ int main(void) {
     //     unlitCubeMesh, unlitMaterial_2,
     //     glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
     unlitDrawPack.addDraw(
-        waterBottleMeshes[0], waterBottleMaterial,
+        waterBottleMesh, waterBottleMaterial,
         glm::scale(
             glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 0.0f)),
             glm::vec3(6.0f)));
@@ -149,7 +151,7 @@ int main(void) {
     auto unlitAnimatedDrawPack =
         DrawPackBuilder(unlitAnimatedMeshPack, unlitMaterialPack);
     unlitAnimatedDrawPack.addDraw(
-        cesiumManMeshes[0], cesiumManMaterial,
+        cesiumManMesh, cesiumManMaterial,
         glm::scale(
             glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
             glm::vec3(2.0f)));
@@ -158,9 +160,9 @@ int main(void) {
     unlitAnimatedStage.setShader(unlitAnimatedShader);
 
     MeshPackBuilder<ColoredVertex> coloredMeshPackBuilder{};
-    auto coloredCubeMesh =
-        coloredMeshPackBuilder.addMesh(getCubeMesh<ColoredVertex>());
+    coloredMeshPackBuilder.addMesh(getCubeMesh<ColoredVertex>());
     auto coloredMeshPack = coloredMeshPackBuilder.build();
+    auto coloredCubeMesh = getPackHandles(coloredMeshPack)[0];
 
     ShaderBuilder coloredShaderBuilder{};
     coloredShaderBuilder.addStage(ShaderStage::Vertex,

@@ -46,29 +46,27 @@ class DrawPack {
     DrawPack& operator=(const DrawPack&) = delete;
 
     DrawPack(DrawPack&& other) noexcept
-        : buffers(other.buffers),
-          vao(other.vao),
+        : meshes(std::move(other.meshes)),
+          instanceBuffers(std::move(other.instanceBuffers)),
           materialPack(other.materialPack),
-          meshes(std::move(other.meshes)),
-          instanceBuffers(std::move(other.instanceBuffers)) {
-        other.buffers = {};
+          meshPack(other.meshPack),
+          vao(other.vao) {
         other.vao = 0;
+        other.meshPack = MeshPackHandle<Vertex>::getInvalid();
         other.materialPack = MaterialPackHandle<Material>::getInvalid();
     };
 
     DrawPack& operator=(DrawPack&& other) noexcept {
         if (this != &other) {
-            buffers = other.buffers;
             vao = other.vao;
+            meshPack = other.meshPack;
             materialPack = other.materialPack;
             meshes = std::move(other.meshes);
             instanceBuffers = std::move(other.instanceBuffers);
 
-            other.buffers = {};
             other.vao = 0;
+            other.meshPack = MeshPackHandle<Material>::getInvalid();
             other.materialPack = MaterialPackHandle<Material>::getInvalid();
-            other.meshes.clear();
-            other.instanceBuffers.clear();
         }
         return *this;
     };
@@ -88,13 +86,13 @@ class DrawPack {
 
     DrawPack(
         const std::unordered_map<DrawInfo, std::vector<glm::mat4>>& drawData,
-        MaterialPackHandle<Material> materialPack, MeshBuffers buffers,
-        GLuint vao) noexcept
+        MaterialPackHandle<Material> materialPack,
+        MeshPackHandle<Vertex> meshPack) noexcept
         : meshes(drawData.size()),
           instanceBuffers(drawData.size()),
           materialPack(materialPack),
-          buffers(buffers),
-          vao(vao) {
+          meshPack(meshPack),
+          vao(getVertexArray<Vertex>()) {
         glCreateBuffers(instanceBuffers.size(), instanceBuffers.data());
         for (const auto& [i, meshDrawData] : std::views::enumerate(drawData)) {
             const auto& [drawInfo, instances] = meshDrawData;
@@ -106,9 +104,7 @@ class DrawPack {
     }
 
     void draw(const UniformLocations& uniformLocations) {
-        glBindVertexArray(vao);
-        glVertexArrayVertexBuffer(vao, 0, buffers.vbo, 0, sizeof(Vertex));
-        glVertexArrayElementBuffer(vao, buffers.ebo);
+        MeshPack<Vertex>::bind(meshPack);
         MaterialPack<Material>::bind(materialPack);
         for (const auto& [draw, instanceBuffer] :
              std::views::zip(meshes, instanceBuffers)) {
@@ -126,21 +122,21 @@ class DrawPack {
     std::vector<DrawInstanced> meshes;
     std::vector<GLuint> instanceBuffers;
     MaterialPackHandle<Material> materialPack;
-    MeshBuffers buffers;
+    MeshPackHandle<Vertex> meshPack;
     GLuint vao;
 };
 
 template <typename Vertex, typename Material>
 class DrawPackBuilder {
    public:
-    DrawPackBuilder(const MeshPack<Vertex>& meshPack,
+    DrawPackBuilder(MeshPackHandle<Vertex> meshPack,
                     MaterialPackHandle<Material> materialPack) noexcept
         : meshPack(meshPack), materialPack(materialPack) {}
 
     DrawPackBuilder& addDraw(MeshHandle<Vertex> meshHandle,
                              MaterialHandle<Material> materialHandle,
                              glm::mat4 modelMatrix) {
-        Mesh mesh = meshPack.getMesh(meshHandle);
+        Mesh mesh = getMesh(meshHandle);
         DrawInfo drawInfo{mesh, materialHandle.materialIndex};
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
@@ -157,7 +153,7 @@ class DrawPackBuilder {
     DrawPackBuilder& addDrawMulti(MeshHandle<Vertex> meshHandle,
                                   MaterialHandle<Material> materialHandle,
                                   std::vector<glm::mat4>&& modelMatrices) {
-        Mesh mesh = meshPack.getMesh(meshHandle);
+        Mesh mesh = getMesh(meshHandle);
         DrawInfo drawInfo{mesh, materialHandle.uniformIndex};
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
@@ -172,13 +168,11 @@ class DrawPackBuilder {
     }
 
     DrawPack<Vertex, Material> build() {
-        return DrawPack<Vertex, Material>{drawData, materialPack,
-                                          meshPack.getBuffers(),
-                                          getVertexArray<Vertex>()};
+        return DrawPack<Vertex, Material>{drawData, materialPack, meshPack};
     }
 
    private:
-    const MeshPack<Vertex>& meshPack;
+    MeshPackHandle<Vertex> meshPack;
     MaterialPackHandle<Material> materialPack;
     std::unordered_map<DrawInfo, std::vector<glm::mat4>> drawData;
 };
