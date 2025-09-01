@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "mesh.h"
-#include "shader.h"
+#include "graphics/resources/mesh.h"
+#include "graphics/resources/shader.h"
 
 template <typename... Stages>
 class Pipeline;

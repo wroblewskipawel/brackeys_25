@@ -5,8 +5,8 @@
 #include <filesystem>
 #include <glm/glm.hpp>
 
-#include "std140.h"
-#include "texture.h"
+#include "graphics/resources/texture.h"
+#include "graphics/buffer/std140.h"
 
 constexpr size_t materialPackBufferBinding = 0;
 

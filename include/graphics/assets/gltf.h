@@ -16,9 +16,9 @@
 #include <type_traits>
 #include <unordered_map>
 
-#include "material.h"
-#include "mesh.h"
-#include "skin.h"
+#include "graphics/resources/material.h"
+#include "graphics/resources/mesh.h"
+#include "graphics/resources/skin.h"
 
 template <typename Data>
 fx::gltf::Accessor::Type getAccessorType() {

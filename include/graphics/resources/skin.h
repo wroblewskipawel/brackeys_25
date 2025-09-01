@@ -275,7 +275,7 @@ class SkinBuilder {
 
 class AnimationBuilder;
 class AnimationPlayer;
-
+ 
 class Animation {
    public:
     size_t numJoints() const { return joints.size(); }

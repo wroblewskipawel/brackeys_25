@@ -11,15 +11,15 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <stdexcept>
 
-#include "debug.h"
-#include "gltf.h"
-#include "material.h"
-#include "mesh.h"
-#include "model.h"
-#include "renderer.h"
-#include "shader.h"
-#include "skin.h"
-#include "std140.h"
+#include "graphics/resources/material.h"
+#include "graphics/resources/mesh.h"
+#include "graphics/resources/model.h"
+#include "graphics/resources/shader.h"
+#include "graphics/resources/skin.h"
+#include "graphics/buffer/std140.h"
+#include "graphics/assets/gltf.h"
+#include "graphics/renderer.h"
+#include "graphics/debug.h"
 
 constexpr size_t jointMatrixBufferBinding = 1;
 

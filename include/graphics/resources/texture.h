@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <iostream>
 #include <optional>
+#include <array>
 
 struct SamplerConfig {
     GLint wrapS = GL_REPEAT;

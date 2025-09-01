@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 
-#include "mesh.h"
+#include "graphics/resources/mesh.h"
 
 template <typename Vertex>
 MeshData<Vertex> createCube();

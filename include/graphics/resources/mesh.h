@@ -8,7 +8,7 @@
 #include <vector>
 #include <type_traits>
 
-#include "shader.h"
+#include "graphics/resources/shader.h"
 
 void setInstanceAttributes(GLuint vao, GLuint nextLocation) {
     // Instance Attrib: glm::mat4
