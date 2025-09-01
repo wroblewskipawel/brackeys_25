@@ -13,6 +13,10 @@ class Handle {
    public:
     constexpr static auto invalidValue = std::numeric_limits<uint32_t>::max();
 
+    static Handle getInvalid() noexcept {
+        return Handle(invalidValue, invalidValue);
+    }
+    
     Handle(const Handle&) = default;
     Handle& operator=(const Handle&) = default;
 
@@ -27,9 +31,6 @@ class Handle {
     Handle(uint32_t generation, uint32_t index)
         : generation(generation), storageIndex(index) {}
 
-    static Handle getInvalid() noexcept {
-        return Handle(invalidValue, invalidValue);
-    }
 
     uint32_t generation;
     uint32_t storageIndex;

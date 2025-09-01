@@ -4,6 +4,7 @@
 #include <vector>
 #include <type_traits>
 
+#include "graphics/storage/mesh.h"
 struct ColoredVertex {
     glm::vec3 position;
     glm::vec3 color;
@@ -33,6 +34,10 @@ constexpr bool isAnimatedVertex() {
 
 template <typename Vertex>
 struct MeshData {
+    static MeshDataHandle<Vertex> registerMeshData(MeshData&& meshData) {
+        return MeshDataStorage<Vertex>::meshStorage.emplace(std::move(meshData));
+    }
+
     MeshData(std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices)
         : vertices(std::move(vertices)), indices(std::move(indices)) {}
 
@@ -44,15 +49,4 @@ struct MeshData {
 
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
-};
-
-template <typename Vertex>
-struct MeshHandle {
-    static MeshHandle invalid() {
-        return MeshHandle{std::numeric_limits<size_t>::max(),
-                          std::numeric_limits<size_t>::max()};
-    }
-
-    size_t packIndex;
-    size_t meshIndex;
 };

@@ -83,7 +83,7 @@ int main(void) {
 
     MeshPackBuilder<UnlitVertex> unlitMeshPackBuilder{};
     auto unlitCubeMesh =
-        unlitMeshPackBuilder.addMesh(createCube<UnlitVertex>());
+        unlitMeshPackBuilder.addMesh(getCubeMesh<UnlitVertex>());
     auto waterBottleMeshes =
         unlitMeshPackBuilder.addMeshMulti(waterBottle.takeMeshes());
     auto unlitMeshPack = unlitMeshPackBuilder.build();
@@ -155,7 +155,7 @@ int main(void) {
 
     MeshPackBuilder<ColoredVertex> coloredMeshPackBuilder{};
     auto coloredCubeMesh =
-        coloredMeshPackBuilder.addMesh(createCube<ColoredVertex>());
+        coloredMeshPackBuilder.addMesh(getCubeMesh<ColoredVertex>());
     auto coloredMeshPack = coloredMeshPackBuilder.build();
 
     ShaderBuilder coloredShaderBuilder{};

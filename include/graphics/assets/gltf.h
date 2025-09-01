@@ -17,6 +17,7 @@
 #include <unordered_map>
 
 #include "graphics/storage/animation.h"
+#include "graphics/storage/mesh.h"
 #include "graphics/resources/material.h"
 #include "graphics/resources/mesh.h"
 #include "graphics/resources/animation/joint.h"
@@ -311,7 +312,7 @@ inline std::pair<std::function<bool(ColoredVertex&)>, size_t> getVertexReader(
 }
 
 template <typename Vertex>
-MeshData<Vertex> readMeshData(const fx::gltf::Document& document,
+MeshDataHandle<Vertex> readMeshData(const fx::gltf::Document& document,
                               const fx::gltf::Primitive& primitive) {
     auto [vertexReader, vertexCount] =
         getVertexReader<Vertex>(document, primitive);
@@ -332,7 +333,7 @@ MeshData<Vertex> readMeshData(const fx::gltf::Document& document,
             std::abort();
         }
     }
-    return MeshData<Vertex>{std::move(vertices), std::move(indices)};
+    return MeshData<Vertex>::registerMeshData(MeshData(std::move(vertices), std::move(indices)));
 }
 
 std::function<std::optional<TextureData>(void)> getTextureDataReader(
@@ -603,11 +604,11 @@ class DocumentReader {
     DocumentReader& operator=(const DocumentReader&) = delete;
     DocumentReader& operator=(DocumentReader&&) = delete;
 
-    const std::vector<MeshData<Vertex>>& getMeshes() const noexcept {
+    const std::vector<MeshDataHandle<Vertex>>& getMeshes() const noexcept {
         return meshes;
     }
 
-    std::vector<MeshData<Vertex>> takeMeshes() noexcept {
+    std::vector<MeshDataHandle<Vertex>> takeMeshes() noexcept {
         return std::move(meshes);
     }
 
@@ -671,7 +672,7 @@ class DocumentReader {
         }
     }
 
-    std::vector<MeshData<Vertex>> meshes;
+    std::vector<MeshDataHandle<Vertex>> meshes;
     std::vector<MaterialBuilder> materials;
     std::vector<AnimationHandle> animations;
 };

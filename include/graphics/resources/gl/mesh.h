@@ -158,6 +158,17 @@ struct Mesh {
     }
 };
 
+template <typename Vertex>
+struct MeshHandle {
+    static MeshHandle invalid() {
+        return MeshHandle{std::numeric_limits<size_t>::max(),
+                          std::numeric_limits<size_t>::max()};
+    }
+
+    size_t packIndex;
+    size_t meshIndex;
+};
+
 namespace std {
 template <>
 struct hash<Mesh> {
@@ -242,17 +253,17 @@ class MeshPackBuilder {
     MeshPackBuilder(MeshPackBuilder&&) = delete;
     MeshPackBuilder& operator=(MeshPackBuilder&&) = delete;
 
-    MeshHandle<Vertex> addMesh(MeshData<Vertex>&& mesh) {
-        meshDatas.emplace_back(std::move(mesh));
+    MeshHandle<Vertex> addMesh(MeshDataHandle<Vertex> mesh) {
+        meshDatas.emplace_back(mesh);
         return MeshHandle<Vertex>{packIndex, meshDatas.size() - 1};
     }
 
     std::vector<MeshHandle<Vertex>> addMeshMulti(
-        std::vector<MeshData<Vertex>>&& meshes) {
+        const std::vector<MeshDataHandle<Vertex>>& meshes) {
         std::vector<MeshHandle<Vertex>> handles;
         handles.reserve(meshes.size());
-        for (auto&& mesh : meshes) {
-            handles.emplace_back(addMesh(std::move(mesh)));
+        for (auto mesh : meshes) {
+            handles.emplace_back(addMesh(mesh));
         }
         return handles;
     }
@@ -263,12 +274,14 @@ class MeshPackBuilder {
 
         size_t indexOffset = 0;
         size_t vertexOffset = 0;
-        for (const auto& meshData : meshDatas) {
-            Mesh mesh{.indexCount = meshData.indices.size(),
+        for (auto meshData : meshDatas) {
+            const auto& meshRef = MeshDataStorage<Vertex>::meshStorage.get(meshData).get();
+
+            Mesh mesh{.indexCount = meshRef.indices.size(),
                       .indexOffset = indexOffset,
                       .vertexOffset = vertexOffset};
             indexOffset += mesh.indexCount;
-            vertexOffset += meshData.vertices.size();
+            vertexOffset += meshRef.vertices.size();
             meshes.push_back(mesh);
         }
 
@@ -277,12 +290,14 @@ class MeshPackBuilder {
 
         vertexOffset = 0;
         indexOffset = 0;
-        for (const auto& meshData : meshDatas) {
-            auto numVertices = meshData.vertices.size();
-            auto numIndices = meshData.indices.size();
-            std::memcpy(&vertices[vertexOffset], meshData.vertices.data(),
+        for (auto meshData : meshDatas) {
+            const auto& meshRef = MeshDataStorage<Vertex>::meshStorage.get(meshData).get();
+
+            auto numVertices = meshRef.vertices.size();
+            auto numIndices = meshRef.indices.size();
+            std::memcpy(&vertices[vertexOffset], meshRef.vertices.data(),
                         numVertices * sizeof(Vertex));
-            std::memcpy(&indices[indexOffset], meshData.indices.data(),
+            std::memcpy(&indices[indexOffset], meshRef.indices.data(),
                         numIndices * sizeof(GLuint));
             for (size_t i = 0; i < numIndices; i++) {
                 indices[indexOffset + i] += vertexOffset;
@@ -303,7 +318,7 @@ class MeshPackBuilder {
    private:
     inline static size_t packCount{0};
     size_t packIndex;
-    std::vector<MeshData<Vertex>> meshDatas;
+    std::vector<MeshDataHandle<Vertex>> meshDatas;
 };
 
 template <typename Vertex, typename Material>
