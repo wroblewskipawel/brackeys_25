@@ -238,7 +238,6 @@ int main() {
                             std::move(dynamicColoredQueue)});
 
     EntityID player = ecs.createEntity();
-    EntityID ent1 = ecs.createEntity();
 
     ecs.addComponent(player, PositionComponent{0.f, 0.f, 0.f});
     ecs.addComponent(player, MovableComponent(7.f, 5.f));
@@ -246,10 +245,17 @@ int main() {
     ecs.addComponent(player, PlayerMovementComponent{});
     ecs.addComponent(player, RenderableComponent{cubeUnlitPartial_1});
 
-    ecs.addComponent(ent1, PositionComponent{5.f, 6.f, 0.f});
-    ecs.addComponent(ent1, MovableComponent(1.f, 5.f));
-    ecs.addComponent(ent1, CollidingComponent(0.5f));
-    ecs.addComponent(ent1, RenderableComponent{cubeUnlitPartial_1});
+    for (size_t i = 0; i < 30; ++i)
+    {
+        for (size_t j = 0; j < 40; ++j)
+        {
+            EntityID ent = ecs.createEntity();
+            ecs.addComponent(ent, PositionComponent{5.f + i, 6.f + j, 0.f});
+            ecs.addComponent(ent, MovableComponent(1.f, 5.f));
+            ecs.addComponent(ent, CollidingComponent(0.5f));
+            ecs.addComponent(ent, RenderableComponent{cubeUnlitPartial_1});
+        }
+    }
 
     for (size_t i = 0; i < 10; ++i) {
         EntityID wall = ecs.createEntity();
@@ -283,7 +289,7 @@ int main() {
         // dynamicUnlitQueue->emplace_back(documentUnlitPartial.withTransform(
         //     glm::translate(glm::mat4(1.0), glm::vec3(-3.0, -5.0, -3.0))));
 
-        updateImGui(window);
+        updateImGui(window, ecs.entityStorage.getNumberOfEntities(), deltaTime);
 
         if (gInputHandler.isClicked(Key::R)) gMusicManager.play(SoundID::Coin);
         if (gInputHandler.isPressed(Key::Space))

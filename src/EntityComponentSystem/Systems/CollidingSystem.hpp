@@ -1,5 +1,6 @@
 #pragma once
 #include "../ECS.hpp"
+#include "QuadTree.hpp"
 
 inline bool collide(const float& aX, const float& aY, const float& aR,
                     const float& bX, const float& bY, const float& bR) {
@@ -11,53 +12,57 @@ constexpr float repulsive_force = 3.f;
 inline void collidingSystem(ECS& ecs, const float& deltaTime, RenderingQueues& renderingQueues) {
     auto entities = ecs.getEntitiesWithComponent<CollidingComponent>().andHas<PositionComponent>().get();
 
-    for (auto it1 = entities.begin(); it1 != entities.end(); ++it1) {
-        auto it2 = it1;
-        ++it2;
+    // 1. Build QuadTree (assuming world bounds, adjust as needed)
+    AABB worldBounds{0.f, 0.f, 500.f, 500.f};  // center (0,0), half-width/height=500
+    QuadTree quadTree(worldBounds);
 
-        for (; it2 != entities.end(); ++it2) {
-            const auto& entityA = *it1;
-            const auto& entityB = *it2;
-            auto ApComponent = ecs.getComponent<PositionComponent>(entityA);
-            auto AcComponent = ecs.getComponent<CollidingComponent>(entityA);
-            auto& [Ax, Ay, Az] = *ApComponent;
-            auto& [Ar] = *AcComponent;
+    for (auto entity : entities) {
+        auto pos = ecs.getComponent<PositionComponent>(entity);
+        if (pos) {
+            quadTree.insert(entity, pos->x, pos->y);
+        }
+    }
 
-            auto BpComponent = ecs.getComponent<PositionComponent>(entityB);
-            auto BcComponent = ecs.getComponent<CollidingComponent>(entityB);
-            auto& [Bx, By, Bz] = *BpComponent;
-            auto& [Br] = *BcComponent;
+    // 2. Collision check using spatial queries
+    for (auto entity : entities) {
+        auto pos = ecs.getComponent<PositionComponent>(entity);
+        auto col = ecs.getComponent<CollidingComponent>(entity);
 
-            if (collide(Ax, Ay, Ar, Bx, By, Br)) {
-                float dx = Bx - Ax;
-                float dy = By - Ay;
+        // Query nearby entities in an AABB around the circle
+        AABB range{pos->x, pos->y, col->r, col->r};
+        std::vector<EntityID> candidates;
+        quadTree.query(range, candidates);
+
+        for (auto other : candidates) {
+            if (other == entity) continue;
+
+            auto posB = ecs.getComponent<PositionComponent>(other);
+            auto colB = ecs.getComponent<CollidingComponent>(other);
+
+            if (collide(pos->x, pos->y, col->r, posB->x, posB->y, colB->r)) {
+                // Handle resolution (same as before)
+                float dx = posB->x - pos->x;
+                float dy = posB->y - pos->y;
                 float distSq = dx*dx + dy*dy;
                 float dist = std::sqrt(distSq);
 
-                if (dist == 0.f) {
-                    dx = 1.f;
-                    dy = 0.f;
-                    dist = 1.f;
-                }
+                if (dist == 0.f) { dx = 1.f; dy = 0.f; dist = 1.f; }
 
-                float overlap = (Ar + Br - dist);
-
+                float overlap = (col->r + colB->r - dist);
                 float nx = dx / dist;
                 float ny = dy / dist;
 
                 float pushA = 0.5f * overlap;
                 float pushB = 0.5f * overlap;
 
-                auto AmComponent = ecs.getComponent<MovableComponent>(entityA);
-                if (AmComponent != nullptr) {
-                    Ax -= nx * pushA;
-                    Ay -= ny * pushA;
+                if (auto mA = ecs.getComponent<MovableComponent>(entity)) {
+                    pos->x -= nx * pushA;
+                    pos->y -= ny * pushA;
                 }
 
-                auto BmComponent = ecs.getComponent<MovableComponent>(entityB);
-                if (BmComponent != nullptr) {
-                    Bx += nx * pushB;
-                    By += ny * pushB;
+                if (auto mB = ecs.getComponent<MovableComponent>(other)) {
+                    posB->x += nx * pushB;
+                    posB->y += ny * pushB;
                 }
             }
         }
