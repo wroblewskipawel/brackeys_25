@@ -206,11 +206,12 @@ int main() {
         Pipeline(std::move(coloredStaticStage), std::move(unlitStaticStage),
                  std::move(dynamicColoredStage), std::move(dynamicUnlitStage));
 
+    float smoothSpeed = 5.0f;
+    glm::vec3 cameraPos = glm::vec3(0.0f, 8.0f, 20.0f);
+    glm::vec3 cameraOffset = glm::vec3(0.0f, 8.0f, 20.0f);
+    glm::vec3 worldUp = glm::vec3(0.0f, 0.0f, 1.0f);
     CameraMatrices cameraMatrices{};
-    cameraMatrices.view =
-    glm::lookAt(glm::vec3(0.0f, 2.0f, 5.0f),
-                glm::vec3(0.0f, 0.0f, 0.0f),
-                glm::vec3(0.0f, 0.0f, 1.0f));
+    cameraMatrices.view = glm::lookAt(cameraPos, cameraOffset, worldUp);
     cameraMatrices.projection =
         glm::perspective(glm::radians(45.0f), 480.0f / 640.0f, 1e-1f, 1e3f);
 
@@ -238,22 +239,29 @@ int main() {
 
     EntityID player = ecs.createEntity();
     EntityID ent1 = ecs.createEntity();
-    EntityID ent2 = ecs.createEntity();
+    // EntityID ent2 = ecs.createEntity();
 
     ecs.addComponent(player, PositionComponent{0.f, 0.f, 0.f});
-    ecs.addComponent(player, MovableComponent(3.f, 5.f));
+    ecs.addComponent(player, MovableComponent(7.f, 5.f));
     ecs.addComponent(player, CollidingComponent(0.5f));
     ecs.addComponent(player, PlayerMovementComponent{});
     ecs.addComponent(player, RenderableComponent{cubeUnlitPartial_1});
 
-    ecs.addComponent(ent1, PositionComponent{5.f, 5.f, 0.f});
+    ecs.addComponent(ent1, PositionComponent{5.f, 6.f, 0.f});
     ecs.addComponent(ent1, MovableComponent(1.f, 5.f));
     ecs.addComponent(ent1, CollidingComponent(0.5f));
     ecs.addComponent(ent1, RenderableComponent{cubeUnlitPartial_1});
 
-    ecs.addComponent(ent2, PositionComponent{2.5f, 5.f, 0.f});
-    ecs.addComponent(ent2, CollidingComponent(0.5f));
-    ecs.addComponent(ent2, RenderableComponent{cubeColoredPartial});
+    // ecs.addComponent(ent2, PositionComponent{2.5f, 5.f, 0.f});
+    // ecs.addComponent(ent2, CollidingComponent(0.5f));
+    // ecs.addComponent(ent2, RenderableComponent{cubeColoredPartial});
+
+    for (size_t i = 0; i < 10; ++i) {
+        EntityID wall = ecs.createEntity();
+        ecs.addComponent(wall, PositionComponent{2.5f + i, 5.f, 0.f});
+        ecs.addComponent(wall, CollidingComponent(0.5f));
+        ecs.addComponent(wall, RenderableComponent{cubeColoredPartial});
+    }
 
     ecs.nextStage(ECS::StageType::Sequential)
         .addSystem(collidingSystem)
@@ -292,10 +300,11 @@ int main() {
 
         auto position = ecs.getComponent<PositionComponent>(player);
         auto [x, y, z] = *position;
-        cameraMatrices.view =
-            glm::lookAt(glm::vec3(0.0f + x, 8.0f + y, 20.0f),
-                        glm::vec3(x, y, 0.0f),
-                        glm::vec3(0.0f, 0.0f, 1.0f));
+        glm::vec3 targetCameraPos = glm::vec3(x, y, z) + cameraOffset;
+        cameraPos = glm::mix(cameraPos, targetCameraPos, 1.0f - expf(-smoothSpeed * deltaTime));
+        glm::vec3 lookTarget = cameraPos - cameraOffset;
+        cameraMatrices.view = glm::lookAt(cameraPos, lookTarget, worldUp);
+
         pipeline.execute(cameraMatrices);
         renderImGui();
 
