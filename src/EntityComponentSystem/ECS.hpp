@@ -12,12 +12,10 @@
 #include "material.h"
 #include "draw.h"
 
-
 struct RenderingQueues {
     std::shared_ptr<DrawQueue<UnlitVertex, UnlitMaterial>> unlitQueue{nullptr};
     std::shared_ptr<DrawQueue<ColoredVertex, EmptyMaterial>> coloredQueue{nullptr};
 };
-
 
 class ECS {
 public:

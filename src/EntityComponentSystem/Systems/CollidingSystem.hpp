@@ -20,12 +20,12 @@ inline void collidingSystem(ECS& ecs, const float& deltaTime, RenderingQueues& r
             const auto& entityB = *it2;
             auto ApComponent = ecs.getComponent<PositionComponent>(entityA);
             auto AcComponent = ecs.getComponent<CollidingComponent>(entityA);
-            auto& [Ax, Ay, _] = *ApComponent;
+            auto& [Ax, Ay, Az] = *ApComponent;
             auto& [Ar] = *AcComponent;
 
             auto BpComponent = ecs.getComponent<PositionComponent>(entityB);
             auto BcComponent = ecs.getComponent<CollidingComponent>(entityB);
-            auto& [Bx, By, _] = *BpComponent;
+            auto& [Bx, By, Bz] = *BpComponent;
             auto& [Br] = *BcComponent;
 
             if (collide(Ax, Ay, Ar, Bx, By, Br)) {
