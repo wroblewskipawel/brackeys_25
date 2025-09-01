@@ -12,12 +12,14 @@
 #include <stdexcept>
 
 #include "graphics/resources/material.h"
+#include "graphics/resources/gl/material.h"
 #include "graphics/resources/mesh.h"
-#include "graphics/resources/model.h"
-#include "graphics/resources/shader.h"
+#include "graphics/resources/gl/mesh.h"
+#include "graphics/resources/gl/shader.h"
 #include "graphics/resources/animation.h"
-#include "graphics/buffer/std140.h"
+#include "graphics/resources/gl/buffer/std140.h"
 #include "graphics/assets/gltf.h"
+#include "graphics/assets/model.h"
 #include "graphics/renderer.h"
 #include "graphics/debug.h"
 

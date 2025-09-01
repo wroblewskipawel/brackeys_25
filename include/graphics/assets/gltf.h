@@ -611,7 +611,7 @@ class DocumentReader {
         return std::move(meshes);
     }
 
-    using MaterialBuilder = typename Material::BuilderType;
+    using MaterialBuilder = MaterialBuilder<Material>;
 
     const std::vector<MaterialBuilder>& getMaterials() const noexcept {
         return materials;

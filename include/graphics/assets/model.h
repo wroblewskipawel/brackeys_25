@@ -35,7 +35,7 @@ MeshData<ColoredVertex> createCube() {
         {.position = {0.5f, 0.5f, 0.5f},
          .color = {1.0f, 1.0f, 1.0f}}  // 7: white
     };
-    std::vector<GLuint> indices{// Front face (z = +0.5)
+    std::vector<uint32_t> indices{// Front face (z = +0.5)
                                 4, 5, 6, 5, 7, 6,
                                 // Back face (z = -0.5)
                                 0, 2, 1, 1, 2, 3,
@@ -91,7 +91,7 @@ MeshData<UnlitVertex> createCube() {
         {{ 0.5f,  0.5f, -0.5f}, {1.0f, 1.0f}}, // 23: right-top
     };
 
-    std::vector<GLuint> indices{
+    std::vector<uint32_t> indices{
         // Front face
         0, 1, 2, 1, 3, 2,
         // Back face
