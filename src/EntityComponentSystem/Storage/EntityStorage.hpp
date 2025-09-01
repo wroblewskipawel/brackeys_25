@@ -163,6 +163,10 @@ public:
         return ids;
     }
 
+    size_t getNumberOfEntities() const {
+        return entities.size();
+    }
+
     template<typename T>
     friend class ComponentStorage;
 };
