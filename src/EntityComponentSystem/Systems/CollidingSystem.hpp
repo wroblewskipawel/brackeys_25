@@ -29,28 +29,35 @@ inline void collidingSystem(ECS& ecs, const float& deltaTime, RenderingQueues& r
             auto& [Br] = *BcComponent;
 
             if (collide(Ax, Ay, Ar, Bx, By, Br)) {
+                float dx = Bx - Ax;
+                float dy = By - Ay;
+                float distSq = dx*dx + dy*dy;
+                float dist = std::sqrt(distSq);
+
+                if (dist == 0.f) {
+                    dx = 1.f;
+                    dy = 0.f;
+                    dist = 1.f;
+                }
+
+                float overlap = (Ar + Br - dist);
+
+                float nx = dx / dist;
+                float ny = dy / dist;
+
+                float pushA = 0.5f * overlap;
+                float pushB = 0.5f * overlap;
+
                 auto AmComponent = ecs.getComponent<MovableComponent>(entityA);
                 if (AmComponent != nullptr) {
-                    float DX1 = (Ax - Bx) * repulsive_force * deltaTime;
-                    float DY1 = (Ay - By) * repulsive_force * deltaTime;
-                    if (DX1 == 0.0f)
-                        DX1 = (Ar + Br) / 2;
-                    if (DY1 == 0.0f)
-                        DY1 = (Ar + Br) / 2;
-                    Ax += DX1;
-                    Ay += DY1;
+                    Ax -= nx * pushA;
+                    Ay -= ny * pushA;
                 }
 
                 auto BmComponent = ecs.getComponent<MovableComponent>(entityB);
                 if (BmComponent != nullptr) {
-                    float DX2 = (Bx - Ax) * repulsive_force * deltaTime;
-                    float DY2 = (By - Ay) * repulsive_force * deltaTime;
-                    if (DX2 == 0.0f)
-                        DX2 = (Ar + Br) / 2;
-                    if (DY2 == 0.0f)
-                        DY2 = (Ar + Br) / 2;
-                    Bx += DX2;
-                    By += DY2;
+                    Bx += nx * pushB;
+                    By += ny * pushB;
                 }
             }
         }
