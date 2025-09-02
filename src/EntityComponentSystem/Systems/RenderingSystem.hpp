@@ -23,7 +23,7 @@ inline void renderingSystem(ECS& ecs, const float& deltaTime, RenderingQueues& r
             float dx = x - playerPos->x;
             float dy = y - playerPos->y;
             float distanceXY = std::sqrt(dx * dx + dy * dy);
-            if (distanceXY > 20.0f) {
+            if (distanceXY > 50.0f) {
                 continue;
             }
         }

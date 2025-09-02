@@ -13,6 +13,7 @@
 #include "EntityComponentSystem/ECS.hpp"
 #include "EntityComponentSystem/Systems/CollidingSystem.hpp"
 #include "EntityComponentSystem/Systems/CollisionResolutionSystem.hpp"
+#include "EntityComponentSystem/Systems/FollowingPlayerSystem.hpp"
 #include "EntityComponentSystem/Systems/MovementSystem.hpp"
 #include "EntityComponentSystem/Systems/PlayerMovementSystem.hpp"
 #include "EntityComponentSystem/Systems/RemoveEntitySystem.hpp"
@@ -220,13 +221,26 @@ int main() {
     ecs.addComponent(player, PlayerMovementComponent{});
     ecs.addComponent(player, RenderableComponent{cubeUnlitPartial_1});
 
+    for (size_t i = 0; i < 50; ++i) {
+        for (size_t j = 0; j < 10; ++j) {
+            EntityID followingPlayer = ecs.createEntity();
+            ecs.addComponent(followingPlayer, PositionComponent{5.f + (0.1f * i), 5.f + (0.1f * j), 0.f});
+            ecs.addComponent(followingPlayer, MovableComponent{5.f, 2.f});
+            ecs.addComponent(followingPlayer, HitBoxComponent(0.5f));
+            ecs.addComponent(followingPlayer, CollidingComponent{});
+            ecs.addComponent(followingPlayer, FollowPlayerComponent{});
+            ecs.addComponent(followingPlayer, RenderableComponent{cubeUnlitPartial_1});
+        }
+    }
+
+
     EntityID coin = ecs.createEntity();
     ecs.addComponent(coin, PositionComponent{0.f, 10.f, -0.5f});
     ecs.addComponent(coin, HitBoxComponent{0.3f});
     ecs.addComponent(coin, RenderableComponent{barrelPartial, glm::vec3(2.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)});
     ecs.addComponent(coin, CoinComponent{6});
 
-    constexpr size_t N = 5;
+    constexpr size_t N = 10;
     for (int q = -static_cast<int>(N); q <= static_cast<int>(N); q++) {
         int r1 = std::max(-static_cast<int>(N), -q - static_cast<int>(N));
         int r2 = std::min(static_cast<int>(N), -q + static_cast<int>(N));
@@ -288,6 +302,7 @@ int main() {
         .addSystem(movementSystem)
         .addSystem(renderingSystem)
         .addSystem(debugSystem)
+        .addSystem(followingPlayerSystem)
         .addSystem(removeEntitySystem);
 
     while (!glfwWindowShouldClose(window)) {
