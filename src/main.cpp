@@ -33,6 +33,9 @@ void debugSystem(ECS& ecs, const float& deltaTime,
     // std::cout << "Debug: " << movables.size() << " movables tracked.\n";
 }
 
+constexpr float SCREEN_WIDTH = 1280;
+constexpr float SCREEN_HEIGHT = 720;
+
 int main() {
     if (!glfwInit()) return -1;
 
@@ -42,7 +45,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    GLFWwindow* window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Hello World", NULL, NULL);
     if (!window) {
         glfwTerminate();
         return -1;
@@ -186,7 +189,7 @@ int main() {
     CameraMatrices cameraMatrices{};
     cameraMatrices.view = glm::lookAt(cameraPos, cameraOffset, worldUp);
     cameraMatrices.projection =
-        glm::perspective(glm::radians(45.0f), 480.0f / 640.0f, 1e-1f, 1e3f);
+        glm::perspective(glm::radians(45.0f), SCREEN_WIDTH / SCREEN_HEIGHT, 1e-1f, 1e3f);
 
 
     DrawCommandBuilder unlitCommandbuilder(unlitMeshPack, unlitMaterialPack);
@@ -211,7 +214,7 @@ int main() {
     EntityID player = ecs.createEntity();
 
     ecs.addComponent(player, PositionComponent{0.f, 0.f, 0.f});
-    ecs.addComponent(player, MovableComponent(7.f, 5.f));
+    ecs.addComponent(player, MovableComponent(14.f, 5.f));
     ecs.addComponent(player, HitBoxComponent(0.5f));
     ecs.addComponent(player, CollidingComponent{});
     ecs.addComponent(player, PlayerMovementComponent{});
