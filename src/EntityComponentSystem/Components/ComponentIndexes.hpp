@@ -1,18 +1,20 @@
 #pragma once
 
-#include "CollidingComponent.hpp"
+#include "HitBoxComponent.hpp"
 #include "MovableComponent.hpp"
+#include "PlayerMovementComponent.hpp"
+#include "CollidingComponent.hpp"
 #include "PositionComponent.hpp"
 #include "RenderableComponent.hpp"
-#include "PlayerMovementComponent.hpp"
 
 enum class ComponentType : size_t {
     MovableComponent = 0,
     RenderableUnlit,
     RenderableColored,
-    CollidingComponent,
+    HitBoxComponent,
     PositionComponent,
     PlayerMovementComponent,
+    CollidingComponent,
     COUNT
 };
 
@@ -34,8 +36,8 @@ struct ComponentToType<RenderableColored> {
 };
 
 template <>
-struct ComponentToType<CollidingComponent> {
-    static constexpr ComponentType index = ComponentType::CollidingComponent;
+struct ComponentToType<HitBoxComponent> {
+    static constexpr ComponentType index = ComponentType::HitBoxComponent;
 };
 
 template <>
@@ -46,6 +48,11 @@ struct ComponentToType<PositionComponent> {
 template <>
 struct ComponentToType<PlayerMovementComponent> {
     static constexpr ComponentType index = ComponentType::PlayerMovementComponent;
+};
+
+template <>
+struct ComponentToType<CollidingComponent> {
+    static constexpr ComponentType index = ComponentType::CollidingComponent;
 };
 
 constexpr size_t COMPONENT_COUNT = static_cast<size_t>(ComponentType::COUNT);

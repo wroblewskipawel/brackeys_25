@@ -28,18 +28,20 @@ inline void renderingSystem(ECS& ecs, const float& deltaTime, RenderingQueues& r
             }
         }
 
-        auto* coloredMesh = ecs.getComponent<RenderableColored>(entity);
-        if (coloredMesh != nullptr) {
-            auto transform = glm::vec3(x, y, z);
-            auto draw = coloredMesh->withTransform(glm::translate(glm::mat4(1.0), transform));
+        if (auto* coloredMesh = ecs.getComponent<RenderableColored>(entity)) {
+            glm::vec3 scaleVec = coloredMesh->scale;
+            glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, z));
+            modelMatrix = glm::scale(modelMatrix, scaleVec);
+            auto draw = coloredMesh->withTransform(modelMatrix);
             renderingQueues.coloredQueue->emplace_back(draw);
             continue;
         }
 
-        auto* unlitMesh = ecs.getComponent<RenderableUnlit>(entity);
-        if (unlitMesh) {
-            auto transform = glm::vec3(x, y, z);
-            auto draw = unlitMesh->withTransform(glm::translate(glm::mat4(1.0), transform));
+        if (auto* unlitMesh = ecs.getComponent<RenderableUnlit>(entity)) {
+            glm::vec3 scaleVec = unlitMesh->scale;
+            glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, z));
+            modelMatrix = glm::scale(modelMatrix, scaleVec);
+            auto draw = unlitMesh->withTransform(modelMatrix);
             renderingQueues.unlitQueue->emplace_back(draw);
             continue;
         }

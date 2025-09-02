@@ -12,6 +12,7 @@
 #include "EntityComponentSystem/Components/RenderableComponent.hpp"
 #include "EntityComponentSystem/ECS.hpp"
 #include "EntityComponentSystem/Systems/CollidingSystem.hpp"
+#include "EntityComponentSystem/Systems/CollisionResolutionSystem.hpp"
 #include "EntityComponentSystem/Systems/MovementSystem.hpp"
 #include "EntityComponentSystem/Systems/PlayerMovementSystem.hpp"
 #include "EntityComponentSystem/Systems/RenderingSystem.hpp"
@@ -240,15 +241,16 @@ int main() {
     EntityID player = ecs.createEntity();
 
     ecs.addComponent(player, PositionComponent{0.f, 0.f, 0.f});
-    ecs.addComponent(player, MovableComponent(7.f, 5.f));
-    ecs.addComponent(player, CollidingComponent(0.5f));
+    ecs.addComponent(player, MovableComponent(15.f, 8.f));
+    ecs.addComponent(player, HitBoxComponent(0.5f));
+    ecs.addComponent(player, CollidingComponent{});
     ecs.addComponent(player, PlayerMovementComponent{});
     ecs.addComponent(player, RenderableComponent{cubeUnlitPartial_1});
 
     EntityID outEntity = ecs.createEntity();
 
     ecs.addComponent(outEntity, PositionComponent{500.f, 501.f, 0.f});
-    ecs.addComponent(outEntity, CollidingComponent(0.5f));
+    ecs.addComponent(outEntity, HitBoxComponent(0.5f));
     ecs.addComponent(outEntity, RenderableComponent{cubeUnlitPartial_1});
 
     for (size_t i = 0; i < 30; ++i)
@@ -258,7 +260,8 @@ int main() {
             EntityID ent = ecs.createEntity();
             ecs.addComponent(ent, PositionComponent{5.f + i, 6.f + j, 0.f});
             ecs.addComponent(ent, MovableComponent(1.f, 5.f));
-            ecs.addComponent(ent, CollidingComponent(0.5f));
+            ecs.addComponent(ent, HitBoxComponent(0.5f));
+            ecs.addComponent(ent, CollidingComponent{});
             ecs.addComponent(ent, RenderableComponent{cubeUnlitPartial_1});
         }
     }
@@ -266,12 +269,14 @@ int main() {
     for (size_t i = 0; i < 10; ++i) {
         EntityID wall = ecs.createEntity();
         ecs.addComponent(wall, PositionComponent{2.5f + i, 5.f, 0.f});
-        ecs.addComponent(wall, CollidingComponent(0.5f));
-        ecs.addComponent(wall, RenderableComponent{cubeColoredPartial});
+        ecs.addComponent(wall, HitBoxComponent(0.5f));
+        ecs.addComponent(wall, CollidingComponent{});
+        ecs.addComponent(wall, RenderableComponent{documentUnlitPartial, glm::vec3(6.0f)});
     }
 
     ecs.nextStage(ECS::StageType::Sequential)
         .addSystem(collidingSystem)
+        .addSystem(collisionResolutionSystem)
         .addSystem(playerMovementSystem)
         .addSystem(movementSystem)
         .addSystem(renderingSystem)
