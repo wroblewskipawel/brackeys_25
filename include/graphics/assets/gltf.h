@@ -347,19 +347,19 @@ std::function<std::optional<TextureData>(void)> getTextureDataReader(
                 std::vector<uint8_t> imageData{};
                 image.MaterializeData(imageData);
                 return TextureData::loadFromBuffer(
-                    imageData.data(), imageData.size(), TextureFormat::RGB);
+                    imageData.data(), imageData.size(), TextureFormat::RGBA);
             } else {
                 auto filePath =
                     fx::gltf::detail::GetDocumentRootPath(documentRootPath) /
                     image.uri;
-                return TextureData::loadFromFile(filePath, TextureFormat::RGB);
+                return TextureData::loadFromFile(filePath, TextureFormat::RGBA);
             }
         } else {
             const auto& bufferView = document.bufferViews[image.bufferView];
             const auto& buffer = document.buffers[bufferView.buffer];
             return TextureData::loadFromBuffer(
                 &buffer.data[bufferView.byteOffset], bufferView.byteLength,
-                TextureFormat::RGB);
+                TextureFormat::RGBA);
         }
     };
 }

@@ -99,25 +99,24 @@ int main(void) {
 
     MaterialPackBuilder<UnlitMaterial> unlitMaterialPackBuilder{};
 
-    // // There seems to be AccessVolation issue randomy occuring here
-    // MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
-    // unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(
-    //     "assets/textures/tile_1.png", TextureFormat::RGB));
-    // auto unlitMaterial_1 =
-    //     unlitMaterialPackBuilder.addMaterial(unlitMaterialBuilder_1);
+    MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
+    unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(
+        "assets/textures/tile_1.png", TextureFormat::RGB));
 
-    // MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_2{};
-    // unlitMaterialBuilder_2.setAlbedoTextureData(TextureData::loadFromFile(
-    //     "assets/textures/tile_2.png", TextureFormat::RGB));
-    // auto unlitMaterial_2 =
-    //     unlitMaterialPackBuilder.addMaterial(unlitMaterialBuilder_2);
+    MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_2{};
+    unlitMaterialBuilder_2.setAlbedoTextureData(TextureData::loadFromFile(
+        "assets/textures/tile_2.png", TextureFormat::RGB));
 
     unlitMaterialPackBuilder.addMaterialMulti(waterBottle.takeMaterials())
-        .addMaterialMulti(cesiumMan.takeMaterials());
+        .addMaterialMulti(cesiumMan.takeMaterials())
+        .addMaterial(unlitMaterialBuilder_1)
+        .addMaterial(unlitMaterialBuilder_2);
     auto unlitMaterialPack = unlitMaterialPackBuilder.build();
     auto unlitMaterials = getPackHandles(unlitMaterialPack);
     auto waterBottleMaterial = unlitMaterials[0];
     auto cesiumManMaterial = unlitMaterials[1];
+    auto unlitMaterial_1 = unlitMaterials[2];
+    auto unlitMaterial_2 = unlitMaterials[3];
 
     ShaderBuilder unlitShaderBuilder{};
     unlitShaderBuilder.addStage(ShaderStage::Vertex,
@@ -127,13 +126,12 @@ int main(void) {
     auto unlitShader = unlitShaderBuilder.build();
 
     auto unlitDrawPack = DrawPackBuilder(unlitMeshPack, unlitMaterialPack);
-    // unlitDrawPack.addDraw(unlitCubeMesh, unlitMaterial_1, glm::mat4(1.0f));
-    // unlitDrawPack.addDraw(
-    //     unlitCubeMesh, unlitMaterial_2,
-    //     glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 2.0f)));
-    // unlitDrawPack.addDraw(
-    //     unlitCubeMesh, unlitMaterial_2,
-    //     glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
+    unlitDrawPack.addDraw(
+        unlitCubeMesh, unlitMaterial_1,
+        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
+    unlitDrawPack.addDraw(
+        unlitCubeMesh, unlitMaterial_2,
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
     unlitDrawPack.addDraw(
         waterBottleMesh, waterBottleMaterial,
         glm::scale(
