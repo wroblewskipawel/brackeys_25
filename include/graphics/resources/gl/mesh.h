@@ -10,134 +10,9 @@
 
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/shader.h"
+#include "graphics/resources/gl/vertex_array.h"
 #include "graphics/resources/mesh.h"
 #include "graphics/storage/gl/mesh.h"
-
-void setInstanceAttributes(GLuint vao, GLuint nextLocation) {
-    // Instance Attrib: glm::mat4
-    constexpr size_t modelMatrixBufferIndex = 1;
-
-    glVertexArrayAttribBinding(vao, nextLocation, modelMatrixBufferIndex);
-    glVertexArrayAttribFormat(vao, nextLocation, 4, GL_FLOAT, GL_FALSE,
-                              0 * sizeof(glm::vec4));
-    glEnableVertexArrayAttrib(vao, nextLocation++);
-
-    glVertexArrayAttribBinding(vao, nextLocation, modelMatrixBufferIndex);
-    glVertexArrayAttribFormat(vao, nextLocation, 4, GL_FLOAT, GL_FALSE,
-                              1 * sizeof(glm::vec4));
-    glEnableVertexArrayAttrib(vao, nextLocation++);
-
-    glVertexArrayAttribBinding(vao, nextLocation, modelMatrixBufferIndex);
-    glVertexArrayAttribFormat(vao, nextLocation, 4, GL_FLOAT, GL_FALSE,
-                              2 * sizeof(glm::vec4));
-    glEnableVertexArrayAttrib(vao, nextLocation++);
-
-    glVertexArrayAttribBinding(vao, nextLocation, modelMatrixBufferIndex);
-    glVertexArrayAttribFormat(vao, nextLocation, 4, GL_FLOAT, GL_FALSE,
-                              3 * sizeof(glm::vec4));
-    glEnableVertexArrayAttrib(vao, nextLocation++);
-    glVertexArrayBindingDivisor(vao, modelMatrixBufferIndex, 1);
-
-    // Consider in future for glMultiDrawElements
-    // // Instance Attrib: GLuint64 materialPackIndex
-    // constexpr size_t materialPackIndexBufferIndex = 2;
-
-    // glVertexArrayAttribBinding(vao, nextLocation,
-    // materialPackIndexBufferIndex); glVertexArrayAttribIFormat(vao,
-    // nextLocation, 1, GL_UNSIGNED_INT,
-    //                            0 * sizeof(GLuint));
-    // glEnableVertexArrayAttrib(vao, nextLocation++);
-    // glVertexArrayBindingDivisor(vao, materialPackIndexBufferIndex, 1);
-}
-
-template <typename Vertex>
-GLuint getVertexArray();
-
-template <>
-inline GLuint getVertexArray<ColoredVertex>() {
-    static GLuint vao{0};
-    if (vao == 0) {
-        GLuint nextLocation{0};
-        glCreateVertexArrays(1, &vao);
-        glVertexArrayAttribFormat(vao, nextLocation, 3, GL_FLOAT, GL_FALSE,
-                                  offsetof(ColoredVertex, position));
-        glVertexArrayAttribBinding(vao, nextLocation, 0);
-        glEnableVertexArrayAttrib(vao, nextLocation++);
-        glVertexArrayAttribFormat(vao, nextLocation, 3, GL_FLOAT, GL_FALSE,
-                                  offsetof(ColoredVertex, color));
-        glVertexArrayAttribBinding(vao, nextLocation, 0);
-        glEnableVertexArrayAttrib(vao, nextLocation++);
-
-        setInstanceAttributes(vao, nextLocation);
-    }
-    return vao;
-}
-
-template <>
-inline GLuint getVertexArray<UnlitVertex>() {
-    static GLuint vao{0};
-    if (vao == 0) {
-        GLuint nextLocation{0};
-        glCreateVertexArrays(1, &vao);
-
-        glVertexArrayAttribFormat(vao, nextLocation, 3, GL_FLOAT, GL_FALSE,
-                                  offsetof(UnlitVertex, position));
-        glVertexArrayAttribBinding(vao, nextLocation, 0);
-        glEnableVertexArrayAttrib(vao, nextLocation++);
-
-        glVertexArrayAttribFormat(vao, nextLocation, 2, GL_FLOAT, GL_FALSE,
-                                  offsetof(UnlitVertex, texCoord));
-        glVertexArrayAttribBinding(vao, nextLocation, 0);
-        glEnableVertexArrayAttrib(vao, nextLocation++);
-
-        setInstanceAttributes(vao, nextLocation);
-    }
-    return vao;
-}
-
-template <>
-inline GLuint getVertexArray<UnlitAnimatedVertex>() {
-    static GLuint vao{0};
-    if (vao == 0) {
-        GLuint nextLocation{0};
-        glCreateVertexArrays(1, &vao);
-
-        glVertexArrayAttribFormat(vao, nextLocation, 3, GL_FLOAT, GL_FALSE,
-                                  offsetof(UnlitAnimatedVertex, position));
-        glVertexArrayAttribBinding(vao, nextLocation, 0);
-        glEnableVertexArrayAttrib(vao, nextLocation++);
-
-        glVertexArrayAttribFormat(vao, nextLocation, 2, GL_FLOAT, GL_FALSE,
-                                  offsetof(UnlitAnimatedVertex, texCoord));
-        glVertexArrayAttribBinding(vao, nextLocation, 0);
-        glEnableVertexArrayAttrib(vao, nextLocation++);
-
-        glVertexArrayAttribIFormat(vao, nextLocation, 4, GL_UNSIGNED_INT,
-                                   offsetof(UnlitAnimatedVertex, joints));
-        glVertexArrayAttribBinding(vao, nextLocation, 0);
-        glEnableVertexArrayAttrib(vao, nextLocation++);
-
-        glVertexArrayAttribFormat(vao, nextLocation, 4, GL_FLOAT, GL_FALSE,
-                                  offsetof(UnlitAnimatedVertex, weights));
-        glVertexArrayAttribBinding(vao, nextLocation, 0);
-        glEnableVertexArrayAttrib(vao, nextLocation++);
-
-        setInstanceAttributes(vao, nextLocation);
-    }
-    return vao;
-}
-
-template <typename Vertex>
-inline void destroyVertexArray() {
-    GLuint vao = getVertexArray<Vertex>();
-    glDeleteVertexArrays(1, &vao);
-}
-
-inline void destroyVertexArrays() {
-    destroyVertexArray<ColoredVertex>();
-    destroyVertexArray<UnlitVertex>();
-    destroyVertexArray<UnlitAnimatedVertex>();
-}
 
 struct MeshBuffers {
     GLuint vbo{0};
@@ -221,17 +96,15 @@ class MeshPack {
             .getMesh(meshHandle.meshIndex);
     }
 
-    static void bind(MeshPackHandle<Vertex> meshPack) {
-        auto vao = getVertexArray<Vertex>();
-        if (currentPackIndex != meshPack) {
-            auto& newPack =
-                MeshPackStorage<Vertex>::meshPackStorage.get(meshPack).get();
-            glVertexArrayVertexBuffer(vao, 0, newPack.buffers.vbo, 0,
-                                      sizeof(Vertex));
-            glVertexArrayElementBuffer(vao, newPack.buffers.ebo);
-            currentPackIndex = meshPack;
-        };
-        glBindVertexArray(vao);
+    static void bind(MeshPackHandle<Vertex> packHandle) {
+        auto& vertexArray = VertexArray<Vertex, glm::mat4>::getVertexArray();
+        auto& meshPack =
+            MeshPackStorage<Vertex>::meshPackStorage.get(packHandle).get();
+        vertexArray.bindBuffer<BindingIndex::VertexAttributes>(
+            meshPack.buffers.vbo);
+        vertexArray.bindBuffer<BindingIndex::ElementBuffer>(
+            meshPack.buffers.ebo);
+        vertexArray.bind();
     }
 
     ~MeshPack() { glDeleteBuffers(2, &buffers.vbo); }

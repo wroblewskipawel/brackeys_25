@@ -11,6 +11,7 @@
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/shader.h"
+#include "graphics/resources/gl/vertex_array.h"
 #include "graphics/storage/gl/material.h"
 
 template <typename Vertex, typename Material>
@@ -49,22 +50,18 @@ class DrawPack {
         : meshes(std::move(other.meshes)),
           instanceBuffers(std::move(other.instanceBuffers)),
           materialPack(other.materialPack),
-          meshPack(other.meshPack),
-          vao(other.vao) {
-        other.vao = 0;
+          meshPack(other.meshPack) {
         other.meshPack = MeshPackHandle<Vertex>::getInvalid();
         other.materialPack = MaterialPackHandle<Material>::getInvalid();
     };
 
     DrawPack& operator=(DrawPack&& other) noexcept {
         if (this != &other) {
-            vao = other.vao;
             meshPack = other.meshPack;
             materialPack = other.materialPack;
             meshes = std::move(other.meshes);
             instanceBuffers = std::move(other.instanceBuffers);
 
-            other.vao = 0;
             other.meshPack = MeshPackHandle<Material>::getInvalid();
             other.materialPack = MaterialPackHandle<Material>::getInvalid();
         }
@@ -91,8 +88,7 @@ class DrawPack {
         : meshes(drawData.size()),
           instanceBuffers(drawData.size()),
           materialPack(materialPack),
-          meshPack(meshPack),
-          vao(getVertexArray<Vertex>()) {
+          meshPack(meshPack) {
         glCreateBuffers(instanceBuffers.size(), instanceBuffers.data());
         for (const auto& [i, meshDrawData] : std::views::enumerate(drawData)) {
             const auto& [drawInfo, instances] = meshDrawData;
@@ -108,10 +104,10 @@ class DrawPack {
         MaterialPack<Material>::bind(materialPack);
         for (const auto& [draw, instanceBuffer] :
              std::views::zip(meshes, instanceBuffers)) {
+            VertexArray<Vertex, glm::mat4>::getVertexArray()
+                .bindBuffer<BindingIndex::InstanceAttributes>(instanceBuffer);
             glUniform1ui(uniformLocations.materialIndex,
                          static_cast<GLuint>(draw.drawInfo.materialIndex));
-            glVertexArrayVertexBuffer(vao, 1, instanceBuffer, 0,
-                                      sizeof(glm::mat4));
             glDrawElementsInstanced(
                 GL_TRIANGLES, draw.drawInfo.mesh.indexCount, GL_UNSIGNED_INT,
                 (void*)(draw.drawInfo.mesh.indexOffset * sizeof(GLuint)),
@@ -123,7 +119,6 @@ class DrawPack {
     std::vector<GLuint> instanceBuffers;
     MaterialPackHandle<Material> materialPack;
     MeshPackHandle<Vertex> meshPack;
-    GLuint vao;
 };
 
 template <typename Vertex, typename Material>

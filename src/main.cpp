@@ -21,6 +21,7 @@
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/shader.h"
+#include "graphics/resources/gl/vertex_array.h"
 #include "graphics/resources/material.h"
 #include "graphics/resources/mesh.h"
 
@@ -244,7 +245,7 @@ int main(void) {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    destroyVertexArrays();
+    VertexArrayStorage::destroyVertexArrays();
 
     glfwTerminate();
     return 0;

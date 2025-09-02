@@ -52,6 +52,7 @@ target_include_directories(
     "${CMAKE_SOURCE_DIR}/extern/glfw/include/"
     "${CMAKE_SOURCE_DIR}/extern/glm/"
     "${CMAKE_SOURCE_DIR}/extern/stb/"
+    "${CMAKE_SOURCE_DIR}/extern/magic_enum/"
     "${CMAKE_SOURCE_DIR}/extern/imgui/"
     "${CMAKE_SOURCE_DIR}/extern/imgui/backends/"
     "${CMAKE_SOURCE_DIR}/extern/glad/include/"
