@@ -11,6 +11,7 @@
 #include "mesh.h"
 #include "material.h"
 #include "draw.h"
+#include "../MusicManager/MusicManager.hpp"
 
 struct RenderingQueues {
     std::shared_ptr<DrawQueue<UnlitVertex, UnlitMaterial>> unlitQueue{nullptr};

@@ -10,6 +10,12 @@ inline void collisionResolutionSystem(ECS& ecs, const float& deltaTime, Renderin
 
         for (auto other : col->collidedWith) {
 
+            if (ecs.entityStorage.hasComponent<PlayerMovementComponent>(entity) && ecs.entityStorage.hasComponent<CoinComponent>(other)) {
+                const auto& value = ecs.getComponent<CoinComponent>(other)->value;
+                std::cout << "Picked up: " << value << "\n";
+                gMusicManager.play(SoundID::Coin);
+                ecs.addComponent(other, RemoveComponent{});
+            }
 
             if (entity < other) {
                 auto posB = ecs.getComponent<PositionComponent>(other);

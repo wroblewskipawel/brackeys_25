@@ -6,6 +6,8 @@
 #include "CollidingComponent.hpp"
 #include "PositionComponent.hpp"
 #include "RenderableComponent.hpp"
+#include "CoinComponent.hpp"
+#include "RemoveComponent.hpp"
 
 enum class ComponentType : size_t {
     MovableComponent = 0,
@@ -15,6 +17,8 @@ enum class ComponentType : size_t {
     PositionComponent,
     PlayerMovementComponent,
     CollidingComponent,
+    CoinComponent,
+    RemoveComponent,
     COUNT
 };
 
@@ -53,6 +57,16 @@ struct ComponentToType<PlayerMovementComponent> {
 template <>
 struct ComponentToType<CollidingComponent> {
     static constexpr ComponentType index = ComponentType::CollidingComponent;
+};
+
+template <>
+struct ComponentToType<CoinComponent> {
+    static constexpr ComponentType index = ComponentType::CoinComponent;
+};
+
+template <>
+struct ComponentToType<RemoveComponent> {
+    static constexpr ComponentType index = ComponentType::RemoveComponent;
 };
 
 constexpr size_t COMPONENT_COUNT = static_cast<size_t>(ComponentType::COUNT);

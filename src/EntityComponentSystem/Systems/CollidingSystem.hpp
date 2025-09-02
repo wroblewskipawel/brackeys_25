@@ -42,7 +42,7 @@ inline void collidingSystem(ECS& ecs, const float& deltaTime, RenderingQueues& r
 
             if (collide(pos->x, pos->y, col->r, posB->x, posB->y, colB->r)) {
                 col->collidedWith.push_back(other);
-                colB->collidedWith.push_back(entity);
+                // colB->collidedWith.push_back(entity);
             }
         }
     }

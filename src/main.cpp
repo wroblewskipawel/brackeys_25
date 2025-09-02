@@ -15,6 +15,7 @@
 #include "EntityComponentSystem/Systems/CollisionResolutionSystem.hpp"
 #include "EntityComponentSystem/Systems/MovementSystem.hpp"
 #include "EntityComponentSystem/Systems/PlayerMovementSystem.hpp"
+#include "EntityComponentSystem/Systems/RemoveEntitySystem.hpp"
 #include "EntityComponentSystem/Systems/RenderingSystem.hpp"
 #include "ImGui/ImGui.hpp"
 #include "InputHandler/InputHandler.hpp"
@@ -271,8 +272,14 @@ int main() {
         ecs.addComponent(wall, PositionComponent{2.5f + i, 5.f, 0.f});
         ecs.addComponent(wall, HitBoxComponent(0.5f));
         ecs.addComponent(wall, CollidingComponent{});
-        ecs.addComponent(wall, RenderableComponent{documentUnlitPartial, glm::vec3(6.0f)});
+        ecs.addComponent(wall, RenderableComponent{cubeColoredPartial});
     }
+
+    EntityID coin = ecs.createEntity();
+    ecs.addComponent(coin, PositionComponent{0.f, 10.f, 0.f});
+    ecs.addComponent(coin, HitBoxComponent{0.3f});
+    ecs.addComponent(coin, RenderableComponent{documentUnlitPartial, glm::vec3(6.0f)});
+    ecs.addComponent(coin, CoinComponent{6});
 
     ecs.nextStage(ECS::StageType::Sequential)
         .addSystem(collidingSystem)
@@ -280,7 +287,8 @@ int main() {
         .addSystem(playerMovementSystem)
         .addSystem(movementSystem)
         .addSystem(renderingSystem)
-        .addSystem(debugSystem);
+        .addSystem(debugSystem)
+        .addSystem(removeEntitySystem);
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = static_cast<float>(glfwGetTime());

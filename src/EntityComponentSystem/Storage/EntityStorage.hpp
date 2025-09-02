@@ -73,7 +73,7 @@ public:
 
         const auto entityBitMaks = it->second.componentMask;
         for (auto& [bitmask, ids] : components) {
-            if (is_subset(entityBitMaks, bitmask)) {
+            if (is_subset(bitmask, entityBitMaks)) {
                 ids.insert(id);
             }
         }
@@ -98,7 +98,7 @@ public:
 
         const auto entityBitMaks = it->second.componentMask;
         for (auto& [bitmask, ids] : components) {
-            if (is_subset(entityBitMaks, bitmask)) {
+            if (is_subset(bitmask, entityBitMaks)) {
                 ids.insert(id);
             }
         }
@@ -117,10 +117,10 @@ public:
         const auto maskAfter = it->second.componentMask;
 
         for (auto& [bitmask, ids] : components) {
-            if (is_subset(maskBefore, bitmask)) {
+            if (is_subset(bitmask, maskBefore)) {
                 ids.erase(id);
             }
-            if (is_subset(maskAfter, bitmask)) {
+            if (is_subset(bitmask, maskAfter)) {
                 ids.insert(id);
             }
         }
