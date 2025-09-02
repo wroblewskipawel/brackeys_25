@@ -29,8 +29,9 @@ inline void renderingSystem(ECS& ecs, const float& deltaTime, RenderingQueues& r
         }
 
         if (auto* coloredMesh = ecs.getComponent<RenderableColored>(entity)) {
-            glm::vec3 scaleVec = coloredMesh->scale;
+            glm::vec3 scaleVec = coloredMesh->scale;;
             glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, z));
+            modelMatrix = glm::rotate(modelMatrix, coloredMesh->rotation, coloredMesh->rotation_along);
             modelMatrix = glm::scale(modelMatrix, scaleVec);
             auto draw = coloredMesh->withTransform(modelMatrix);
             renderingQueues.coloredQueue->emplace_back(draw);
@@ -38,8 +39,9 @@ inline void renderingSystem(ECS& ecs, const float& deltaTime, RenderingQueues& r
         }
 
         if (auto* unlitMesh = ecs.getComponent<RenderableUnlit>(entity)) {
-            glm::vec3 scaleVec = unlitMesh->scale;
+            glm::vec3 scaleVec = unlitMesh->scale;;
             glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, z));
+            modelMatrix = glm::rotate(modelMatrix, unlitMesh->rotation, unlitMesh->rotation_along);
             modelMatrix = glm::scale(modelMatrix, scaleVec);
             auto draw = unlitMesh->withTransform(modelMatrix);
             renderingQueues.unlitQueue->emplace_back(draw);

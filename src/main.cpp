@@ -76,6 +76,9 @@ int main() {
     DocumentReader<UnlitVertex, UnlitMaterial> unlitDocument{
         "assets/WaterBottle/glTF/WaterBottle.gltf"};
 
+    DocumentReader<UnlitVertex, UnlitMaterial> hexGrass{
+        "assets/hexGrass/hex_grass.gltf"};
+
     MaterialPackBuilder<EmptyMaterial> emptyMaterialPackBuilder{};
     auto emptyMaterial =
         emptyMaterialPackBuilder.addMaterial(MaterialBuilder<EmptyMaterial>{});
@@ -86,6 +89,8 @@ int main() {
         unlitMeshPackBuilder.addMesh(createCube<UnlitVertex>());
     auto documentMeshes =
         unlitMeshPackBuilder.addMeshMulti(unlitDocument.takeMeshes());
+    auto grassMeshes =
+        unlitMeshPackBuilder.addMeshMulti(hexGrass.takeMeshes());
     auto unlitMeshPack = unlitMeshPackBuilder.build();
 
     MaterialPackBuilder<UnlitMaterial> unlitMaterialPackBuilder{};
@@ -101,6 +106,8 @@ int main() {
         unlitMaterialPackBuilder.addMaterial(unlitMaterialBuilder_2);
     auto documentMaterials = unlitMaterialPackBuilder.addMaterialMulti(
         unlitDocument.takeMaterials());
+    auto grassMaterials = unlitMaterialPackBuilder.addMaterialMulti(
+        hexGrass.takeMaterials());
     auto unlitMaterialPack = unlitMaterialPackBuilder.build();
 
     ShaderBuilder unlitStaticShaderBuilder{};
@@ -231,6 +238,9 @@ int main() {
     auto documentUnlitPartial = unlitCommandbuilder.getCommandPartial(
         documentMeshes[0], documentMaterials[0]);
 
+    auto hexGrassPartial = unlitCommandbuilder.getCommandPartial(
+        grassMeshes[0], grassMaterials[0]);
+
     auto cubePosition = glm::vec3(0.0);
 
     float deltaTime = 0.0f;
@@ -276,9 +286,9 @@ int main() {
     }
 
     EntityID coin = ecs.createEntity();
-    ecs.addComponent(coin, PositionComponent{0.f, 10.f, 0.f});
+    ecs.addComponent(coin, PositionComponent{0.f, 10.f, -1.f});
     ecs.addComponent(coin, HitBoxComponent{0.3f});
-    ecs.addComponent(coin, RenderableComponent{documentUnlitPartial, glm::vec3(6.0f)});
+    ecs.addComponent(coin, RenderableComponent{hexGrassPartial, glm::vec3(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)});
     ecs.addComponent(coin, CoinComponent{6});
 
     ecs.nextStage(ECS::StageType::Sequential)
