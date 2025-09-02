@@ -2,5 +2,5 @@
 
 struct HitBoxComponent {
     float r = 0.0f;
-    std::vector<size_t> collidedWith;
+    std::unordered_set<size_t> collidedWith;
 };

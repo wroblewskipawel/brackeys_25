@@ -79,6 +79,12 @@ int main() {
     DocumentReader<UnlitVertex, UnlitMaterial> hexGrass{
         "assets/hexGrass/hex_grass.gltf"};
 
+    DocumentReader<UnlitVertex, UnlitMaterial> unlitBarrel{
+        "assets/barrel/barrel.gltf"};
+
+    DocumentReader<UnlitVertex, UnlitMaterial> unlitMountain{
+        "assets/mountains/mountain_B.gltf"};
+
     MaterialPackBuilder<EmptyMaterial> emptyMaterialPackBuilder{};
     auto emptyMaterial =
         emptyMaterialPackBuilder.addMaterial(MaterialBuilder<EmptyMaterial>{});
@@ -91,6 +97,10 @@ int main() {
         unlitMeshPackBuilder.addMeshMulti(unlitDocument.takeMeshes());
     auto grassMeshes =
         unlitMeshPackBuilder.addMeshMulti(hexGrass.takeMeshes());
+    auto barrelMeshes =
+        unlitMeshPackBuilder.addMeshMulti(unlitBarrel.takeMeshes());
+    auto mountainMeshes =
+        unlitMeshPackBuilder.addMeshMulti(unlitMountain.takeMeshes());
     auto unlitMeshPack = unlitMeshPackBuilder.build();
 
     MaterialPackBuilder<UnlitMaterial> unlitMaterialPackBuilder{};
@@ -102,12 +112,14 @@ int main() {
     MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_2{};
     unlitMaterialBuilder_2.setAlbedoTextureData(TextureData::loadFromFile(
         "assets/textures/tile_2.png", TextureFormat::RGB));
-    auto unlitMaterial_2 =
-        unlitMaterialPackBuilder.addMaterial(unlitMaterialBuilder_2);
     auto documentMaterials = unlitMaterialPackBuilder.addMaterialMulti(
         unlitDocument.takeMaterials());
     auto grassMaterials = unlitMaterialPackBuilder.addMaterialMulti(
         hexGrass.takeMaterials());
+    auto barrelMaterials = unlitMaterialPackBuilder.addMaterialMulti(
+        unlitBarrel.takeMaterials());
+    auto mountainMaterials = unlitMaterialPackBuilder.addMaterialMulti(
+        unlitMountain.takeMaterials());
     auto unlitMaterialPack = unlitMaterialPackBuilder.build();
 
     ShaderBuilder unlitStaticShaderBuilder{};
@@ -125,23 +137,6 @@ int main() {
     auto unlitDynamicShader = unlitDynamicShaderBuilder.build();
 
     auto unlitDrawPack = unlitMeshPack.createDrawPack(unlitMaterialPack);
-    // unlitDrawPack.addDraw(unlitCubeMesh, unlitMaterial_1, glm::mat4(1.0f));
-    unlitDrawPack.addDraw(
-        unlitCubeMesh, unlitMaterial_2,
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 2.0f)));
-    unlitDrawPack.addDraw(
-        unlitCubeMesh, unlitMaterial_2,
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
-    unlitDrawPack.addDraw(
-        documentMeshes[0], documentMaterials[0],
-        glm::scale(
-            glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 0.0f)),
-            glm::vec3(6.0f)));
-    unlitDrawPack.addDraw(
-        documentMeshes[0], documentMaterials[0],
-        glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 0.0f)),
-                   glm::vec3(6.0f)));
-    ;
     auto unlitStaticStage = Stage(std::move(unlitDrawPack));
     unlitStaticStage.setShader(unlitStaticShader);
 
@@ -170,38 +165,7 @@ int main() {
                                          "shaders/dynamic/colored/shader.frag");
     auto coloredDynamicShader = coloredDynamicShaderBuilder.build();
 
-    auto coloredDrawPackBuilder =
-        coloredMeshPack.createDrawPack(emptyMaterialPack);
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, -2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, -2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, -2.0f, 2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, -2.0f, -2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, 2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, -2.0f)));
+    auto coloredDrawPackBuilder = coloredMeshPack.createDrawPack(emptyMaterialPack);
     auto coloredStaticStage = Stage(std::move(coloredDrawPackBuilder));
     coloredStaticStage.setShader(coloredStaticShader);
 
@@ -224,24 +188,19 @@ int main() {
     cameraMatrices.projection =
         glm::perspective(glm::radians(45.0f), 480.0f / 640.0f, 1e-1f, 1e3f);
 
-    DrawCommandBuilder coloredCommandbuilder(coloredMeshPack,
-                                             emptyMaterialPack);
-    auto cubeColoredPartial =
-        coloredCommandbuilder.getCommandPartial(coloredCubeMesh, emptyMaterial);
 
     DrawCommandBuilder unlitCommandbuilder(unlitMeshPack, unlitMaterialPack);
     auto cubeUnlitPartial_1 =
         unlitCommandbuilder.getCommandPartial(unlitCubeMesh, unlitMaterial_1);
-    auto cubeUnlitPartial_2 =
-        unlitCommandbuilder.getCommandPartial(unlitCubeMesh, unlitMaterial_2);
-
-    auto documentUnlitPartial = unlitCommandbuilder.getCommandPartial(
-        documentMeshes[0], documentMaterials[0]);
 
     auto hexGrassPartial = unlitCommandbuilder.getCommandPartial(
         grassMeshes[0], grassMaterials[0]);
 
-    auto cubePosition = glm::vec3(0.0);
+    auto barrelPartial = unlitCommandbuilder.getCommandPartial(
+        barrelMeshes[0], barrelMaterials[0]);
+
+    auto mountainPartial = unlitCommandbuilder.getCommandPartial(
+        mountainMeshes[0], mountainMaterials[0]);
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
@@ -252,44 +211,72 @@ int main() {
     EntityID player = ecs.createEntity();
 
     ecs.addComponent(player, PositionComponent{0.f, 0.f, 0.f});
-    ecs.addComponent(player, MovableComponent(15.f, 8.f));
+    ecs.addComponent(player, MovableComponent(7.f, 5.f));
     ecs.addComponent(player, HitBoxComponent(0.5f));
     ecs.addComponent(player, CollidingComponent{});
     ecs.addComponent(player, PlayerMovementComponent{});
     ecs.addComponent(player, RenderableComponent{cubeUnlitPartial_1});
 
-    EntityID outEntity = ecs.createEntity();
+    EntityID coin = ecs.createEntity();
+    ecs.addComponent(coin, PositionComponent{0.f, 10.f, -0.5f});
+    ecs.addComponent(coin, HitBoxComponent{0.3f});
+    ecs.addComponent(coin, RenderableComponent{barrelPartial, glm::vec3(2.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)});
+    ecs.addComponent(coin, CoinComponent{6});
 
-    ecs.addComponent(outEntity, PositionComponent{500.f, 501.f, 0.f});
-    ecs.addComponent(outEntity, HitBoxComponent(0.5f));
-    ecs.addComponent(outEntity, RenderableComponent{cubeUnlitPartial_1});
+    constexpr size_t N = 5;
+    for (int q = -static_cast<int>(N); q <= static_cast<int>(N); q++) {
+        int r1 = std::max(-static_cast<int>(N), -q - static_cast<int>(N));
+        int r2 = std::min(static_cast<int>(N), -q + static_cast<int>(N));
+        for (int r = r1; r <= r2; r++) {
+            int s = -q - r;
 
-    for (size_t i = 0; i < 30; ++i)
-    {
-        for (size_t j = 0; j < 40; ++j)
-        {
-            EntityID ent = ecs.createEntity();
-            ecs.addComponent(ent, PositionComponent{5.f + i, 6.f + j, 0.f});
-            ecs.addComponent(ent, MovableComponent(1.f, 5.f));
-            ecs.addComponent(ent, HitBoxComponent(0.5f));
-            ecs.addComponent(ent, CollidingComponent{});
-            ecs.addComponent(ent, RenderableComponent{cubeUnlitPartial_1});
+            float x = 2.0f * 2.0f * q + 2.0f * r;
+            float y = (2.3094f + 1.0f) * r;
+
+            int dist = std::max({std::abs(q), std::abs(r), std::abs(s)});
+            bool isOuter = (dist == static_cast<int>(N));
+
+            EntityID floor = ecs.createEntity();
+
+            ecs.addComponent(floor, PositionComponent{
+                x,
+                -y,
+                -0.5f
+            });
+
+            if (isOuter) {
+                ecs.addComponent(floor, HitBoxComponent{2.5f});
+                ecs.addComponent(floor, CollidingComponent{});
+                ecs.addComponent(floor, RenderableComponent{
+                    mountainPartial,
+                    glm::vec3(2.0f),
+                    glm::radians(90.0f),
+                    glm::vec3(1.0f, 0.0f, 0.0f)
+                });
+
+                auto floorUnder = ecs.createEntity();
+                ecs.addComponent(floorUnder, PositionComponent{
+                    x,
+                    -y,
+                    -0.5f
+                });
+                ecs.addComponent(floorUnder, RenderableComponent{
+                    hexGrassPartial,
+                    glm::vec3(2.0f),
+                    glm::radians(90.0f),
+                    glm::vec3(1.0f, 0.0f, 0.0f)
+                });
+            }
+            else {
+                ecs.addComponent(floor, RenderableComponent{
+                    hexGrassPartial,
+                    glm::vec3(2.0f),
+                    glm::radians(90.0f),
+                    glm::vec3(1.0f, 0.0f, 0.0f)
+                });
+            }
         }
     }
-
-    for (size_t i = 0; i < 10; ++i) {
-        EntityID wall = ecs.createEntity();
-        ecs.addComponent(wall, PositionComponent{2.5f + i, 5.f, 0.f});
-        ecs.addComponent(wall, HitBoxComponent(0.5f));
-        ecs.addComponent(wall, CollidingComponent{});
-        ecs.addComponent(wall, RenderableComponent{cubeColoredPartial});
-    }
-
-    EntityID coin = ecs.createEntity();
-    ecs.addComponent(coin, PositionComponent{0.f, 10.f, -1.f});
-    ecs.addComponent(coin, HitBoxComponent{0.3f});
-    ecs.addComponent(coin, RenderableComponent{hexGrassPartial, glm::vec3(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)});
-    ecs.addComponent(coin, CoinComponent{6});
 
     ecs.nextStage(ECS::StageType::Sequential)
         .addSystem(collidingSystem)
@@ -307,22 +294,10 @@ int main() {
 
         ecs.update(deltaTime);
 
-        // auto* playerMovement = ecs.getComponent<MovableComponent>(player);
-        // cubePosition.x = playerMovement->x;
-        // cubePosition.y = playerMovement->y;
-
-        // dynamicUnlitQueue->emplace_back(cubeUnlitPartial_1.withTransform(
-        //     glm::translate(glm::mat4(1.0), cubePosition)));
-        // dynamicUnlitQueue->emplace_back(cubeUnlitPartial_2.withTransform(
-        //     glm::translate(glm::mat4(1.0), glm::vec3(-3.0, -3.0, -3.0))));
-        // dynamicUnlitQueue->emplace_back(documentUnlitPartial.withTransform(
-        //     glm::translate(glm::mat4(1.0), glm::vec3(-3.0, -5.0, -3.0))));
-
         updateImGui(window, ecs.entityStorage.getNumberOfEntities(), deltaTime);
 
-        if (gInputHandler.isClicked(Key::R)) gMusicManager.play(SoundID::Coin);
-        if (gInputHandler.isPressed(Key::Space))
-            gMusicManager.play(SoundID::Explosion);
+        if (gInputHandler.isPressed(Key::Num_1)) cameraOffset.z += 10 * deltaTime;
+        if (gInputHandler.isPressed(Key::Num_2)) cameraOffset.z -= 10 * deltaTime;
 
         gInputHandler.update();
 

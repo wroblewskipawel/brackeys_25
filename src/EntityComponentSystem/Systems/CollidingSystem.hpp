@@ -41,8 +41,8 @@ inline void collidingSystem(ECS& ecs, const float& deltaTime, RenderingQueues& r
             auto colB = ecs.getComponent<HitBoxComponent>(other);
 
             if (collide(pos->x, pos->y, col->r, posB->x, posB->y, colB->r)) {
-                col->collidedWith.push_back(other);
-                // colB->collidedWith.push_back(entity);
+                col->collidedWith.insert(other);
+                colB->collidedWith.insert(entity);
             }
         }
     }
