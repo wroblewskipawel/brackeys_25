@@ -125,7 +125,9 @@ int main(void) {
                                 "shaders/unlit/shader.frag");
     auto unlitShader = unlitShaderBuilder.build();
 
-    auto unlitDrawPack = DrawPackBuilder(unlitMeshPack, unlitMaterialPack);
+    auto unlitDrawPack =
+        Model<UnlitVertex, UnlitMaterial>::drawPackBuilder<glm::mat4>(
+            unlitMeshPack, unlitMaterialPack);
     unlitDrawPack.addDraw(
         unlitCubeMesh, unlitMaterial_1,
         glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
@@ -148,7 +150,8 @@ int main(void) {
     auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
 
     auto unlitAnimatedDrawPack =
-        DrawPackBuilder(unlitAnimatedMeshPack, unlitMaterialPack);
+        Model<UnlitAnimatedVertex, UnlitMaterial>::drawPackBuilder<glm::mat4>(
+            unlitAnimatedMeshPack, unlitMaterialPack);
     unlitAnimatedDrawPack.addDraw(
         cesiumManMesh, cesiumManMaterial,
         glm::scale(
@@ -171,7 +174,8 @@ int main(void) {
     auto coloredShader = coloredShaderBuilder.build();
 
     auto coloredDrawPackBuilder =
-        DrawPackBuilder(coloredMeshPack, emptyMaterialPack);
+        Model<ColoredVertex, EmptyMaterial>::drawPackBuilder<glm::mat4>(
+            coloredMeshPack, emptyMaterialPack);
     coloredDrawPackBuilder.addDraw(
         coloredCubeMesh, emptyMaterial,
         glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f)));

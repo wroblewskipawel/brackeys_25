@@ -50,7 +50,7 @@ class Shader {
     ~Shader() noexcept { glDeleteProgram(program); }
 
    private:
-    template <typename Vertex, typename Material>
+    template <typename, typename, typename>
     friend class Stage;
     friend class ShaderBuilder;
 

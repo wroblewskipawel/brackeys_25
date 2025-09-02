@@ -39,10 +39,10 @@ class Pipeline<> {
 template <typename... Stages>
 Pipeline(Stages&&...) -> Pipeline<std::decay_t<Stages>...>;
 
-template <typename Vertex, typename Material>
+template <typename Vertex, typename Material, typename Instance>
 class Stage {
    public:
-    Stage(DrawPackBuilder<Vertex, Material>&& builder)
+    Stage(DrawPackBuilder<Vertex, Material, Instance>&& builder)
         : drawPack(builder.build()) {}
 
     Stage& setShader(const Shader& shader) {
@@ -68,5 +68,5 @@ class Stage {
     }
 
     GLuint shaderProgram{0};
-    DrawPack<Vertex, Material> drawPack;
+    DrawPack<Vertex, Material, Instance> drawPack;
 };

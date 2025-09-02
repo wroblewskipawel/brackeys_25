@@ -14,10 +14,10 @@
 #include "graphics/resources/gl/vertex_array.h"
 #include "graphics/storage/gl/material.h"
 
-template <typename Vertex, typename Material>
+template <typename Vertex, typename Material, typename Instance>
 class DrawPackBuilder;
 
-template <typename Vertex, typename Material>
+template <typename Vertex, typename Material, typename Instance>
 class Stage;
 
 struct DrawInfo {
@@ -40,7 +40,7 @@ struct hash<DrawInfo> {
 };
 }  // namespace std
 
-template <typename Vertex, typename Material>
+template <typename Vertex, typename Material, typename Instance>
 class DrawPack {
    public:
     DrawPack(const DrawPack&) = delete;
@@ -73,8 +73,8 @@ class DrawPack {
     }
 
    private:
-    friend class DrawPackBuilder<Vertex, Material>;
-    friend class Stage<Vertex, Material>;
+    friend class DrawPackBuilder<Vertex, Material, Instance>;
+    friend class Stage<Vertex, Material, Instance>;
 
     struct DrawInstanced {
         DrawInfo drawInfo;
@@ -82,7 +82,7 @@ class DrawPack {
     };
 
     DrawPack(
-        const std::unordered_map<DrawInfo, std::vector<glm::mat4>>& drawData,
+        const std::unordered_map<DrawInfo, std::vector<Instance>>& drawData,
         MaterialPackHandle<Material> materialPack,
         MeshPackHandle<Vertex> meshPack) noexcept
         : meshes(drawData.size()),
@@ -94,7 +94,7 @@ class DrawPack {
             const auto& [drawInfo, instances] = meshDrawData;
             meshes[i] = DrawInstanced(drawInfo, instances.size());
             glNamedBufferStorage(instanceBuffers[i],
-                                 sizeof(glm::mat4) * instances.size(),
+                                 sizeof(Instance) * instances.size(),
                                  instances.data(), GL_NONE);
         }
     }
@@ -104,7 +104,7 @@ class DrawPack {
         MaterialPack<Material>::bind(materialPack);
         for (const auto& [draw, instanceBuffer] :
              std::views::zip(meshes, instanceBuffers)) {
-            VertexArray<Vertex, glm::mat4>::getVertexArray()
+            VertexArray<Vertex, Instance>::getVertexArray()
                 .bindBuffer<BindingIndex::InstanceAttributes>(instanceBuffer);
             glUniform1ui(uniformLocations.materialIndex,
                          static_cast<GLuint>(draw.drawInfo.materialIndex));
@@ -122,6 +122,18 @@ class DrawPack {
 };
 
 template <typename Vertex, typename Material>
+class Model {
+   public:
+    template <typename Instance>
+    static DrawPackBuilder<Vertex, Material, Instance> drawPackBuilder(
+        MeshPackHandle<Vertex> meshPack,
+        MaterialPackHandle<Material> materialPack) noexcept {
+        return DrawPackBuilder<Vertex, Material, Instance>(meshPack,
+                                                           materialPack);
+    }
+};
+
+template <typename Vertex, typename Material, typename Instance>
 class DrawPackBuilder {
    public:
     DrawPackBuilder(MeshPackHandle<Vertex> meshPack,
@@ -130,44 +142,45 @@ class DrawPackBuilder {
 
     DrawPackBuilder& addDraw(MeshHandle<Vertex> meshHandle,
                              MaterialHandle<Material> materialHandle,
-                             glm::mat4 modelMatrix) {
+                             Instance instanceData) {
         Mesh mesh = getMesh(meshHandle);
         DrawInfo drawInfo{mesh, materialHandle.materialIndex};
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
-            drawDataIt->second.emplace_back(modelMatrix);
+            drawDataIt->second.emplace_back(instanceData);
         } else {
-            std::vector<glm::mat4> modelMatrices{modelMatrix};
+            std::vector<Instance> instances{instanceData};
             drawData.emplace(std::piecewise_construct,
                              std::forward_as_tuple(drawInfo),
-                             std::forward_as_tuple(std::move(modelMatrices)));
+                             std::forward_as_tuple(std::move(instances)));
         }
         return *this;
     }
 
     DrawPackBuilder& addDrawMulti(MeshHandle<Vertex> meshHandle,
                                   MaterialHandle<Material> materialHandle,
-                                  std::vector<glm::mat4>&& modelMatrices) {
+                                  std::vector<Instance>&& instanceData) {
         Mesh mesh = getMesh(meshHandle);
         DrawInfo drawInfo{mesh, materialHandle.uniformIndex};
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
             drawDataIt->second.insert(drawDataIt->second.end(),
-                                      std::move(modelMatrices));
+                                      std::move(instanceData));
         } else {
             drawData.emplace(std::piecewise_construct,
                              std::forward_as_tuple(drawInfo),
-                             std::forward_as_tuple(std::move(modelMatrices)));
+                             std::forward_as_tuple(std::move(instanceData)));
         }
         return *this;
     }
 
-    DrawPack<Vertex, Material> build() {
-        return DrawPack<Vertex, Material>{drawData, materialPack, meshPack};
+    DrawPack<Vertex, Material, Instance> build() {
+        return DrawPack<Vertex, Material, Instance>{drawData, materialPack,
+                                                    meshPack};
     }
 
    private:
     MeshPackHandle<Vertex> meshPack;
     MaterialPackHandle<Material> materialPack;
-    std::unordered_map<DrawInfo, std::vector<glm::mat4>> drawData;
+    std::unordered_map<DrawInfo, std::vector<Instance>> drawData;
 };

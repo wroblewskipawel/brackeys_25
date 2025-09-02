@@ -12,7 +12,7 @@
 template <typename Vertex>
 class MeshPack;
 
-template <typename Vertex, typename Material>
+template <typename Vertex, typename Material, typename Instance>
 class DrawPack;
 
 template <typename Vertex, typename Instance>
@@ -35,7 +35,7 @@ class VertexArrayStorage {
 };
 
 enum class BindingIndex : GLuint {
-    ElementBuffer = -1,
+    ElementBuffer = std::numeric_limits<GLuint>::max(),
     VertexAttributes = 0,
     InstanceAttributes = 1,
 };
@@ -59,7 +59,7 @@ class VertexArray {
 
    private:
     friend class MeshPack<Vertex>;
-    template <typename, typename>
+    template <typename, typename, typename>
     friend class DrawPack;
 
     static VertexArray& getVertexArray() noexcept {
