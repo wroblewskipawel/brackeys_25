@@ -4,6 +4,7 @@
 #include <optional>
 #include <ranges>
 #include <vector>
+#include <algorithm>
 
 template <typename Item, typename Ownership>
 class SlotMap;
@@ -58,8 +59,7 @@ struct OwnershipData<Shared> {
     }
 
     void clear() noexcept {
-        std::memset(referenceCount.data(), static_cast<uint32_t>(0),
-                    sizeof(uint32_t) * referenceCount.size());
+        std::fill(referenceCount.begin(), referenceCount.end(), 0);
     }
 
     std::vector<uint32_t> referenceCount;
