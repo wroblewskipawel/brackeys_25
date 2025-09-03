@@ -50,10 +50,10 @@ MeshDataHandle<ColoredVertex> getCubeMesh() {
                                       0, 1, 4, 1, 5, 4,
                                       // Top face (y = +0.5)
                                       2, 6, 3, 3, 6, 7};
-        cubeHandle = MeshData<ColoredVertex>::registerMeshData(
-            MeshData(std::move(vertices), std::move(indices)));
+        cubeHandle =
+            registerMeshData(MeshData(std::move(vertices), std::move(indices)));
     }
-    return cubeHandle;
+    return cubeHandle.copy();
 }
 
 template <>
@@ -112,8 +112,8 @@ MeshDataHandle<UnlitVertex> getCubeMesh() {
                                       // Top face
                                       20, 21, 22, 21, 23, 22};
 
-        cubeHandle = MeshData<UnlitVertex>::registerMeshData(
-            MeshData(std::move(vertices), std::move(indices)));
+        cubeHandle =
+            registerMeshData(MeshData(std::move(vertices), std::move(indices)));
     }
-    return cubeHandle;
+    return cubeHandle.copy();
 }

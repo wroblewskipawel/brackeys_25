@@ -71,177 +71,180 @@ int main(void) {
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
+    {
+        DocumentReader<UnlitVertex, UnlitMaterial> waterBottle{
+            "assets/WaterBottle/glTF/WaterBottle.gltf"};
 
-    DocumentReader<UnlitVertex, UnlitMaterial> waterBottle{
-        "assets/WaterBottle/glTF/WaterBottle.gltf"};
+        DocumentReader<UnlitAnimatedVertex, UnlitMaterial> cesiumMan{
+            "assets/CesiumMan/glTF/CesiumMan.gltf"};
 
-    DocumentReader<UnlitAnimatedVertex, UnlitMaterial> cesiumMan{
-        "assets/CesiumMan/glTF/CesiumMan.gltf"};
+        MaterialPackBuilder<EmptyMaterial> emptyMaterialPackBuilder{};
+        emptyMaterialPackBuilder.addMaterial(MaterialBuilder<EmptyMaterial>{});
+        auto emptyMaterialPack = emptyMaterialPackBuilder.build();
+        auto emptyMaterial = getPackHandles(emptyMaterialPack)[0].copy();
 
-    MaterialPackBuilder<EmptyMaterial> emptyMaterialPackBuilder{};
-    emptyMaterialPackBuilder.addMaterial(MaterialBuilder<EmptyMaterial>{});
-    auto emptyMaterialPack = emptyMaterialPackBuilder.build();
-    auto emptyMaterial = getPackHandles(emptyMaterialPack)[0];
+        MeshPackBuilder<UnlitVertex> unlitMeshPackBuilder{};
+        unlitMeshPackBuilder.addMesh(getCubeMesh<UnlitVertex>())
+            .addMeshMulti(waterBottle.takeMeshes());
+        auto unlitMeshPack = unlitMeshPackBuilder.build();
+        auto unlitMeshes = getPackHandles(unlitMeshPack);
+        auto unlitCubeMesh = unlitMeshes[0].copy();
+        auto waterBottleMesh = unlitMeshes[1].copy();
 
-    MeshPackBuilder<UnlitVertex> unlitMeshPackBuilder{};
-    unlitMeshPackBuilder.addMesh(getCubeMesh<UnlitVertex>())
-        .addMeshMulti(waterBottle.takeMeshes());
-    auto unlitMeshPack = unlitMeshPackBuilder.build();
-    auto unlitMeshes = getPackHandles(unlitMeshPack);
-    auto unlitCubeMesh = unlitMeshes[0];
-    auto waterBottleMesh = unlitMeshes[1];
+        MeshPackBuilder<UnlitAnimatedVertex> unlitAnimatedMeshPackBuilder{};
+        unlitAnimatedMeshPackBuilder.addMeshMulti(cesiumMan.takeMeshes());
+        auto unlitAnimatedMeshPack = unlitAnimatedMeshPackBuilder.build();
+        auto unlitAnimatedMeshes = getPackHandles(unlitAnimatedMeshPack);
+        auto cesiumManMesh = unlitAnimatedMeshes[0].copy();
 
-    MeshPackBuilder<UnlitAnimatedVertex> unlitAnimatedMeshPackBuilder{};
-    unlitAnimatedMeshPackBuilder.addMeshMulti(cesiumMan.takeMeshes());
-    auto unlitAnimatedMeshPack = unlitAnimatedMeshPackBuilder.build();
-    auto unlitAnimatedMeshes = getPackHandles(unlitAnimatedMeshPack);
-    auto cesiumManMesh = unlitAnimatedMeshes[0];
+        MaterialPackBuilder<UnlitMaterial> unlitMaterialPackBuilder{};
 
-    MaterialPackBuilder<UnlitMaterial> unlitMaterialPackBuilder{};
+        MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
+        unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(
+            "assets/textures/tile_1.png", TextureFormat::RGB));
 
-    MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
-    unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(
-        "assets/textures/tile_1.png", TextureFormat::RGB));
+        MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_2{};
+        unlitMaterialBuilder_2.setAlbedoTextureData(TextureData::loadFromFile(
+            "assets/textures/tile_2.png", TextureFormat::RGB));
 
-    MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_2{};
-    unlitMaterialBuilder_2.setAlbedoTextureData(TextureData::loadFromFile(
-        "assets/textures/tile_2.png", TextureFormat::RGB));
+        unlitMaterialPackBuilder.addMaterialMulti(waterBottle.takeMaterials())
+            .addMaterialMulti(cesiumMan.takeMaterials())
+            .addMaterial(unlitMaterialBuilder_1)
+            .addMaterial(unlitMaterialBuilder_2);
+        auto unlitMaterialPack = unlitMaterialPackBuilder.build();
+        auto unlitMaterials = getPackHandles(unlitMaterialPack);
+        auto waterBottleMaterial = unlitMaterials[0].copy();
+        auto cesiumManMaterial = unlitMaterials[1].copy();
+        auto unlitMaterial_1 = unlitMaterials[2].copy();
+        auto unlitMaterial_2 = unlitMaterials[3].copy();
 
-    unlitMaterialPackBuilder.addMaterialMulti(waterBottle.takeMaterials())
-        .addMaterialMulti(cesiumMan.takeMaterials())
-        .addMaterial(unlitMaterialBuilder_1)
-        .addMaterial(unlitMaterialBuilder_2);
-    auto unlitMaterialPack = unlitMaterialPackBuilder.build();
-    auto unlitMaterials = getPackHandles(unlitMaterialPack);
-    auto waterBottleMaterial = unlitMaterials[0];
-    auto cesiumManMaterial = unlitMaterials[1];
-    auto unlitMaterial_1 = unlitMaterials[2];
-    auto unlitMaterial_2 = unlitMaterials[3];
+        ShaderBuilder unlitShaderBuilder{};
+        unlitShaderBuilder.addStage(ShaderStage::Vertex,
+                                    "shaders/unlit/shader.vert");
+        unlitShaderBuilder.addStage(ShaderStage::Fragment,
+                                    "shaders/unlit/shader.frag");
+        auto unlitShader = unlitShaderBuilder.build();
 
-    ShaderBuilder unlitShaderBuilder{};
-    unlitShaderBuilder.addStage(ShaderStage::Vertex,
-                                "shaders/unlit/shader.vert");
-    unlitShaderBuilder.addStage(ShaderStage::Fragment,
-                                "shaders/unlit/shader.frag");
-    auto unlitShader = unlitShaderBuilder.build();
+        auto unlitDrawPack =
+            Model<UnlitVertex, UnlitMaterial>::drawPackBuilder<glm::mat4>(
+                unlitMeshPack, unlitMaterialPack);
+        unlitDrawPack.addDraw(
+            unlitCubeMesh, unlitMaterial_1,
+            glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
+        unlitDrawPack.addDraw(
+            unlitCubeMesh, unlitMaterial_2,
+            glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
+        unlitDrawPack.addDraw(
+            waterBottleMesh, waterBottleMaterial,
+            glm::scale(
+                glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 0.0f)),
+                glm::vec3(6.0f)));
+        auto unlitStage = Stage(std::move(unlitDrawPack));
+        unlitStage.setShader(unlitShader);
 
-    auto unlitDrawPack =
-        Model<UnlitVertex, UnlitMaterial>::drawPackBuilder<glm::mat4>(
-            unlitMeshPack, unlitMaterialPack);
-    unlitDrawPack.addDraw(
-        unlitCubeMesh, unlitMaterial_1,
-        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
-    unlitDrawPack.addDraw(
-        unlitCubeMesh, unlitMaterial_2,
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
-    unlitDrawPack.addDraw(
-        waterBottleMesh, waterBottleMaterial,
-        glm::scale(
-            glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 0.0f)),
-            glm::vec3(6.0f)));
-    auto unlitStage = Stage(std::move(unlitDrawPack));
-    unlitStage.setShader(unlitShader);
+        ShaderBuilder unlitAnimatedShaderBuilder{};
+        unlitAnimatedShaderBuilder.addStage(
+            ShaderStage::Vertex, "shaders/unlit_animated/shader.vert");
+        unlitAnimatedShaderBuilder.addStage(
+            ShaderStage::Fragment, "shaders/unlit_animated/shader.frag");
+        auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
 
-    ShaderBuilder unlitAnimatedShaderBuilder{};
-    unlitAnimatedShaderBuilder.addStage(ShaderStage::Vertex,
-                                        "shaders/unlit_animated/shader.vert");
-    unlitAnimatedShaderBuilder.addStage(ShaderStage::Fragment,
-                                        "shaders/unlit_animated/shader.frag");
-    auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
+        auto unlitAnimatedDrawPack =
+            Model<UnlitAnimatedVertex, UnlitMaterial>::drawPackBuilder<
+                glm::mat4>(unlitAnimatedMeshPack, unlitMaterialPack);
+        unlitAnimatedDrawPack.addDraw(
+            cesiumManMesh, cesiumManMaterial,
+            glm::scale(
+                glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
+                glm::vec3(2.0f)));
+        ;
+        auto unlitAnimatedStage = Stage(std::move(unlitAnimatedDrawPack));
+        unlitAnimatedStage.setShader(unlitAnimatedShader);
 
-    auto unlitAnimatedDrawPack =
-        Model<UnlitAnimatedVertex, UnlitMaterial>::drawPackBuilder<glm::mat4>(
-            unlitAnimatedMeshPack, unlitMaterialPack);
-    unlitAnimatedDrawPack.addDraw(
-        cesiumManMesh, cesiumManMaterial,
-        glm::scale(
-            glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
-            glm::vec3(2.0f)));
-    ;
-    auto unlitAnimatedStage = Stage(std::move(unlitAnimatedDrawPack));
-    unlitAnimatedStage.setShader(unlitAnimatedShader);
+        MeshPackBuilder<ColoredVertex> coloredMeshPackBuilder{};
+        coloredMeshPackBuilder.addMesh(getCubeMesh<ColoredVertex>());
+        auto coloredMeshPack = coloredMeshPackBuilder.build();
+        auto coloredCubeMesh = getPackHandles(coloredMeshPack)[0].copy();
 
-    MeshPackBuilder<ColoredVertex> coloredMeshPackBuilder{};
-    coloredMeshPackBuilder.addMesh(getCubeMesh<ColoredVertex>());
-    auto coloredMeshPack = coloredMeshPackBuilder.build();
-    auto coloredCubeMesh = getPackHandles(coloredMeshPack)[0];
+        ShaderBuilder coloredShaderBuilder{};
+        coloredShaderBuilder.addStage(ShaderStage::Vertex,
+                                      "shaders/colored/shader.vert");
+        coloredShaderBuilder.addStage(ShaderStage::Fragment,
+                                      "shaders/colored/shader.frag");
+        auto coloredShader = coloredShaderBuilder.build();
 
-    ShaderBuilder coloredShaderBuilder{};
-    coloredShaderBuilder.addStage(ShaderStage::Vertex,
-                                  "shaders/colored/shader.vert");
-    coloredShaderBuilder.addStage(ShaderStage::Fragment,
-                                  "shaders/colored/shader.frag");
-    auto coloredShader = coloredShaderBuilder.build();
+        auto coloredDrawPackBuilder =
+            Model<ColoredVertex, EmptyMaterial>::drawPackBuilder<glm::mat4>(
+                coloredMeshPack, emptyMaterialPack);
+        coloredDrawPackBuilder.addDraw(
+            coloredCubeMesh, emptyMaterial,
+            glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f)));
+        coloredDrawPackBuilder.addDraw(
+            coloredCubeMesh, emptyMaterial,
+            glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 2.0f)));
+        coloredDrawPackBuilder.addDraw(
+            coloredCubeMesh, emptyMaterial,
+            glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, -2.0f)));
+        auto coloredStage = Stage(std::move(coloredDrawPackBuilder));
+        coloredStage.setShader(coloredShader);
 
-    auto coloredDrawPackBuilder =
-        Model<ColoredVertex, EmptyMaterial>::drawPackBuilder<glm::mat4>(
-            coloredMeshPack, emptyMaterialPack);
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 2.0f)));
-    coloredDrawPackBuilder.addDraw(
-        coloredCubeMesh, emptyMaterial,
-        glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, -2.0f)));
-    auto coloredStage = Stage(std::move(coloredDrawPackBuilder));
-    coloredStage.setShader(coloredShader);
+        auto pipeline = Pipeline(std::move(coloredStage), std::move(unlitStage),
+                                 std::move(unlitAnimatedStage));
 
-    auto pipeline = Pipeline(std::move(coloredStage), std::move(unlitStage),
-                             std::move(unlitAnimatedStage));
+        CameraMatrices cameraMatrices{};
+        cameraMatrices.view =
+            glm::lookAt(glm::vec3(5.0f, 5.0f, 5.0f), glm::vec3(0.0f),
+                        glm::vec3(0.0f, 0.0f, 1.0f));
+        cameraMatrices.projection =
+            glm::perspective(glm::radians(45.0f), 480.0f / 640.0f, 1e-1f, 1e3f);
 
-    CameraMatrices cameraMatrices{};
-    cameraMatrices.view =
-        glm::lookAt(glm::vec3(5.0f, 5.0f, 5.0f), glm::vec3(0.0f),
-                    glm::vec3(0.0f, 0.0f, 1.0f));
-    cameraMatrices.projection =
-        glm::perspective(glm::radians(45.0f), 480.0f / 640.0f, 1e-1f, 1e3f);
+        auto animations = cesiumMan.takeAnimations();
+        auto animationPlayer = AnimationPlayer(animations[0]);
+        animationPlayer.loopAnimation(true);
 
-    auto animations = cesiumMan.takeAnimations();
-    auto animationPlayer = AnimationPlayer(animations[0]);
-    animationPlayer.loopAnimation(true);
-
-    auto jointMatrices = animationPlayer.getJointTransforms();
-
-    auto jointMatrixBufferBuilder = std140::UniformArrayBuilder<glm::mat4>();
-    jointMatrixBufferBuilder.pushMulti(jointMatrices);
-    auto jointMatrixBuffer = jointMatrixBufferBuilder.build();
-
-    jointMatrixBuffer.bind(GL_SHADER_STORAGE_BUFFER, jointMatrixBufferBinding);
-
-    std::chrono::steady_clock clock{};
-    auto lastFrameTime = clock.now();
-
-    while (!glfwWindowShouldClose(window)) {
-        auto currentFrameTime = clock.now();
-        auto deltaTime =
-            std::chrono::duration<float>(currentFrameTime - lastFrameTime)
-                .count();
-        lastFrameTime = currentFrameTime;
-
-        animationPlayer.update(deltaTime);
         auto jointMatrices = animationPlayer.getJointTransforms();
 
-        jointMatrixBuffer.updateRange(jointMatrices, 0);
+        auto jointMatrixBufferBuilder =
+            std140::UniformArrayBuilder<glm::mat4>();
+        jointMatrixBufferBuilder.pushMulti(jointMatrices);
+        auto jointMatrixBuffer = jointMatrixBufferBuilder.build();
 
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
+        jointMatrixBuffer.bind(GL_SHADER_STORAGE_BUFFER,
+                               jointMatrixBufferBinding);
 
-        ImGui::Begin("IDK");
-        ImGui::Text("Hello World!");
-        ImGui::End();
+        std::chrono::steady_clock clock{};
+        auto lastFrameTime = clock.now();
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        while (!glfwWindowShouldClose(window)) {
+            auto currentFrameTime = clock.now();
+            auto deltaTime =
+                std::chrono::duration<float>(currentFrameTime - lastFrameTime)
+                    .count();
+            lastFrameTime = currentFrameTime;
 
-        pipeline.execute(cameraMatrices);
+            animationPlayer.update(deltaTime);
+            auto jointMatrices = animationPlayer.getJointTransforms();
 
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            jointMatrixBuffer.updateRange(jointMatrices, 0);
 
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+
+            ImGui::Begin("IDK");
+            ImGui::Text("Hello World!");
+            ImGui::End();
+
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            pipeline.execute(cameraMatrices);
+
+            ImGui::Render();
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+            glfwSwapBuffers(window);
+            glfwPollEvents();
+        }
     }
 
     ImGui_ImplOpenGL3_Shutdown();

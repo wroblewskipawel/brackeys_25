@@ -54,20 +54,23 @@ struct MeshHandle {
     size_t meshIndex;
     MeshPackHandle<Vertex> packHandle;
 
-    static auto getPackHandles(MeshPackHandle<Vertex> packHandle) noexcept {
-        const auto& meshPack =
-            MeshPackStorage<Vertex>::meshPackStorage.get(packHandle).get();
+    MeshHandle copy() const noexcept { return {meshIndex, packHandle.copy()}; }
+
+    static auto getPackHandles(
+        const MeshPackHandle<Vertex>& packHandle) noexcept {
+        const auto& meshPack = packHandle.get().get();
         auto materialHandles = std::vector<MeshHandle<Vertex>>();
         for (size_t meshIndex = 0; meshIndex < meshPack.numMeshes();
              meshIndex++) {
-            materialHandles.emplace_back(MeshHandle(meshIndex, packHandle));
+            materialHandles.emplace_back(
+                MeshHandle(meshIndex, packHandle.copy()));
         }
         return materialHandles;
     }
 };
 
 template <typename Vertex>
-inline auto getPackHandles(MeshPackHandle<Vertex> packHandle) noexcept {
+inline auto getPackHandles(const MeshPackHandle<Vertex>& packHandle) noexcept {
     return MeshHandle<Vertex>::getPackHandles(packHandle);
 }
 
@@ -89,17 +92,13 @@ class MeshPackBuilder;
 template <typename Vertex>
 class MeshPack {
    public:
-    static Mesh getMesh(MeshHandle<Vertex> meshHandle) noexcept {
-        return MeshPackStorage<Vertex>::meshPackStorage
-            .get(meshHandle.packHandle)
-            .get()
-            .getMesh(meshHandle.meshIndex);
+    static Mesh getMesh(const MeshHandle<Vertex>& meshHandle) noexcept {
+        return meshHandle.packHandle.get().get().getMesh(meshHandle.meshIndex);
     }
 
-    static void bind(MeshPackHandle<Vertex> packHandle) {
+    static void bind(const MeshPackHandle<Vertex>& packHandle) {
         auto& vertexArray = VertexArray<Vertex, glm::mat4>::getVertexArray();
-        auto& meshPack =
-            MeshPackStorage<Vertex>::meshPackStorage.get(packHandle).get();
+        auto& meshPack = packHandle.get().get();
         vertexArray.bindBuffer<BindingIndex::VertexAttributes>(
             meshPack.buffers.vbo);
         vertexArray.bindBuffer<BindingIndex::ElementBuffer>(
@@ -131,25 +130,17 @@ class MeshPack {
    private:
     friend class MeshPackBuilder<Vertex>;
 
-    static MeshPackHandle<Vertex> registerMeshPack(
-        MeshPack&& meshPack) noexcept {
-        return MeshPackStorage<Vertex>::meshPackStorage.emplace(
-            std::move(meshPack));
-    }
-
     MeshPack(MeshBuffers&& buffers, std::vector<Mesh>&& meshes)
         : buffers(std::move(buffers)), meshes(std::move(meshes)) {}
 
     Mesh getMesh(size_t meshIndex) const noexcept { return meshes[meshIndex]; }
-
-    inline static auto currentPackIndex = MeshPackHandle<Vertex>::getInvalid();
 
     MeshBuffers buffers;
     std::vector<Mesh> meshes;
 };
 
 template <typename Vertex>
-inline Mesh getMesh(MeshHandle<Vertex> meshHandle) noexcept {
+inline Mesh getMesh(const MeshHandle<Vertex>& meshHandle) noexcept {
     return MeshPack<Vertex>::getMesh(meshHandle);
 }
 
@@ -164,14 +155,14 @@ class MeshPackBuilder {
     MeshPackBuilder(MeshPackBuilder&&) = delete;
     MeshPackBuilder& operator=(MeshPackBuilder&&) = delete;
 
-    MeshPackBuilder& addMesh(MeshDataHandle<Vertex> mesh) {
-        meshDatas.emplace_back(mesh);
+    MeshPackBuilder& addMesh(const MeshDataHandle<Vertex>& mesh) {
+        meshDatas.emplace_back(mesh.copy());
         return *this;
     }
 
     MeshPackBuilder& addMeshMulti(
         const std::vector<MeshDataHandle<Vertex>>& meshes) {
-        for (auto mesh : meshes) {
+        for (auto& mesh : meshes) {
             addMesh(mesh);
         }
         return *this;
@@ -183,9 +174,8 @@ class MeshPackBuilder {
 
         size_t indexOffset = 0;
         size_t vertexOffset = 0;
-        for (auto meshData : meshDatas) {
-            const auto& meshRef =
-                MeshDataStorage<Vertex>::meshStorage.get(meshData).get();
+        for (auto& meshData : meshDatas) {
+            const auto& meshRef = meshData.get().get();
 
             Mesh mesh{.indexCount = meshRef.indices.size(),
                       .indexOffset = indexOffset,
@@ -200,9 +190,8 @@ class MeshPackBuilder {
 
         vertexOffset = 0;
         indexOffset = 0;
-        for (auto meshData : meshDatas) {
-            const auto& meshRef =
-                MeshDataStorage<Vertex>::meshStorage.get(meshData).get();
+        for (auto& meshData : meshDatas) {
+            const auto& meshRef = meshData.get().get();
 
             auto numVertices = meshRef.vertices.size();
             auto numIndices = meshRef.indices.size();
@@ -223,7 +212,7 @@ class MeshPackBuilder {
         glNamedBufferStorage(buffers.ebo, indices.size() * sizeof(GLuint),
                              indices.data(), GL_DYNAMIC_STORAGE_BIT);
 
-        return MeshPack<Vertex>::registerMeshPack(
+        return registerMeshPack(
             MeshPack<Vertex>(std::move(buffers), std::move(meshes)));
     }
 

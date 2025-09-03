@@ -24,7 +24,7 @@
 #include "graphics/storage/mesh.h"
 
 template <typename Data>
-fx::gltf::Accessor::Type getAccessorType() {
+constexpr fx::gltf::Accessor::Type getAccessorType() {
     if constexpr (std::is_same_v<Data, float> ||
                   std::is_same_v<Data, int32_t> ||
                   std::is_same_v<Data, uint32_t> ||
@@ -333,8 +333,7 @@ MeshDataHandle<Vertex> readMeshData(const fx::gltf::Document& document,
             std::abort();
         }
     }
-    return MeshData<Vertex>::registerMeshData(
-        MeshData(std::move(vertices), std::move(indices)));
+    return registerMeshData(MeshData(std::move(vertices), std::move(indices)));
 }
 
 std::function<std::optional<TextureData>(void)> getTextureDataReader(

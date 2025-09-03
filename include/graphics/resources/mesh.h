@@ -34,11 +34,6 @@ constexpr bool isAnimatedVertex() {
 
 template <typename Vertex>
 struct MeshData {
-    static MeshDataHandle<Vertex> registerMeshData(MeshData&& meshData) {
-        return MeshDataStorage<Vertex>::meshStorage.emplace(
-            std::move(meshData));
-    }
-
     MeshData(std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices)
         : vertices(std::move(vertices)), indices(std::move(indices)) {}
 

@@ -84,23 +84,26 @@ struct MaterialHandle {
     size_t materialIndex;
     MaterialPackHandle<Material> packHandle;
 
+    MaterialHandle copy() const noexcept {
+        return {materialIndex, packHandle.copy()};
+    }
+
     static auto getPackHandles(
-        MaterialPackHandle<Material> packHandle) noexcept {
-        const auto& materialPack =
-            MaterialPackStorage<Material>::materialPackStorage.get(packHandle)
-                .get();
+        const MaterialPackHandle<Material>& packHandle) noexcept {
+        const auto& materialPack = packHandle.get().get();
         auto materialHandles = std::vector<MaterialHandle<Material>>();
         for (size_t materialIndex = 0;
              materialIndex < materialPack.numMaterials(); materialIndex++) {
             materialHandles.emplace_back(
-                MaterialHandle(materialIndex, packHandle));
+                MaterialHandle(materialIndex, packHandle.copy()));
         }
         return materialHandles;
     }
 };
 
 template <typename Material>
-inline auto getPackHandles(MaterialPackHandle<Material> packHandle) noexcept {
+inline auto getPackHandles(
+    const MaterialPackHandle<Material>& packHandle) noexcept {
     return MaterialHandle<Material>::getPackHandles(packHandle);
 }
 
@@ -151,24 +154,17 @@ class MaterialPack {
     MaterialPack(MaterialPack&&) = default;
     MaterialPack& operator=(MaterialPack&&) = default;
 
-    static void bind(MaterialPackHandle<Material> materialPack) {
+    static void bind(MaterialPackHandle<Material>& materialPack) {
         if (currentPackIndex != materialPack) {
             if (!currentPackIndex.isInvalid()) {
-                auto& currentPack =
-                    MaterialPackStorage<Material>::materialPackStorage
-                        .get(currentPackIndex)
-                        .get();
+                auto& currentPack = currentPackIndex.get().get();
                 currentPack.materialData.setNotResident();
             }
-            auto& newPack = MaterialPackStorage<Material>::materialPackStorage
-                                .get(materialPack)
-                                .get();
+            auto& newPack = materialPack.get().get();
             newPack.materialData.setResident();
             currentPackIndex = materialPack;
         }
-        auto& currentPack = MaterialPackStorage<Material>::materialPackStorage
-                                .get(currentPackIndex)
-                                .get();
+        auto& currentPack = currentPackIndex.get().get();
         currentPack.materialUniforms.bind(GL_SHADER_STORAGE_BUFFER,
                                           materialPackBufferBinding);
     }
@@ -180,12 +176,6 @@ class MaterialPack {
    private:
     using BufferType = typename Material::BufferType;
     friend class MaterialPackBuilder<Material>;
-
-    static MaterialPackHandle<Material> registerMaterialPack(
-        MaterialPack&& materialPack) {
-        return MaterialPackStorage<Material>::materialPackStorage.emplace(
-            std::move(materialPack));
-    }
 
     MaterialPack(std140::UniformArrayBuilder<BufferType>&& materialUniforms,
                  std::vector<Material>&& materialData)
@@ -231,9 +221,8 @@ class MaterialPackBuilder {
     }
 
     MaterialPackHandle<Material> build() {
-        return MaterialPack<Material>::registerMaterialPack(
-            MaterialPack<Material>(std::move(materialUniforms),
-                                   std::move(materialData)));
+        return registerMaterialPack(MaterialPack<Material>(
+            std::move(materialUniforms), std::move(materialData)));
     }
 
    private:

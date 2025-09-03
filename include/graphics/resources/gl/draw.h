@@ -49,8 +49,8 @@ class DrawPack {
     DrawPack(DrawPack&& other) noexcept
         : meshes(std::move(other.meshes)),
           instanceBuffers(std::move(other.instanceBuffers)),
-          materialPack(other.materialPack),
-          meshPack(other.meshPack) {
+          materialPack(std::move(other.materialPack)),
+          meshPack(std::move(other.meshPack)) {
         other.meshPack = MeshPackHandle<Vertex>::getInvalid();
         other.materialPack = MaterialPackHandle<Material>::getInvalid();
     };
@@ -81,14 +81,13 @@ class DrawPack {
         size_t numInstances;
     };
 
-    DrawPack(
-        const std::unordered_map<DrawInfo, std::vector<Instance>>& drawData,
-        MaterialPackHandle<Material> materialPack,
-        MeshPackHandle<Vertex> meshPack) noexcept
+    DrawPack(std::unordered_map<DrawInfo, std::vector<Instance>>&& drawData,
+             MaterialPackHandle<Material>&& materialPack,
+             MeshPackHandle<Vertex>&& meshPack) noexcept
         : meshes(drawData.size()),
           instanceBuffers(drawData.size()),
-          materialPack(materialPack),
-          meshPack(meshPack) {
+          materialPack(std::move(materialPack)),
+          meshPack(std::move(meshPack)) {
         glCreateBuffers(instanceBuffers.size(), instanceBuffers.data());
         for (const auto& [i, meshDrawData] : std::views::enumerate(drawData)) {
             const auto& [drawInfo, instances] = meshDrawData;
@@ -126,8 +125,8 @@ class Model {
    public:
     template <typename Instance>
     static DrawPackBuilder<Vertex, Material, Instance> drawPackBuilder(
-        MeshPackHandle<Vertex> meshPack,
-        MaterialPackHandle<Material> materialPack) noexcept {
+        const MeshPackHandle<Vertex>& meshPack,
+        const MaterialPackHandle<Material>& materialPack) noexcept {
         return DrawPackBuilder<Vertex, Material, Instance>(meshPack,
                                                            materialPack);
     }
@@ -136,12 +135,12 @@ class Model {
 template <typename Vertex, typename Material, typename Instance>
 class DrawPackBuilder {
    public:
-    DrawPackBuilder(MeshPackHandle<Vertex> meshPack,
-                    MaterialPackHandle<Material> materialPack) noexcept
-        : meshPack(meshPack), materialPack(materialPack) {}
+    DrawPackBuilder(const MeshPackHandle<Vertex>& meshPack,
+                    const MaterialPackHandle<Material>& materialPack) noexcept
+        : meshPack(meshPack.copy()), materialPack(materialPack.copy()) {}
 
-    DrawPackBuilder& addDraw(MeshHandle<Vertex> meshHandle,
-                             MaterialHandle<Material> materialHandle,
+    DrawPackBuilder& addDraw(const MeshHandle<Vertex>& meshHandle,
+                             const MaterialHandle<Material>& materialHandle,
                              Instance instanceData) {
         Mesh mesh = getMesh(meshHandle);
         DrawInfo drawInfo{mesh, materialHandle.materialIndex};
@@ -157,9 +156,10 @@ class DrawPackBuilder {
         return *this;
     }
 
-    DrawPackBuilder& addDrawMulti(MeshHandle<Vertex> meshHandle,
-                                  MaterialHandle<Material> materialHandle,
-                                  std::vector<Instance>&& instanceData) {
+    DrawPackBuilder& addDrawMulti(
+        const MeshHandle<Vertex>& meshHandle,
+        const MaterialHandle<Material>& materialHandle,
+        std::vector<Instance>&& instanceData) {
         Mesh mesh = getMesh(meshHandle);
         DrawInfo drawInfo{mesh, materialHandle.uniformIndex};
         auto drawDataIt = drawData.find(drawInfo);
@@ -175,8 +175,8 @@ class DrawPackBuilder {
     }
 
     DrawPack<Vertex, Material, Instance> build() {
-        return DrawPack<Vertex, Material, Instance>{drawData, materialPack,
-                                                    meshPack};
+        return DrawPack<Vertex, Material, Instance>{
+            std::move(drawData), std::move(materialPack), std::move(meshPack)};
     }
 
    private:

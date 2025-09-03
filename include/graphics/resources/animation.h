@@ -56,10 +56,6 @@ class Skin {
     friend class SkinBuilder;
     friend class AnimationBuilder;
 
-    static SkinHandle registerSkin(Skin&& skin) noexcept {
-        return AnimationStorage::skinStorage.emplace(std::move(skin));
-    }
-
     Skin(std::vector<glm::mat4>&& inverseBindMatrices,
          std::vector<SkinJoint>&& jointsTree,
          std::vector<uint32_t>&& outputLocations, uint32_t skinIndex)
@@ -129,9 +125,9 @@ class SkinBuilder {
     };
 
     SkinHandle build() {
-        return Skin::registerSkin(
-            Skin(std::move(inverseBindMatrices), std::move(jointsTree),
-                 std::move(outputLocations), builderIndex));
+        return registerSkin(Skin(std::move(inverseBindMatrices),
+                                 std::move(jointsTree),
+                                 std::move(outputLocations), builderIndex));
     }
 
    private:
@@ -154,17 +150,11 @@ class Animation {
     friend class AnimationPlayer;
     friend class AnimationBuilder;
 
-    static AnimationHandle registerAnimation(Animation&& animation) noexcept {
-        return AnimationStorage::animationStorage.emplace(std::move(animation));
-    }
+    const Skin& getSkin() const noexcept { return skinHandle.get().get(); }
 
-    const Skin& getSkin() const noexcept {
-        return AnimationStorage::skinStorage.get(skinHandle).get();
-    }
-
-    Animation(SkinHandle skinHandle,
+    Animation(const SkinHandle& skinHandle,
               std::vector<std::optional<AnimatedJoint>>&& joints)
-        : skinHandle(skinHandle), joints(std::move(joints)) {}
+        : skinHandle(skinHandle.copy()), joints(std::move(joints)) {}
 
     SkinHandle skinHandle;
     std::vector<std::optional<AnimatedJoint>> joints;
@@ -172,9 +162,9 @@ class Animation {
 
 class AnimationBuilder {
    public:
-    AnimationBuilder(SkinHandle skinHandle) : skinHandle(skinHandle) {
-        const auto& skinRef =
-            AnimationStorage::skinStorage.get(skinHandle).get();
+    AnimationBuilder(const SkinHandle& skinHandle)
+        : skinHandle(skinHandle.copy()) {
+        const auto& skinRef = skinHandle.get().get();
         joints.resize(skinRef.jointsTree.size());
         skinIndex = skinRef.skinIndex;
     }
@@ -190,8 +180,7 @@ class AnimationBuilder {
     }
 
     AnimationHandle build() {
-        return Animation::registerAnimation(
-            Animation(skinHandle, std::move(joints)));
+        return registerAnimation(Animation(skinHandle, std::move(joints)));
     }
 
    private:
@@ -204,10 +193,11 @@ class AnimationBuilder {
 
 class AnimationPlayer {
    public:
-    AnimationPlayer(AnimationHandle animationHandle)
-        : animationHandle(animationHandle), currentTime(0.0), loops(false) {
-        auto& animationRef =
-            AnimationStorage::animationStorage.get(animationHandle).get();
+    AnimationPlayer(const AnimationHandle& animationHandle)
+        : animationHandle(animationHandle.copy()),
+          currentTime(0.0),
+          loops(false) {
+        auto& animationRef = animationHandle.get().get();
         auto durations =
             std::views::transform(animationRef.joints, [](const auto& joint) {
                 return joint.has_value() ? (*joint).getDuration() : 0.0;
@@ -217,8 +207,7 @@ class AnimationPlayer {
     }
 
     void update(float deltaTime) {
-        const auto& animationRef =
-            AnimationStorage::animationStorage.get(animationHandle).get();
+        const auto& animationRef = animationHandle.get().get();
         if (currentTime < duration) {
             currentTime += deltaTime;
             if (loops && currentTime >= duration) {
@@ -244,8 +233,7 @@ class AnimationPlayer {
     void loopAnimation(bool shouldLoop) { loops = shouldLoop; }
 
     std::vector<glm::mat4> getJointTransforms() const {
-        const auto& animationRef =
-            AnimationStorage::animationStorage.get(animationHandle).get();
+        const auto& animationRef = animationHandle.get().get();
         auto localTransforms = getJointsLocalTransform(animationRef);
         animationRef.getSkin().apply(localTransforms);
         return localTransforms;
