@@ -1,6 +1,6 @@
 #pragma once
 
-#include "collections/static.h"
+#include "collections/slot_map/static.h"
 
 template <typename Vertex>
 class MeshPack;
@@ -13,3 +13,22 @@ inline MeshPackHandle<Vertex> registerMeshPack(
     MeshPack<Vertex>&& mesh) noexcept {
     return registerResource<MeshPack<Vertex>, Shared>(std::move(mesh));
 }
+
+template <typename Key, typename Vertex>
+inline const Ref<MeshPack<Vertex>, Shared> getMeshPackByKey(
+    const Key& key) noexcept {
+    return getKey<Key, MeshPack<Vertex>, Shared>(key);
+}
+
+template <typename Key, typename Vertex>
+inline MeshPackHandle<Vertex> tryGetOwnedMeshPackByKey(
+    const Key& key) noexcept {
+    return tryGetOwned<Key, MeshPack<Vertex>, Shared>(key);
+}
+
+namespace unsafe {
+template <typename Key, typename Vertex>
+inline Ref<MeshPack<Vertex>, Shared> getMeshPackByKey(const Key& key) noexcept {
+    return getKey<Key, MeshPack<Vertex>, Shared>(key);
+}
+}  // namespace unsafe

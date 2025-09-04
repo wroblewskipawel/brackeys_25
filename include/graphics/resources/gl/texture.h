@@ -8,6 +8,7 @@
 #include <optional>
 
 #include "graphics/resources/texture.h"
+#include "graphics/storage/texture.h"
 
 struct SamplerConfig {
     GLint wrapS = GL_REPEAT;
@@ -114,6 +115,15 @@ class Texture {
     GLuint texture;
     GLuint64 bindlessHandle;
 };
+
+Texture tryLoadFromDataHandle(const TextureDataHandle& textureDataHandle,
+                              const SamplerConfig& samplerConfig) {
+    if (textureDataHandle.isInvalid()) {
+        std::println(std::cerr, "Texture: Mising texture data");
+        return Texture::empty();
+    }
+    return Texture::load(textureDataHandle.get().get(), samplerConfig);
+}
 
 Texture tryLoadFromData(const std::optional<TextureData>& textureData,
                         const SamplerConfig& samplerConfig) {

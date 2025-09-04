@@ -1,16 +1,19 @@
 #pragma once
 
+#include <algorithm>
 #include <iostream>
 #include <optional>
 #include <ranges>
 #include <vector>
-#include <algorithm>
 
 template <typename Item, typename Ownership>
 class SlotMap;
 
 template <typename Item, typename Ownership>
 class Handle;
+
+template <typename Item, typename Ownership>
+struct HandleId;
 
 class Unique;
 
@@ -24,6 +27,10 @@ struct CopyHandle {
     static Handle<Item, Ownership> copy(
         const Handle<Item, Ownership>& handle,
         SlotMap<Item, Ownership>& collection) noexcept;
+
+    static Handle<Item, Unique> tryGetOwned(
+        HandleId<Item, Unique> handle,
+        SlotMap<Item, Unique>& collection) noexcept;
 };
 
 template <>
@@ -65,13 +72,43 @@ struct OwnershipData<Shared> {
     std::vector<uint32_t> referenceCount;
 };
 
+namespace handle {
+constexpr static auto invalidValue = std::numeric_limits<uint32_t>::max();
+}
+
+template <typename Item, typename Ownership>
+struct HandleId {
+    using Handle = Handle<Item, Ownership>;
+
+    uint32_t generation;
+    uint32_t storageIndex;
+
+    static HandleId getInvalid() noexcept {
+        return HandleId{.generation = handle::invalidValue,
+                        .storageIndex = handle::invalidValue};
+    }
+
+    bool isInvalid() const noexcept {
+        return storageIndex == handle::invalidValue;
+    }
+
+    bool operator==(const HandleId& other) const noexcept {
+        return generation == other.generation &&
+               storageIndex == other.storageIndex;
+    }
+
+    Handle tryGetOwned(SlotMap<Item, Ownership>& collection) const noexcept {
+        return CopyHandle<Item, Ownership>::tryGetOwned(*this, collection);
+    }
+};
+
 template <typename Item, typename Ownership = Unique>
 class Handle {
    public:
-    constexpr static auto invalidValue = std::numeric_limits<uint32_t>::max();
+    using HandleId = HandleId<Item, Ownership>;
 
     static Handle getInvalid() noexcept {
-        return Handle(invalidValue, invalidValue);
+        return Handle(handle::invalidValue, handle::invalidValue);
     }
 
     Handle(Handle&& other) noexcept
@@ -89,7 +126,9 @@ class Handle {
         return *this;
     };
 
-    bool isInvalid() const noexcept { return storageIndex == invalidValue; }
+    bool isInvalid() const noexcept {
+        return storageIndex == handle::invalidValue;
+    }
 
     bool operator==(const Handle& other) const noexcept {
         return generation == other.generation &&
@@ -110,13 +149,17 @@ class Handle {
         }
     }
 
+    HandleId getId() const noexcept {
+        return HandleId{.generation = generation, .storageIndex = storageIndex};
+    }
+
    private:
     friend class SlotMap<Item, Ownership>;
     friend class CopyHandle<Item, Ownership>;
 
     void setInvalid() noexcept {
-        generation = invalidValue;
-        storageIndex = invalidValue;
+        generation = handle::invalidValue;
+        storageIndex = handle::invalidValue;
     }
 
     Handle(const Handle&) = default;
@@ -128,6 +171,18 @@ class Handle {
     uint32_t generation;
     uint32_t storageIndex;
 };
+
+namespace std {
+template <typename Item, typename Ownership>
+struct hash<HandleId<Item, Ownership>> {
+    std::size_t operator()(
+        const HandleId<Item, Ownership>& handleId) const noexcept {
+        std::size_t h1 = std::hash<size_t>{}(handleId.generation);
+        std::size_t h2 = std::hash<size_t>{}(handleId.storageIndex);
+        return h1 ^ (h2 << 1);
+    }
+};
+}  // namespace std
 
 template <typename Item, typename Ownership = Unique>
 class Ref {
@@ -148,6 +203,8 @@ class Ref {
         return *itemRef;
     }
 
+    bool isValid() const noexcept { return itemRef != nullptr; }
+
    private:
     friend class SlotMap<Item, Ownership>;
 
@@ -161,6 +218,11 @@ class Ref {
 
     Item* itemRef;
 };
+
+namespace unsafe {
+template <typename Item, typename Ownership>
+struct Index;
+}
 
 template <typename Item, typename Ownership = Unique>
 class SlotMap {
@@ -178,7 +240,7 @@ class SlotMap {
 
     const Ref get(const Handle& handle) const noexcept {
         Item* itemRef = nullptr;
-        if (isHandleValid(handle)) {
+        if (isHandleValid(handle.getId())) {
             itemRef = storageCells[handle.storageIndex].operator->();
         }
         return Ref(itemRef);
@@ -186,7 +248,7 @@ class SlotMap {
 
     Ref get(const Handle& handle) noexcept {
         Item* itemRef = nullptr;
-        if (isHandleValid(handle)) {
+        if (isHandleValid(handle.getId())) {
             itemRef = storageCells[handle.storageIndex].operator->();
         }
         return Ref(itemRef);
@@ -229,7 +291,8 @@ class SlotMap {
 
     bool pop(Handle&& handle) noexcept {
         auto removed = false;
-        if (isHandleValid(handle) && ownershipData.pop(handle.storageIndex)) {
+        if (isHandleValid(handle.getId()) &&
+            ownershipData.pop(handle.storageIndex)) {
             storageCells[handle.storageIndex] = std::nullopt;
             cellGenerations[handle.storageIndex] += 1;
             freeCells.push_back(handle.storageIndex);
@@ -241,6 +304,7 @@ class SlotMap {
 
    private:
     friend class CopyHandle<Item, Ownership>;
+    friend class unsafe::Index<Item, Ownership>;
 
     Handle allocateCell() noexcept {
         auto handle = Handle::getInvalid();
@@ -249,7 +313,7 @@ class SlotMap {
             freeCells.pop_back();
             ownershipData.pushExisting(storageIndex);
             handle = Handle(cellGenerations[storageIndex], storageIndex);
-        } else if (storageCells.size() != Handle::invalidValue) {
+        } else if (storageCells.size() != handle::invalidValue) {
             auto storageIndex = static_cast<uint32_t>(storageCells.size());
             storageCells.emplace_back(std::nullopt);
             cellGenerations.emplace_back(0);
@@ -259,9 +323,25 @@ class SlotMap {
         return std::move(handle);
     }
 
-    bool isHandleValid(const Handle& handle) const noexcept {
+    bool isHandleValid(HandleId<Item, Ownership> handle) const noexcept {
         return handle.storageIndex < cellGenerations.size() &&
                cellGenerations[handle.storageIndex] == handle.generation;
+    }
+
+    const Ref get(HandleId<Item, Ownership> handle) const noexcept {
+        Item* itemRef = nullptr;
+        if (isHandleValid(handle)) {
+            itemRef = storageCells[handle.storageIndex].operator->();
+        }
+        return Ref(itemRef);
+    }
+
+    Ref get(HandleId<Item, Ownership> handle) noexcept {
+        Item* itemRef = nullptr;
+        if (isHandleValid(handle)) {
+            itemRef = storageCells[handle.storageIndex].operator->();
+        }
+        return Ref(itemRef);
     }
 
     std::vector<std::optional<Item>> storageCells;
@@ -279,6 +359,15 @@ struct CopyHandle<Item, Unique> {
             false, "Attempted to copyHandle to resource with Unique ownership");
         return Handle<Item, Unique>::getInvalid();
     }
+
+    static Handle<Item, Unique> tryGetOwned(
+        HandleId<Item, Unique> handle,
+        SlotMap<Item, Unique>& collection) noexcept {
+        static_assert(false,
+                      "Attempted to obtain owning handle from non-owning for "
+                      "resource with Unique ownership");
+        return std::nullopt;
+    }
 };
 
 template <typename Item>
@@ -289,4 +378,45 @@ struct CopyHandle<Item, Shared> {
         collection.ownershipData.share(handle.storageIndex);
         return handle;
     }
+
+    static Handle<Item, Shared> tryGetOwned(
+        HandleId<Item, Shared> handle,
+        SlotMap<Item, Shared>& collection) noexcept {
+        auto owningHandle = Handle<Item, Shared>::getInvalid();
+        if (collection.isHandleValid(handle)) {
+            collection.ownershipData.share(handle.storageIndex);
+            owningHandle =
+                Handle<Item, Shared>(handle.generation, handle.storageIndex);
+        }
+        return owningHandle;
+    }
 };
+
+namespace unsafe {
+template <typename Item, typename Ownership>
+struct Index {
+    static Ref<Item, Ownership> get(
+        HandleId<Item, Ownership> handleId,
+        SlotMap<Item, Ownership>& slotMap) noexcept {
+        return slotMap.get(handleId);
+    }
+    static const Ref<Item, Ownership> get(
+        HandleId<Item, Ownership> handleId,
+        const SlotMap<Item, Ownership>& slotMap) noexcept {
+        return slotMap.get(handleId);
+    }
+};
+
+template <typename Item, typename Ownership>
+Ref<Item, Ownership> get(HandleId<Item, Ownership> handleId,
+                         SlotMap<Item, Ownership>& slotMap) noexcept {
+    return Index<Item, Ownership>::get(handleId, slotMap);
+}
+
+template <typename Item, typename Ownership>
+const Ref<Item, Ownership> get(
+    HandleId<Item, Ownership> handleId,
+    const SlotMap<Item, Ownership>& slotMap) noexcept {
+    return Index<Item, Ownership>::get(handleId, slotMap);
+}
+}  // namespace unsafe

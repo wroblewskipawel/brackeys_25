@@ -25,7 +25,7 @@ class UnlitMaterial {
 
     UnlitMaterial(const BuilderType& builder)
         : albedoTexture(
-              tryLoadFromData(builder.albedoTexture, SamplerConfig{})) {}
+              tryLoadFromDataHandle(builder.albedoTexture, SamplerConfig{})) {}
 
     UnlitMaterial(const UnlitMaterial&) = delete;
     UnlitMaterial& operator=(const UnlitMaterial&) = delete;

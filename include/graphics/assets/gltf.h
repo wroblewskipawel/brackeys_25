@@ -22,6 +22,7 @@
 #include "graphics/resources/mesh.h"
 #include "graphics/storage/animation.h"
 #include "graphics/storage/mesh.h"
+#include "graphics/storage/texture.h"
 
 template <typename Data>
 constexpr fx::gltf::Accessor::Type getAccessorType() {
@@ -336,51 +337,79 @@ MeshDataHandle<Vertex> readMeshData(const fx::gltf::Document& document,
     return registerMeshData(MeshData(std::move(vertices), std::move(indices)));
 }
 
-std::function<std::optional<TextureData>(void)> getTextureDataReader(
-    const std::filesystem::path& documentRootPath,
+std::string getTextureKey(const std::filesystem::path& documentPath,
+                          const fx::gltf::Document& document,
+                          const fx::gltf::Texture& texture) {
+    const auto& image = document.images.at(texture.source);
+    if (!image.uri.empty() && !image.IsEmbeddedResource()) {
+        return (fx::gltf::detail::GetDocumentRootPath(documentPath) / image.uri)
+            .string();
+    };
+    return (documentPath / (!image.name.empty()
+                                ? image.name
+                                : std::format("Image.{}", texture.source)))
+        .string();
+}
+
+std::optional<TextureData> readTextureData(
+    const std::filesystem::path& documentPath,
     const fx::gltf::Document& document, const fx::gltf::Texture& texture) {
     const auto& image = document.images.at(texture.source);
-    return [&]() -> std::optional<TextureData> {
-        if (!image.uri.empty()) {
-            if (image.IsEmbeddedResource()) {
-                std::vector<uint8_t> imageData{};
-                image.MaterializeData(imageData);
-                return TextureData::loadFromBuffer(
-                    imageData.data(), imageData.size(), TextureFormat::RGBA);
-            } else {
-                auto filePath =
-                    fx::gltf::detail::GetDocumentRootPath(documentRootPath) /
-                    image.uri;
-                return TextureData::loadFromFile(filePath, TextureFormat::RGBA);
-            }
-        } else {
-            const auto& bufferView = document.bufferViews[image.bufferView];
-            const auto& buffer = document.buffers[bufferView.buffer];
+    if (!image.uri.empty()) {
+        if (image.IsEmbeddedResource()) {
+            std::vector<uint8_t> imageData{};
+            image.MaterializeData(imageData);
             return TextureData::loadFromBuffer(
-                &buffer.data[bufferView.byteOffset], bufferView.byteLength,
-                TextureFormat::RGBA);
+                imageData.data(), imageData.size(), TextureFormat::RGBA);
+        } else {
+            auto filePath =
+                fx::gltf::detail::GetDocumentRootPath(documentPath) / image.uri;
+            return TextureData::loadFromFile(filePath, TextureFormat::RGBA);
         }
-    };
+    } else {
+        const auto& bufferView = document.bufferViews[image.bufferView];
+        const auto& buffer = document.buffers[bufferView.buffer];
+        return TextureData::loadFromBuffer(&buffer.data[bufferView.byteOffset],
+                                           bufferView.byteLength,
+                                           TextureFormat::RGBA);
+    }
 }
+
+TextureDataHandle getTextureDataHandle(
+    const std::filesystem::path& documentPath,
+    const fx::gltf::Document& document, const fx::gltf::Texture& texture) {
+    auto textureKey = getTextureKey(documentPath, document, texture);
+    auto existingDataHandle = tryGetOwnedTextureDataByKey(textureKey);
+    if (!existingDataHandle.isInvalid()) {
+        return existingDataHandle;
+    }
+    auto textureData = readTextureData(documentPath, document, texture);
+    if (textureData.has_value()) {
+        auto newTexture = registerTextureData(std::move(*textureData));
+        newTexture.registerKey(std::move(textureKey));
+        return newTexture;
+    };
+    return TextureDataHandle::getInvalid();
+};
 
 template <typename Material>
 typename MaterialBuilder<Material> readMaterialData(
-    const std::filesystem::path& documentRootPath,
+    const std::filesystem::path& documentPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material);
 
 template <>
 typename MaterialBuilder<UnlitMaterial> readMaterialData<UnlitMaterial>(
-    const std::filesystem::path& documentRootPath,
+    const std::filesystem::path& documentPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material) {
     // baseColorTexture could be empty, add support for handling such missing
     // data cases
     auto albedoTexture = document.textures.at(
         material.pbrMetallicRoughness.baseColorTexture.index);
-    auto albedoTextureReader =
-        getTextureDataReader(documentRootPath, document, albedoTexture);
+    auto albedoTextureData =
+        getTextureDataHandle(documentPath, document, albedoTexture);
 
     MaterialBuilder<UnlitMaterial> builder{};
-    builder.setAlbedoTextureData(albedoTextureReader());
+    builder.setAlbedoTextureData(std::move(albedoTextureData));
     return builder;
 }
 
@@ -389,7 +418,7 @@ typename MaterialBuilder<UnlitMaterial> readMaterialData<UnlitMaterial>(
 // same DocumentReader behavior for any material type
 template <>
 typename MaterialBuilder<EmptyMaterial> readMaterialData<EmptyMaterial>(
-    const std::filesystem::path& documentRootPath,
+    const std::filesystem::path& documentPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material) {
     MaterialBuilder<EmptyMaterial> builder{};
     return builder;
@@ -631,10 +660,10 @@ class DocumentReader {
     }
 
    private:
-    void loadDocument(const std::filesystem::path& documentRootPath,
+    void loadDocument(const std::filesystem::path& documentPath,
                       const fx::gltf::Document& document) noexcept {
         loadMeshes(document);
-        loadMaterials(documentRootPath, document);
+        loadMaterials(documentPath, document);
         if constexpr (isAnimatedVertex<Vertex>()) {
             loadAnimations(document);
         }
@@ -664,11 +693,11 @@ class DocumentReader {
         }
     }
 
-    void loadMaterials(const std::filesystem::path& documentRootPath,
+    void loadMaterials(const std::filesystem::path& documentPath,
                        const fx::gltf::Document& document) noexcept {
         for (const auto& material : document.materials) {
-            materials.emplace_back(readMaterialData<Material>(
-                documentRootPath, document, material));
+            materials.emplace_back(
+                readMaterialData<Material>(documentPath, document, material));
         }
     }
 
