@@ -304,6 +304,7 @@ class SlotMap {
 
    private:
     friend class CopyHandle<Item, Ownership>;
+    
     friend class unsafe::Index<Item, Ownership>;
 
     Handle allocateCell() noexcept {

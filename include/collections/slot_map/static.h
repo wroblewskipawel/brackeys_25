@@ -102,7 +102,7 @@ class StaticHandle<Item, Shared> {
 
     template <typename Key>
     bool registerKey(Key&& key) const noexcept {
-        return getKeyMap<Key>().insert(std::move(key), handle);
+        return getKeyMap<Key>().insert(std::forward<Key>(key), handle);
     }
 
    private:
@@ -150,7 +150,7 @@ class StaticHandle<Item, Unique> {
     bool isInvalid() const noexcept { return handle.isInvalid(); }
 
     template <typename Key>
-    bool registerKey(const Key& key) const noexcept {
+    bool registerKey(Key&& key) const noexcept {
         return getKeyMap<Key>().insert(std::forward<Key>(key), handle);
     }
 
@@ -175,15 +175,15 @@ class StaticHandle<Item, Unique> {
 
 template <typename Item, typename Ownership>
 inline StaticHandle<Item, Ownership> registerResource(Item&& item) noexcept {
-    auto handle =
-        StaticStorage<Item, Ownership>::staticStorage.emplace(std::move(item));
-    return StaticHandle<Item, Ownership>(std::move(handle));
+    return StaticHandle<Item, Ownership>(
+        StaticStorage<Item, Ownership>::staticStorage.emplace(
+            std::forward<Item>(item)));
 }
 
 template <typename Key, typename Item, typename Ownership>
-bool registerKey(const Key& key,
+bool registerKey(Key&& key,
                  const StaticHandle<Item, Ownership>& handle) noexcept {
-    return handle.registerKey(key);
+    return handle.registerKey(std::forward<Key>(key));
 }
 
 template <typename Key, typename Item, typename Ownership>
