@@ -15,6 +15,9 @@ class MeshPack;
 template <typename Vertex, typename Material, typename Instance>
 class DrawPack;
 
+template <typename Instance, size_t InstanceCount>
+class InstanceBuffer;
+
 template <typename Vertex, typename Instance>
 class VertexArray;
 
@@ -61,6 +64,8 @@ class VertexArray {
     friend class MeshPack<Vertex>;
     template <typename, typename, typename>
     friend class DrawPack;
+    template <typename, size_t>
+    friend class InstanceBuffer;
 
     static VertexArray& getVertexArray() noexcept {
         static auto vertexArray = VertexArray<Vertex, Instance>();
