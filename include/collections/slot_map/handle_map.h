@@ -5,7 +5,7 @@
 
 #include "collections/slot_map.h"
 
-template <typename Key, typename Item, typename Ownership = Unique>
+template <typename Key, typename Item, typename Ownership>
 class KeyHandleMap {
    public:
     using Ref = Ref<Item, Ownership>;

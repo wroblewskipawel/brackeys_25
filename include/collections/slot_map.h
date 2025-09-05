@@ -77,32 +77,62 @@ constexpr static auto invalidValue = std::numeric_limits<uint32_t>::max();
 }
 
 template <typename Item, typename Ownership>
-struct HandleId {
+class HandleId {
+   public:
     using Handle = Handle<Item, Ownership>;
 
-    uint32_t generation;
-    uint32_t storageIndex;
+    HandleId(const HandleId&) = default;
+    HandleId& operator=(const HandleId&) = default;
 
     static HandleId getInvalid() noexcept {
-        return HandleId{.generation = handle::invalidValue,
-                        .storageIndex = handle::invalidValue};
+        return HandleId(handle::invalidValue, handle::invalidValue);
     }
 
     bool isInvalid() const noexcept {
         return storageIndex == handle::invalidValue;
     }
 
-    bool operator==(const HandleId& other) const noexcept {
-        return generation == other.generation &&
-               storageIndex == other.storageIndex;
-    }
-
     Handle tryGetOwned(SlotMap<Item, Ownership>& collection) const noexcept {
         return CopyHandle<Item, Ownership>::tryGetOwned(*this, collection);
     }
+
+    friend class std::hash<HandleId>;
+
+    friend bool operator==(const HandleId& lhs, const HandleId& rhs) noexcept {
+        return lhs.generation == rhs.generation &&
+               lhs.storageIndex == rhs.storageIndex;
+    }
+
+    friend bool operator<(const HandleId& lhs, const HandleId& rhs) noexcept {
+        return std::tie(lhs.storageIndex, lhs.generation) <
+               std::tie(rhs.storageIndex, rhs.generation);
+    }
+
+   private:
+    friend class Handle;
+    friend class SlotMap<Item, Ownership>;
+    friend class CopyHandle<Item, Ownership>;
+
+    HandleId(uint32_t generation, uint32_t storageIndex)
+        : generation(generation), storageIndex(storageIndex) {}
+
+    uint32_t generation;
+    uint32_t storageIndex;
 };
 
-template <typename Item, typename Ownership = Unique>
+namespace std {
+template <typename Item, typename Ownership>
+struct hash<HandleId<Item, Ownership>> {
+    std::size_t operator()(
+        const HandleId<Item, Ownership>& handleId) const noexcept {
+        std::size_t h1 = std::hash<size_t>{}(handleId.generation);
+        std::size_t h2 = std::hash<size_t>{}(handleId.storageIndex);
+        return h1 ^ (h2 << 1);
+    }
+};
+}  // namespace std
+
+template <typename Item, typename Ownership>
 class Handle {
    public:
     using HandleId = HandleId<Item, Ownership>;
@@ -130,9 +160,20 @@ class Handle {
         return storageIndex == handle::invalidValue;
     }
 
-    bool operator==(const Handle& other) const noexcept {
-        return generation == other.generation &&
-               storageIndex == other.storageIndex;
+    friend class std::hash<Handle>;
+
+    friend bool operator==(const Handle& lhs, const Handle& rhs) noexcept {
+        if constexpr (std::is_same_v<Ownership, Unique>) {
+            return false;
+        } else {
+            return lhs.generation == rhs.generation &&
+                   lhs.storageIndex == rhs.storageIndex;
+        }
+    }
+
+    friend bool operator<(const Handle& lhs, const Handle& rhs) noexcept {
+        return std::tie(lhs.storageIndex, lhs.generation) <
+               std::tie(rhs.storageIndex, rhs.generation);
     }
 
     Handle copyHandle(SlotMap<Item, Ownership>& collection) const noexcept {
@@ -150,7 +191,7 @@ class Handle {
     }
 
     HandleId getId() const noexcept {
-        return HandleId{.generation = generation, .storageIndex = storageIndex};
+        return HandleId(generation, storageIndex);
     }
 
    private:
@@ -174,17 +215,17 @@ class Handle {
 
 namespace std {
 template <typename Item, typename Ownership>
-struct hash<HandleId<Item, Ownership>> {
+struct hash<Handle<Item, Ownership>> {
     std::size_t operator()(
-        const HandleId<Item, Ownership>& handleId) const noexcept {
-        std::size_t h1 = std::hash<size_t>{}(handleId.generation);
-        std::size_t h2 = std::hash<size_t>{}(handleId.storageIndex);
+        const Handle<Item, Ownership>& handle) const noexcept {
+        std::size_t h1 = std::hash<size_t>{}(handle.generation);
+        std::size_t h2 = std::hash<size_t>{}(handle.storageIndex);
         return h1 ^ (h2 << 1);
     }
 };
 }  // namespace std
 
-template <typename Item, typename Ownership = Unique>
+template <typename Item, typename Ownership>
 class Ref {
    public:
     const Item& get() const noexcept {
@@ -224,7 +265,7 @@ template <typename Item, typename Ownership>
 struct Index;
 }
 
-template <typename Item, typename Ownership = Unique>
+template <typename Item, typename Ownership>
 class SlotMap {
    public:
     using Handle = Handle<Item, Ownership>;

@@ -66,8 +66,8 @@ class StaticKeyMap {
     inline static KeyHandleMap<Key, Item, Ownership> staticMap = {};
 };
 
-template <typename Item>
-class StaticHandle<Item, Shared> {
+template <typename Item, typename Ownership>
+class StaticHandle {
    public:
     StaticHandle& operator=(const StaticHandle& other) noexcept {
         getStorage().pop(std::move(handle));
@@ -82,95 +82,56 @@ class StaticHandle<Item, Shared> {
     // erroneously copied handles
     ~StaticHandle() { getStorage().pop(std::move(handle)); }
 
-    const Ref<Item, Shared> get() const noexcept {
+    const Ref<Item, Ownership> get() const noexcept {
         return getStorage().get(handle);
     }
 
-    Ref<Item, Shared> get() noexcept { return getStorage().get(handle); }
+    Ref<Item, Ownership> get() noexcept { return getStorage().get(handle); }
 
     static StaticHandle getInvalid() noexcept {
-        return StaticHandle(Handle<Item, Shared>::getInvalid());
+        return StaticHandle(Handle<Item, Ownership>::getInvalid());
     }
 
     bool isInvalid() const noexcept { return handle.isInvalid(); }
 
     StaticHandle copy() const noexcept { return StaticHandle(*this); }
 
-    bool operator==(const StaticHandle& other) const noexcept {
-        return handle == other.handle;
-    }
-
     template <typename Key>
     bool registerKey(Key&& key) const noexcept {
         return getKeyMap<Key>().insert(std::forward<Key>(key), handle);
     }
 
+    friend class std::hash<StaticHandle>;
+
+    friend bool operator==(const StaticHandle& lhs, const StaticHandle& rhs) {
+        return lhs.handle == rhs.handle;
+    }
+
+    friend bool operator<(const StaticHandle& lhs, const StaticHandle& rhs) {
+        return lhs.handle < rhs.handle;
+    }
+
    private:
-    friend class StaticStorage<Item, Shared>;
-    friend StaticHandle<Item, Shared> registerResource<Item, Shared>(
+    friend class StaticStorage<Item, Ownership>;
+    friend StaticHandle<Item, Ownership> registerResource<Item, Ownership>(
         Item&&) noexcept;
 
     static auto& getStorage() noexcept {
-        return StaticStorage<Item, Shared>::staticStorage;
+        return StaticStorage<Item, Ownership>::staticStorage;
     }
 
     template <typename Key>
     static auto& getKeyMap() noexcept {
-        return StaticKeyMap<Key, Item, Shared>::staticMap;
+        return StaticKeyMap<Key, Item, Ownership>::staticMap;
     }
 
-    StaticHandle(Handle<Item, Shared>&& handle) : handle(std::move(handle)) {}
+    StaticHandle(Handle<Item, Ownership>&& handle)
+        : handle(std::move(handle)) {}
+
     StaticHandle(const StaticHandle& handle) noexcept
         : handle(handle.handle.copyHandle(getStorage())) {}
 
-    Handle<Item, Shared> handle;
-};
-
-template <typename Item>
-class StaticHandle<Item, Unique> {
-   public:
-    StaticHandle& operator=(const StaticHandle& other) = delete;
-    StaticHandle(const StaticHandle& handle) = delete;
-
-    StaticHandle(StaticHandle&&) = default;
-    StaticHandle& operator=(StaticHandle&&) = default;
-
-    ~StaticHandle() { getStorage().pop(std::move(handle)); }
-
-    const Ref<Item, Unique> get() const noexcept {
-        return getStorage().get(handle);
-    }
-
-    Ref<Item, Unique> get() noexcept { return getStorage().get(handle); }
-
-    static StaticHandle getInvalid() noexcept {
-        return StaticHandle(Handle<Item, Unique>::getInvalid());
-    }
-
-    bool isInvalid() const noexcept { return handle.isInvalid(); }
-
-    template <typename Key>
-    bool registerKey(Key&& key) const noexcept {
-        return getKeyMap<Key>().insert(std::forward<Key>(key), handle);
-    }
-
-   private:
-    friend class StaticStorage<Item, Unique>;
-    friend StaticHandle<Item, Unique> registerResource<Item, Unique>(
-        Item&&) noexcept;
-
-    static auto& getStorage() noexcept {
-        return StaticStorage<Item, Unique>::staticStorage;
-    }
-
-    template <typename Key>
-    static auto& getKeyMap() noexcept {
-        return StaticKeyMap<Key, Item, Unique>::staticMap;
-    }
-
-    StaticHandle(Handle<Item, Unique>&& handle) : handle(std::move(handle)) {}
-
-    Handle<Item, Unique> handle;
+    Handle<Item, Ownership> handle;
 };
 
 template <typename Item, typename Ownership>
@@ -205,3 +166,13 @@ template <typename Key, typename Item, typename Ownership>
 bool clearKeys() noexcept {
     StaticKeyMap<Key, Item, Ownership>::staticMap.clear();
 }
+
+namespace std {
+template <typename Item, typename Ownership>
+struct hash<StaticHandle<Item, Ownership>> {
+    std::size_t operator()(
+        const StaticHandle<Item, Ownership>& handle) const noexcept {
+        return std::hash<HandleId<Item, Ownership>>{}(handle.handle.getId());
+    }
+};
+};  // namespace std
