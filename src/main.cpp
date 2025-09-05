@@ -11,6 +11,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <stdexcept>
 
+#include "collections/unique_list.h"
 #include "graphics/assets/gltf.h"
 #include "graphics/assets/model.h"
 #include "graphics/debug.h"
@@ -72,6 +73,14 @@ int main(void) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
     {
+        auto materialPacks = UniqueTypeListBuilder()
+                                 .withType<std::vector<MaterialPackHandle<EmptyMaterial>>>()
+                                 .withType<std::vector<MaterialPackHandle<UnlitMaterial>>>()
+                                 .build();
+        
+        auto& unitMaterialPacks = materialPacks.get<std::vector<MaterialPackHandle<UnlitMaterial>>>();
+        auto& emptyMaterialPacks = materialPacks.get<std::vector<MaterialPackHandle<EmptyMaterial>>>();
+
         DocumentReader<UnlitVertex, UnlitMaterial> waterBottle{
             "assets/WaterBottle/glTF/WaterBottle.gltf"};
 
@@ -83,6 +92,8 @@ int main(void) {
         auto emptyMaterialPack = emptyMaterialPackBuilder.build();
         auto emptyMaterial = getPackHandles(emptyMaterialPack)[0].copy();
 
+        emptyMaterialPacks.emplace_back(emptyMaterialPack.copy());
+            
         MeshPackBuilder<UnlitVertex> unlitMeshPackBuilder{};
         unlitMeshPackBuilder.addMesh(getCubeMesh<UnlitVertex>())
             .addMeshMulti(waterBottle.takeMeshes());
@@ -117,6 +128,8 @@ int main(void) {
         auto cesiumManMaterial = unlitMaterials[1].copy();
         auto unlitMaterial_1 = unlitMaterials[2].copy();
         auto unlitMaterial_2 = unlitMaterials[3].copy();
+
+        unitMaterialPacks.emplace_back(unlitMaterialPack.copy());
 
         ShaderBuilder unlitShaderBuilder{};
         unlitShaderBuilder.addStage(ShaderStage::Vertex,
