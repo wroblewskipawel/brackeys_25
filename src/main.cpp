@@ -73,13 +73,16 @@ int main(void) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
     {
-        auto materialPacks = UniqueTypeListBuilder()
-                                 .withType<std::vector<MaterialPackHandle<EmptyMaterial>>>()
-                                 .withType<std::vector<MaterialPackHandle<UnlitMaterial>>>()
-                                 .build();
-        
-        auto& unitMaterialPacks = materialPacks.get<std::vector<MaterialPackHandle<UnlitMaterial>>>();
-        auto& emptyMaterialPacks = materialPacks.get<std::vector<MaterialPackHandle<EmptyMaterial>>>();
+        auto materialPacks =
+            UniqueTypeListBuilder()
+                .withType<std::vector<MaterialPackHandle<EmptyMaterial>>>()
+                .withType<std::vector<MaterialPackHandle<UnlitMaterial>>>()
+                .build();
+
+        auto& unitMaterialPacks =
+            materialPacks.get<std::vector<MaterialPackHandle<UnlitMaterial>>>();
+        auto& emptyMaterialPacks =
+            materialPacks.get<std::vector<MaterialPackHandle<EmptyMaterial>>>();
 
         DocumentReader<UnlitVertex, UnlitMaterial> waterBottle{
             "assets/WaterBottle/glTF/WaterBottle.gltf"};
@@ -93,7 +96,7 @@ int main(void) {
         auto emptyMaterial = getPackHandles(emptyMaterialPack)[0].copy();
 
         emptyMaterialPacks.emplace_back(emptyMaterialPack.copy());
-            
+
         MeshPackBuilder<UnlitVertex> unlitMeshPackBuilder{};
         unlitMeshPackBuilder.addMesh(getCubeMesh<UnlitVertex>())
             .addMeshMulti(waterBottle.takeMeshes());
