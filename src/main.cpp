@@ -73,16 +73,45 @@ int main(void) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
     {
-        auto materialPacks =
+        auto materialPacksBuilder =
             UniqueTypeListBuilder()
-                .withType<std::vector<MaterialPackHandle<EmptyMaterial>>>()
-                .withType<std::vector<MaterialPackHandle<UnlitMaterial>>>()
+                .withType<MaterialPackHandle<EmptyMaterial>>()
+                .withType<MaterialPackHandle<UnlitMaterial>>();
+
+        auto meshPacksBuilder =
+            UniqueTypeListBuilder()
+                .withType<MeshPackHandle<ColoredVertex>>()
+                .withType<MeshPackHandle<UnlitVertex>>()
+                .withType<MeshPackHandle<UnlitAnimatedVertex>>();
+
+        auto productCollections =
+            meshPacksBuilder.product<std::pair>(materialPacksBuilder)
+                .wrap<std::vector>()
                 .build();
 
-        auto& unitMaterialPacks =
-            materialPacks.get<std::vector<MaterialPackHandle<UnlitMaterial>>>();
-        auto& emptyMaterialPacks =
-            materialPacks.get<std::vector<MaterialPackHandle<EmptyMaterial>>>();
+        auto& coloredEmptyModelCollection = productCollections.get<
+            std::vector<std::pair<MeshPackHandle<ColoredVertex>,
+                                  MaterialPackHandle<EmptyMaterial>>>>();
+
+        auto& coloredUnlitModelCollection = productCollections.get<
+            std::vector<std::pair<MeshPackHandle<ColoredVertex>,
+                                  MaterialPackHandle<UnlitMaterial>>>>();
+
+        auto& unlitEmptyModelCollection = productCollections.get<
+            std::vector<std::pair<MeshPackHandle<UnlitVertex>,
+                                  MaterialPackHandle<EmptyMaterial>>>>();
+
+        auto& unlitUnlitModelCollection = productCollections.get<
+            std::vector<std::pair<MeshPackHandle<UnlitVertex>,
+                                  MaterialPackHandle<UnlitMaterial>>>>();
+
+        auto& unlitAnimatedEmptyModelCollection = productCollections.get<
+            std::vector<std::pair<MeshPackHandle<UnlitAnimatedVertex>,
+                                  MaterialPackHandle<EmptyMaterial>>>>();
+
+        auto& unlitAnimatedUnlitModelCollection = productCollections.get<
+            std::vector<std::pair<MeshPackHandle<UnlitAnimatedVertex>,
+                                  MaterialPackHandle<UnlitMaterial>>>>();
 
         DocumentReader<UnlitVertex, UnlitMaterial> waterBottle{
             "assets/WaterBottle/glTF/WaterBottle.gltf"};
@@ -94,8 +123,6 @@ int main(void) {
         emptyMaterialPackBuilder.addMaterial(MaterialBuilder<EmptyMaterial>{});
         auto emptyMaterialPack = emptyMaterialPackBuilder.build();
         auto emptyMaterial = getPackHandles(emptyMaterialPack)[0].copy();
-
-        emptyMaterialPacks.emplace_back(emptyMaterialPack.copy());
 
         MeshPackBuilder<UnlitVertex> unlitMeshPackBuilder{};
         unlitMeshPackBuilder.addMesh(getCubeMesh<UnlitVertex>())
@@ -132,14 +159,15 @@ int main(void) {
         auto unlitMaterial_1 = unlitMaterials[2].copy();
         auto unlitMaterial_2 = unlitMaterials[3].copy();
 
-        unitMaterialPacks.emplace_back(unlitMaterialPack.copy());
-
         ShaderBuilder unlitShaderBuilder{};
         unlitShaderBuilder.addStage(ShaderStage::Vertex,
                                     "shaders/unlit/shader.vert");
         unlitShaderBuilder.addStage(ShaderStage::Fragment,
                                     "shaders/unlit/shader.frag");
         auto unlitShader = unlitShaderBuilder.build();
+
+        unlitUnlitModelCollection.emplace_back(unlitMeshPack.copy(),
+                                               unlitMaterialPack.copy());
 
         auto unlitDrawPack =
             Model<UnlitVertex, UnlitMaterial>::drawPackBuilder<glm::mat4>(
@@ -165,6 +193,9 @@ int main(void) {
             ShaderStage::Fragment, "shaders/unlit_animated/shader.frag");
         auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
 
+        unlitAnimatedUnlitModelCollection.emplace_back(
+            unlitAnimatedMeshPack.copy(), unlitMaterialPack.copy());
+
         auto unlitAnimatedDrawPack =
             Model<UnlitAnimatedVertex, UnlitMaterial>::drawPackBuilder<
                 glm::mat4>(unlitAnimatedMeshPack, unlitMaterialPack);
@@ -181,6 +212,9 @@ int main(void) {
         coloredMeshPackBuilder.addMesh(getCubeMesh<ColoredVertex>());
         auto coloredMeshPack = coloredMeshPackBuilder.build();
         auto coloredCubeMesh = getPackHandles(coloredMeshPack)[0].copy();
+
+        coloredEmptyModelCollection.emplace_back(coloredMeshPack.copy(),
+                                                 emptyMaterialPack.copy());
 
         ShaderBuilder coloredShaderBuilder{};
         coloredShaderBuilder.addStage(ShaderStage::Vertex,

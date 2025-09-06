@@ -9,6 +9,68 @@ struct UniqueTypeList;
 template <typename... Types>
 struct UniqueTypeListBuilder;
 
+template <template <typename> typename, typename>
+struct Wrap;
+
+template <template <typename> typename WrapType, typename... TypeList>
+struct Wrap<WrapType, UniqueTypeListBuilder<TypeList...>> {
+    using Type = UniqueTypeListBuilder<WrapType<TypeList>...>;
+};
+
+template <template <typename, typename> typename, typename, typename>
+struct Zip;
+
+template <template <typename, typename> typename ZipType, typename... FirstList,
+          typename... SecondList>
+struct Zip<ZipType, UniqueTypeListBuilder<FirstList...>,
+           UniqueTypeListBuilder<SecondList...>> {
+    using Type = UniqueTypeListBuilder<ZipType<FirstList, SecondList>...>;
+};
+
+template <typename, typename>
+struct Concatenate;
+
+template <typename... FirstList, typename... SecondList>
+struct Concatenate<UniqueTypeListBuilder<FirstList...>,
+                   UniqueTypeListBuilder<SecondList...>> {
+    using Type = UniqueTypeListBuilder<FirstList..., SecondList...>;
+};
+
+template <template <typename, typename> typename, typename, typename>
+struct Append;
+
+template <template <typename, typename> typename ComposeType,
+          typename AppendType, typename... TypeList>
+struct Append<ComposeType, AppendType, UniqueTypeListBuilder<TypeList...>> {
+    using Type = UniqueTypeListBuilder<ComposeType<TypeList, AppendType>...>;
+};
+
+template <template <typename, typename> typename, typename, typename>
+struct Product;
+
+template <template <typename, typename> typename ProducType,
+          typename... SecondList>
+struct Product<ProducType, UniqueTypeListBuilder<>,
+               UniqueTypeListBuilder<SecondList...>> {
+   public:
+    using Type = UniqueTypeListBuilder<>;
+};
+
+template <template <typename, typename> class ProductType, typename First,
+          typename... FirstList, typename... SecondList>
+struct Product<ProductType, UniqueTypeListBuilder<First, FirstList...>,
+               UniqueTypeListBuilder<SecondList...>> {
+   private:
+    using Head = typename Append<ProductType, First,
+                                 UniqueTypeListBuilder<SecondList...>>::Type;
+    using Tail =
+        typename Product<ProductType, UniqueTypeListBuilder<FirstList...>,
+                         UniqueTypeListBuilder<SecondList...>>::Type;
+
+   public:
+    using Type = typename Concatenate<Head, Tail>::Type;
+};
+
 template <typename Search, typename... Types>
 struct ContainsType;
 
@@ -84,4 +146,31 @@ class UniqueTypeListBuilder<Type, Types...> {
     constexpr static UniqueTypeList build(Args&&... args) {
         return UniqueTypeList(std::forward<Args>(args)...);
     }
+
+    template <template <typename> class WrapType>
+    constexpr auto wrap() {
+        return typename Wrap<WrapType,
+                             UniqueTypeListBuilder<Type, Types...>>::Type{};
+    }
+
+    template <template <typename, typename> class ZipType, typename Other,
+              typename... Others>
+    constexpr auto zip(UniqueTypeListBuilder<Other, Others...>) {
+        return typename Zip<ZipType, UniqueTypeListBuilder<Type, Types...>,
+                            UniqueTypeListBuilder<Other, Others...>>::Type{};
+    }
+
+    template <template <typename, typename> class ComposeType,
+              typename AppendType>
+    constexpr auto compose() {
+        return typename Append<ComposeType, AppendType,
+                               UniqueTypeListBuilder<Type, Types...>>::Type{};
+    }
+
+    template <template <typename, typename> class ProductType,
+              typename... Appends>
+    constexpr auto product(UniqueTypeListBuilder<Appends...>) {
+        return typename Product<ProductType, UniqueTypeListBuilder<Appends...>,
+                                UniqueTypeListBuilder<Type, Types...>>::Type{};
+    };
 };
