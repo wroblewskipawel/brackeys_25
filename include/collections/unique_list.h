@@ -4,6 +4,9 @@
 #include <utility>
 
 template <typename... Types>
+struct TypeList {};
+
+template <typename... Types>
 struct UniqueTypeList;
 
 template <typename... Types>
@@ -91,6 +94,12 @@ struct UniqueTypeList<> {};
 template <typename Type, typename... Types>
 class UniqueTypeList<Type, Types...> {
    public:
+    UniqueTypeList() = default;
+
+    UniqueTypeList(Type&& type, Types&&... types)
+        : value(std::forward<Type>(type)),
+          next(std::forward<Types>(types)...) {}
+
     template <typename Search>
     constexpr Search& get() noexcept {
         if constexpr (std::is_same_v<Search, Type>) {
@@ -104,17 +113,24 @@ class UniqueTypeList<Type, Types...> {
         }
     }
 
+    template <typename Search>
+    constexpr const Search& get() const noexcept {
+        if constexpr (std::is_same_v<Search, Type>) {
+            return value;
+        } else {
+            if constexpr (sizeof...(Types) == 0) {
+                static_assert(false, "Search not found in UniqueTypeList::get");
+            } else {
+                return next.get<Search>();
+            }
+        }
+    }
+
    private:
-    template <typename...>
-    friend class UniqueTypeListBuilder;
-    template <typename...>
-    friend class UniqueTypeList;
-
-    UniqueTypeList() = default;
-
-    UniqueTypeList(Type&& type, Types&&... types)
-        : value(std::forward<Type>(type)),
-          next(std::forward<Types>(types)...) {}
+    // template <typename...>
+    // friend class UniqueTypeListBuilder;
+    // template <typename...>
+    // friend class UniqueTypeList;
 
     Type value;
     UniqueTypeList<Types...> next;
@@ -133,7 +149,6 @@ template <typename Type, typename... Types>
 class UniqueTypeListBuilder<Type, Types...> {
    public:
     using UniqueTypeList = UniqueTypeList<Type, Types...>;
-    using NextBuilder = UniqueTypeListBuilder<Types...>;
 
     template <typename Next>
     constexpr UniqueTypeListBuilder<Next, Type, Types...> withType() {

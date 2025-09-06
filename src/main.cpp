@@ -13,6 +13,7 @@
 
 #include "collections/unique_list.h"
 #include "graphics/assets/gltf.h"
+#include "graphics/assets/gltf/bundle.h"
 #include "graphics/assets/model.h"
 #include "graphics/debug.h"
 #include "graphics/renderer.h"
@@ -27,6 +28,9 @@
 #include "graphics/resources/mesh.h"
 
 constexpr size_t jointMatrixBufferBinding = 1;
+
+using MaterialList = TypeList<EmptyMaterial, UnlitMaterial>;
+using MeshesList = TypeList<ColoredVertex, UnlitVertex, UnlitAnimatedVertex>;
 
 int main(void) {
     GLFWwindow* window;
@@ -73,6 +77,14 @@ int main(void) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
     {
+        auto documentBundle = DocumentBundle<MeshesList, MaterialList>();
+
+        documentBundle.pushDocument<UnlitVertex, UnlitMaterial>(
+            "assets/WaterBottle/glTF/WaterBottle.gltf");
+
+        documentBundle.pushDocument<UnlitAnimatedVertex, UnlitMaterial>(
+            "assets/CesiumMan/glTF/CesiumMan.gltf");
+
         auto materialPacksBuilder =
             UniqueTypeListBuilder()
                 .withType<MaterialPackHandle<EmptyMaterial>>()
