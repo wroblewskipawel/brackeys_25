@@ -644,6 +644,14 @@ class DocumentReader {
 
     using MeshDataHandle = MeshDataHandle<Vertex>;
 
+    const PinRef<MeshDataHandle> getMesh(size_t meshIndex) const noexcept {
+        return meshes.getAtIndex(meshIndex);
+    }
+
+    MeshDataHandle takeMesh(size_t meshIndex) noexcept {
+        return meshes.takeAtIndex(meshIndex);
+    }
+
     const PinRef<MeshDataHandle> tryGetMesh(
         const std::string& name) const noexcept {
         return meshes.tryGet(name);
@@ -664,6 +672,15 @@ class DocumentReader {
 
     using MaterialBuilder = MaterialBuilder<Material>;
 
+    const PinRef<MaterialBuilder> getMaterial(
+        size_t materialIndex) const noexcept {
+        return materials.getAtIndex(materialIndex);
+    }
+
+    MaterialBuilder takeMaterial(size_t materialIndex) noexcept {
+        return materials.takeAtIndex(materialIndex);
+    }
+
     const PinRef<MaterialBuilder> tryGetMaterial(
         const std::string& name) const noexcept {
         return materials.tryGet(name);
@@ -680,6 +697,15 @@ class DocumentReader {
 
     std::vector<MaterialBuilder> takeMaterials() noexcept {
         return materials.takeItems();
+    }
+
+    const PinRef<AnimationHandle> getAnimation(
+        size_t animationIndex) const noexcept {
+        return animations.getAtIndex(animationIndex);
+    }
+
+    AnimationHandle takeAnimation(size_t animationIndex) noexcept {
+        return animations.takeAtIndex(animationIndex);
     }
 
     const PinRef<AnimationHandle> tryGetAnimation(
@@ -711,7 +737,7 @@ class DocumentReader {
     }
 
     void loadMeshes(const fx::gltf::Document& document) noexcept {
-        for (const auto& [documentIndex, mesh] :
+        for (const auto& [documentMeshIndex, mesh] :
              std::views::enumerate(document.meshes)) {
             if (mesh.primitives.size() != 1) {
                 std::println(
@@ -732,21 +758,28 @@ class DocumentReader {
                     mesh.name);
                 continue;
             }
-            auto meshIndex =
-                meshes.emplace(std::string(mesh.name),
-                               readMeshData<Vertex>(document, primitive));
+            auto meshDataHandle = readMeshData<Vertex>(document, primitive);
+            auto meshIndex = mesh.name.empty()
+                                 ? meshes.emplace(std::move(meshDataHandle))
+                                 : meshes.emplace(std::string(mesh.name),
+                                                  std::move(meshDataHandle));
             // Currently we load every material in the document in the order
             // they are defined This makes the document material maping coherent
             // with the ordering in the created material storage
             // This could lead to unnecessary material loads, if the mesh was
             // skipped here
             auto materialIndex = static_cast<size_t>(primitive.material);
-            modelIndices.emplace(documentIndex,
-                                 ModelIndices{
-                                     .meshIndex = meshIndex,
-                                     .materialIndex = materialIndex,
-                                     .animationIndices = std::vector<size_t>(),
-                                 });
+            auto indices = ModelIndices{
+                .meshIndex = meshIndex,
+                .materialIndex = materialIndex,
+                .animationIndices = std::vector<size_t>(),
+            };
+
+            auto modelIndicesIndex =
+                mesh.name.empty() ? modelIndices.emplace(std::move(indices))
+                                  : modelIndices.emplace(std::string(mesh.name),
+                                                         std::move(indices));
+            documentMeshIndexMap.emplace(documentMeshIndex, modelIndicesIndex);
         }
     }
 
@@ -761,11 +794,17 @@ class DocumentReader {
             for (const auto& [skinIndex, skinData] :
                  std::views::enumerate(skinDatas)) {
                 if (isSkinAnimation(skinData, animation)) {
-                    auto animationIndex = animations.emplace(
-                        std::string(animation.name),
-                        readAnimation(skinData, document, animation));
+                    if (animation.name.empty()) {
+                    }
+                    auto animationHandle =
+                        readAnimation(skinData, document, animation);
+                    auto animationIndex =
+                        animation.name.empty()
+                            ? animations.emplace(std::move(animationHandle))
+                            : animations.emplace(std::string(animation.name),
+                                                 std::move(animationHandle));
                     auto animationModel =
-                        modelIndices.tryGet(skinMeshMap[skinIndex]);
+                        modelIndices.getAtIndex(skinMeshMap[skinIndex]);
                     if (animationModel.isValid()) {
                         animationModel.get().animationIndices.emplace_back(
                             animationIndex);
@@ -778,9 +817,12 @@ class DocumentReader {
     void loadMaterials(const std::filesystem::path& documentPath,
                        const fx::gltf::Document& document) noexcept {
         for (const auto& material : document.materials) {
-            materials.emplace(
-                std::string(material.name),
-                readMaterialData<Material>(documentPath, document, material));
+            auto materialBuilder =
+                readMaterialData<Material>(documentPath, document, material);
+            material.name.empty()
+                ? materials.emplace(std::move(materialBuilder))
+                : materials.emplace(std::string(material.name),
+                                    std::move(materialBuilder));
         }
     }
 
@@ -790,7 +832,10 @@ class DocumentReader {
             if (node.skin >= 0) {
                 // By glTF2.0 if node has skin defined then it must also provide
                 // valid mesh index
-                skinMeshMap.emplace(node.skin, static_cast<size_t>(node.mesh));
+                auto meshIndicesIndex = documentMeshIndexMap.find(node.mesh);
+                if (meshIndicesIndex != documentMeshIndexMap.end()) {
+                    skinMeshMap.emplace(node.skin, meshIndicesIndex->second);
+                }
             }
         }
         return skinMeshMap;
@@ -799,5 +844,6 @@ class DocumentReader {
     NamedVector<MeshDataHandle> meshes;
     NamedVector<MaterialBuilder> materials;
     NamedVector<AnimationHandle> animations;
-    MapVector<size_t, ModelIndices> modelIndices;
+    NamedVector<ModelIndices> modelIndices;
+    std::unordered_map<size_t, size_t> documentMeshIndexMap;
 };

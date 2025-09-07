@@ -10,6 +10,12 @@ struct MapVector {
     std::vector<Item> itemStorage;
     std::unordered_map<Key, size_t> nameMap;
 
+    size_t emplace(Item&& data) noexcept {
+        auto dataIndex = itemStorage.size();
+        itemStorage.emplace_back(std::move(data));
+        return dataIndex;
+    }
+
     size_t emplace(Key&& key, Item&& data) noexcept {
         if (nameMap.find(key) != nameMap.end()) {
             std::println(std::cerr,
