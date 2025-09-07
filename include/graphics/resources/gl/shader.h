@@ -109,8 +109,8 @@ class ShaderBuilder {
         glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
         if (status != GL_TRUE) {
             glGetShaderInfoLog(shader, infoLogLen, NULL, infoLog);
-            std::printf("Failed to compile shader [%s]\n%s", source.c_str(),
-                        infoLog);
+            std::println(std::cerr, "Failed to compile shader [{}]\n{}",
+                         source.c_str(), infoLog);
             glDeleteShader(shader);
         } else {
             stages.find(stage) != stages.end() ? glDeleteShader(stages[stage])
@@ -132,7 +132,7 @@ class ShaderBuilder {
         glGetProgramiv(program, GL_LINK_STATUS, &status);
         if (status != GL_TRUE) {
             glGetProgramInfoLog(program, infoLogLen, NULL, infoLog);
-            std::printf("Failed to link program\n%s", infoLog);
+            std::println(std::cerr, "Failed to link program\n {}", infoLog);
             glDeleteProgram(program);
             return Shader::invalid();
         }
