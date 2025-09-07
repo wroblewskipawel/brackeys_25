@@ -17,6 +17,8 @@ struct DocumentIndices {
     std::vector<VertexIndex> meshIndices;
     std::vector<MaterialIndex> materialIndices;
     std::vector<uint32_t> animationIndices;
+    std::vector<uint32_t> modelIndices;
+    std::unordered_map<std::string, size_t> modelNameMap;
 };
 
 template <typename, typename>
@@ -91,6 +93,8 @@ class DocumentBundle<TypeList<Vertices...>, TypeList<Materials...>> {
                 .meshIndices = appendMeshes(document.takeMeshes()),
                 .materialIndices = appendMaterials(document.takeMaterials()),
                 .animationIndices = appendAnimations(document.takeAnimations()),
+                .modelIndices = appendModelIndices(document.takeIndices()),
+                .modelNameMap = document.takeModelNameMap(),
             };
         auto& documentMap = documenIndexMap.getIndexMap<Vertex, Material>();
         documentMap.emplace(filePath, std::move(documentIndices));
@@ -104,6 +108,17 @@ class DocumentBundle<TypeList<Vertices...>, TypeList<Materials...>> {
         animationStorage.insert(animationStorage.end(),
                                 std::make_move_iterator(animations.begin()),
                                 std::make_move_iterator(animations.end()));
+        return indices;
+    }
+
+    auto appendModelIndices(std::vector<ModelIndices>&& modelIndices) noexcept {
+        auto indices = std::vector<uint32_t>(modelIndices.size());
+        auto firstIndex = static_cast<uint32_t>(modelIndicesStorage.size());
+        std::iota(indices.begin(), indices.end(), firstIndex);
+        modelIndicesStorage.insert(
+            modelIndicesStorage.end(),
+            std::make_move_iterator(modelIndices.begin()),
+            std::make_move_iterator(modelIndices.end()));
         return indices;
     }
 
@@ -130,6 +145,7 @@ class DocumentBundle<TypeList<Vertices...>, TypeList<Materials...>> {
         return indices;
     }
 
+    std::vector<ModelIndices> modelIndicesStorage;
     std::vector<AnimationHandle> animationStorage;
     VectorList<MeshDataHandle<Vertices>...> meshTypesStorage;
     VectorList<MaterialBuilder<Materials>...> materialTypesStorage;

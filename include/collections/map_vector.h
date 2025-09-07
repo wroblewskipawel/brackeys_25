@@ -86,6 +86,10 @@ struct MapVector {
     };
 
     std::vector<Item> takeItems() noexcept { return std::move(itemStorage); }
+
+    std::unordered_map<Key, size_t> takeNameMap() noexcept {
+        return std::move(nameMap);
+    }
 };
 
 template <typename Item>

@@ -744,12 +744,30 @@ class DocumentReader {
         return modelIndices.tryTake(name);
     }
 
-    const std::vector<ModelIndices>& getIndicess() const noexcept {
+    const std::vector<ModelIndices>& getIndices() const noexcept {
         return modelIndices.dataStorage;
     }
 
-    std::vector<ModelIndices> takeIndicess() noexcept {
+    std::vector<ModelIndices> takeIndices() noexcept {
         return modelIndices.takeItems();
+    }
+
+    std::optional<std::string> tryGetModelName(
+        size_t meshIndex) const noexcept {
+        return modelIndices.tryGetKey(meshIndex);
+    }
+
+    std::optional<size_t> tryModelIndex(
+        const std::string& meshName) const noexcept {
+        return modelIndices.tryGetIndex(meshName);
+    }
+
+    const std::unordered_map<std::string, size_t>& getModelNameMap() noexcept {
+        return modelIndices.nameMap;
+    }
+
+    std::unordered_map<std::string, size_t> takeModelNameMap() noexcept {
+        return modelIndices.takeNameMap();
     }
 
    private:
