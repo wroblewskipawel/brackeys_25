@@ -83,6 +83,12 @@ class HandleId {
    public:
     using Handle = Handle<Item, Ownership>;
 
+    // Default constructor initializing handle as invalid provided for
+    // convinient Handle type list default initialization
+    HandleId() noexcept
+        : generation(handle::invalidValue),
+          storageIndex(handle::invalidValue) {}
+
     HandleId(const HandleId&) = default;
     HandleId& operator=(const HandleId&) = default;
 
@@ -142,6 +148,12 @@ class Handle {
     static Handle getInvalid() noexcept {
         return Handle(handle::invalidValue, handle::invalidValue);
     }
+
+    // Default constructor initializing handle as invalid provided for
+    // convinient Handle type list default initialization
+    Handle() noexcept
+        : generation(handle::invalidValue),
+          storageIndex(handle::invalidValue) {}
 
     Handle(Handle&& other) noexcept
         : generation(other.generation), storageIndex(other.storageIndex) {

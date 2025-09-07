@@ -127,11 +127,6 @@ class UniqueTypeList<Type, Types...> {
     }
 
    private:
-    // template <typename...>
-    // friend class UniqueTypeListBuilder;
-    // template <typename...>
-    // friend class UniqueTypeList;
-
     Type value;
     UniqueTypeList<Types...> next;
 };

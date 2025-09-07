@@ -169,6 +169,10 @@ class MeshPackBuilder {
     }
 
     MeshPackHandle<Vertex> build() {
+        if (meshDatas.size() == 0) {
+            return MeshPackHandle<Vertex>::getInvalid();
+        }
+
         MeshBuffers buffers{};
         std::vector<Mesh> meshes;
 

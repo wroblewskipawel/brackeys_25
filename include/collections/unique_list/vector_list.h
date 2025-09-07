@@ -50,6 +50,16 @@ class VectorList {
         }
     }
 
+    template <typename Type>
+    std::vector<Type>& getStorage() noexcept {
+        return vectorStorage.get<std::vector<Type>>();
+    }
+
+    template <typename Type>
+    const std::vector<Type>& getStorage() const noexcept {
+        return vectorStorage.get<std::vector<Type>>();
+    }
+
    private:
     using StorageBuilder =
         typename Wrap<std::vector, UniqueTypeListBuilder<Types...>>::Type;

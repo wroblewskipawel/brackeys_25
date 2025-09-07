@@ -19,6 +19,7 @@
 #include "graphics/renderer.h"
 #include "graphics/resources/animation.h"
 #include "graphics/resources/gl/buffer/std140.h"
+#include "graphics/resources/gl/bundle.h"
 #include "graphics/resources/gl/draw.h"
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
@@ -84,6 +85,8 @@ int main(void) {
 
         documentBundle.pushDocument<UnlitAnimatedVertex, UnlitMaterial>(
             "assets/CesiumMan/glTF/CesiumMan.gltf");
+
+        auto resourceBundle = ResourceBundle(documentBundle);
 
         auto materialPacksBuilder =
             UniqueTypeListBuilder()

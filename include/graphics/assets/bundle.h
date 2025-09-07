@@ -100,6 +100,10 @@ class DocumentBundle<TypeList<Vertices...>, TypeList<Materials...>> {
         documentMap.emplace(filePath, std::move(documentIndices));
     };
 
+    const auto& getMeshes() const noexcept { return meshTypesStorage; }
+
+    const auto& getMaterials() const noexcept { return materialTypesStorage; }
+
    private:
     auto appendAnimations(std::vector<AnimationHandle>&& animations) noexcept {
         auto indices = std::vector<uint32_t>(animations.size());

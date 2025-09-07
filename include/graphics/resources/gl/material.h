@@ -221,8 +221,14 @@ class MaterialPackBuilder {
     }
 
     MaterialPackHandle<Material> build() {
-        return registerMaterialPack(MaterialPack<Material>(
-            std::move(materialUniforms), std::move(materialData)));
+        if (materialData.size() == 0) {
+            return MaterialPackHandle<Material>::getInvalid();
+        }
+
+        auto materialPack = MaterialPack<Material>(std::move(materialUniforms),
+                                                   std::move(materialData));
+
+        return registerMaterialPack(std::move(materialPack));
     }
 
    private:

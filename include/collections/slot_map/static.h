@@ -74,6 +74,10 @@ class StaticHandle {
         return *this;
     };
 
+    // Default constructor initializing handle as invalid provided for
+    // convinient Handle type list default initialization
+    StaticHandle() noexcept : handle(Handle<Item, Ownership>::getInvalid()) {}
+
     StaticHandle(StaticHandle&&) = default;
     StaticHandle& operator=(StaticHandle&&) = default;
 
