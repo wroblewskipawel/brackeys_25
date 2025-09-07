@@ -726,6 +726,32 @@ class DocumentReader {
         return animations.takeItems();
     }
 
+    const PinRef<ModelIndices> getIndices(size_t meshIndex) const noexcept {
+        return modelIndices.getAtIndex(meshIndex);
+    }
+
+    ModelIndices takeIndices(size_t meshIndex) noexcept {
+        return modelIndices.takeAtIndex(meshIndex);
+    }
+
+    const PinRef<ModelIndices> tryGetIndices(
+        const std::string& name) const noexcept {
+        return modelIndices.tryGet(name);
+    }
+
+    std::optional<ModelIndices> tryTakeIndices(
+        const std::string& name) noexcept {
+        return modelIndices.tryTake(name);
+    }
+
+    const std::vector<ModelIndices>& getIndicess() const noexcept {
+        return modelIndices.dataStorage;
+    }
+
+    std::vector<ModelIndices> takeIndicess() noexcept {
+        return modelIndices.takeItems();
+    }
+
    private:
     void loadDocument(const std::filesystem::path& documentPath,
                       const fx::gltf::Document& document) noexcept {
