@@ -12,8 +12,8 @@ class StaticKeyMap;
 template <typename Item, typename Ownership>
 StaticHandle<Item, Ownership> registerResource(Item&&) noexcept;
 
-template <typename Key, typename Item, typename Ownership>
-Ref<Item, Ownership> getKey(const Key&) noexcept;
+template <typename Key, typename Item>
+PinRef<Item> getKey(const Key&) noexcept;
 
 template <typename Key, typename Item, typename Ownership>
 StaticHandle<Item, Ownership> tryGetOwned(const Key&) noexcept;
@@ -46,14 +46,13 @@ template <typename Key, typename Item, typename Ownership>
 class StaticKeyMap {
    private:
     friend class StaticHandle<Item, Ownership>;
-    friend Ref<Item, Ownership> getKey<Key, Item, Ownership>(
-        const Key&) noexcept;
+    friend PinRef<Item> getKey<Key, Item>(const Key&) noexcept;
     friend StaticHandle<Item, Ownership> tryGetOwned<Key, Item, Ownership>(
         const Key&) noexcept;
     friend bool eraseKey<Key, Item, Ownership>(const Key&) noexcept;
     friend bool clearKeys<Key, Item, Ownership>() noexcept;
 
-    static Ref<Item, Ownership> getKeyImpl(const Key& key) {
+    static PinRef<Item> getKeyImpl(const Key& key) {
         return staticMap.get(key,
                              StaticStorage<Item, Ownership>::staticStorage);
     }
@@ -82,11 +81,9 @@ class StaticHandle {
     // erroneously copied handles
     ~StaticHandle() { getStorage().pop(std::move(handle)); }
 
-    const Ref<Item, Ownership> get() const noexcept {
-        return getStorage().get(handle);
-    }
+    const PinRef<Item> get() const noexcept { return getStorage().get(handle); }
 
-    Ref<Item, Ownership> get() noexcept { return getStorage().get(handle); }
+    PinRef<Item> get() noexcept { return getStorage().get(handle); }
 
     static StaticHandle getInvalid() noexcept {
         return StaticHandle(Handle<Item, Ownership>::getInvalid());
@@ -148,7 +145,7 @@ bool registerKey(Key&& key,
 }
 
 template <typename Key, typename Item, typename Ownership>
-Ref<Item, Ownership> getKey(const Key& key) noexcept {
+PinRef<Item> getKey(const Key& key) noexcept {
     return StaticKeyMap<Key, Item, Ownership>::getKeyImpl(key);
 }
 

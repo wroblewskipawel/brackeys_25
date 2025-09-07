@@ -15,7 +15,7 @@ inline MeshDataHandle<Vertex> registerMeshData(
 }
 
 template <typename Key, typename Vertex>
-inline const Ref<MeshData<Vertex>, Shared> getMeshDataByKey(
+inline const PinRef<MeshData<Vertex>> getMeshDataByKey(
     const Key& key) noexcept {
     return getKey<Key, MeshData<Vertex>, Shared>(key);
 }
@@ -28,7 +28,7 @@ inline MeshDataHandle<Vertex> tryGetOwnedMeshDataByKey(
 
 namespace unsafe {
 template <typename Key, typename Vertex>
-inline Ref<MeshData<Vertex>, Shared> getMeshDataByKey(const Key& key) noexcept {
+inline PinRef<MeshData<Vertex>> getMeshDataByKey(const Key& key) noexcept {
     return getKey<Key, MeshData<Vertex>, Shared>(key);
 }
 }  // namespace unsafe

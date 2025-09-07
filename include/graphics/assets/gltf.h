@@ -16,6 +16,8 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include "collections/map_vector.h"
+#include "collections/pin_ref.h"
 #include "graphics/resources/animation.h"
 #include "graphics/resources/animation/joint.h"
 #include "graphics/resources/material.h"
@@ -633,30 +635,62 @@ class DocumentReader {
     DocumentReader& operator=(const DocumentReader&) = delete;
     DocumentReader& operator=(DocumentReader&&) = delete;
 
-    const std::vector<MeshDataHandle<Vertex>>& getMeshes() const noexcept {
-        return meshes;
+    using MeshDataHandle = MeshDataHandle<Vertex>;
+
+    const PinRef<MeshDataHandle> tryGetMesh(
+        const std::string& name) const noexcept {
+        return meshes.tryGet(name);
     }
 
-    std::vector<MeshDataHandle<Vertex>> takeMeshes() noexcept {
-        return std::move(meshes);
+    std::optional<MeshDataHandle> tryTakeMesh(
+        const std::string& name) noexcept {
+        return meshes.tryTake(name);
+    }
+
+    const std::vector<MeshDataHandle>& getMeshes() const noexcept {
+        return meshes.dataStorage;
+    }
+
+    std::vector<MeshDataHandle> takeMeshes() noexcept {
+        return meshes.takeItems();
     }
 
     using MaterialBuilder = MaterialBuilder<Material>;
 
+    const PinRef<MaterialBuilder> tryGetMaterial(
+        const std::string& name) const noexcept {
+        return materials.tryGet(name);
+    }
+
+    std::optional<MaterialBuilder> tryTakeMaterial(
+        const std::string& name) noexcept {
+        return materials.tryTake(name);
+    }
+
     const std::vector<MaterialBuilder>& getMaterials() const noexcept {
-        return materials;
+        return materials.dataStorage;
     }
 
     std::vector<MaterialBuilder> takeMaterials() noexcept {
-        return std::move(materials);
+        return materials.takeItems();
+    }
+
+    const PinRef<AnimationHandle> tryGetAnimation(
+        const std::string& name) const noexcept {
+        return animations.tryGet(name);
+    }
+
+    std::optional<AnimationHandle> tryTakeAnimation(
+        const std::string& name) noexcept {
+        return animations.tryTake(name);
     }
 
     const std::vector<AnimationHandle>& getAnimations() const noexcept {
-        return animations;
+        return animations.dataStorage;
     }
 
     std::vector<AnimationHandle> takeAnimations() noexcept {
-        return std::move(animations);
+        return animations.takeItems();
     }
 
    private:
@@ -671,9 +705,18 @@ class DocumentReader {
 
     void loadMeshes(const fx::gltf::Document& document) noexcept {
         for (const auto& mesh : document.meshes) {
-            for (const auto& primitive : mesh.primitives) {
-                meshes.emplace_back(readMeshData<Vertex>(document, primitive));
+            if (mesh.primitives.size() != 1) {
+                std::println(
+                    std::cout,
+                    "DocumentReader::LoadMeshes: Skipping {} mesh processing "
+                    "as it contists of multiple primitives. "
+                    "Currently only single primitive meshes are supported",
+                    mesh.name);
+                continue;
             }
+            const auto& primitive = mesh.primitives.front();
+            meshes.emplace(std::string(mesh.name),
+                           readMeshData<Vertex>(document, primitive));
         }
     }
 
@@ -686,7 +729,8 @@ class DocumentReader {
         for (const auto& animation : document.animations) {
             for (const auto& skinData : skinDatas) {
                 if (isSkinAnimation(skinData, animation)) {
-                    animations.emplace_back(
+                    animations.emplace(
+                        std::string(animation.name),
                         readAnimation(skinData, document, animation));
                 }
             }
@@ -696,12 +740,13 @@ class DocumentReader {
     void loadMaterials(const std::filesystem::path& documentPath,
                        const fx::gltf::Document& document) noexcept {
         for (const auto& material : document.materials) {
-            materials.emplace_back(
+            materials.emplace(
+                std::string(material.name),
                 readMaterialData<Material>(documentPath, document, material));
         }
     }
 
-    std::vector<MeshDataHandle<Vertex>> meshes;
-    std::vector<MaterialBuilder> materials;
-    std::vector<AnimationHandle> animations;
+    NamedVector<MeshDataHandle> meshes;
+    NamedVector<MaterialBuilder> materials;
+    NamedVector<AnimationHandle> animations;
 };

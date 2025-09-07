@@ -17,7 +17,7 @@ inline InstanceBufferHandle<Instance, InstanceCount> registerInstanceBuffer(
 }
 
 template <typename Key, typename Instance, size_t InstanceCount>
-inline const Ref<InstanceBuffer<Instance, InstanceCount>, Shared>
+inline const PinRef<InstanceBuffer<Instance, InstanceCount>>
 getInstanceBufferByKey(const Key& key) noexcept {
     return getKey<Key, InstanceBuffer<Instance, InstanceCount>, Shared>(key);
 }
@@ -31,8 +31,8 @@ tryGetOwnedInstanceBufferByKey(const Key& key) noexcept {
 
 namespace unsafe {
 template <typename Key, typename Instance, size_t InstanceCount>
-inline Ref<InstanceBuffer<Instance, InstanceCount>, Shared>
-getInstanceBufferByKey(const Key& key) noexcept {
+inline PinRef<InstanceBuffer<Instance, InstanceCount>> getInstanceBufferByKey(
+    const Key& key) noexcept {
     return getKey<Key, InstanceBuffer<Instance, InstanceCount>, Shared>(key);
 }
 

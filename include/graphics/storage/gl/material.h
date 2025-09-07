@@ -15,7 +15,7 @@ inline MaterialPackHandle<Material> registerMaterialPack(
 }
 
 template <typename Key, typename Material>
-inline const Ref<MaterialPack<Material>, Shared> getMaterialPackByKey(
+inline const PinRef<MaterialPack<Material>> getMaterialPackByKey(
     const Key& key) noexcept {
     return getKey<Key, MaterialPack<Material>, Shared>(key);
 }
@@ -28,7 +28,7 @@ inline MaterialPackHandle<Material> tryGetOwnedMaterialPackByKey(
 
 namespace unsafe {
 template <typename Key, typename Material>
-inline Ref<MaterialPack<Material>, Shared> getMaterialPackByKey(
+inline PinRef<MaterialPack<Material>> getMaterialPackByKey(
     const Key& key) noexcept {
     return getKey<Key, MaterialPack<Material>, Shared>(key);
 }

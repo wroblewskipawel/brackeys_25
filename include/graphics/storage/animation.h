@@ -10,7 +10,7 @@ inline SkinHandle registerSkin(Skin&& skin) noexcept {
 }
 
 template <typename Key>
-inline const Ref<Skin, Shared> getSkinByKey(const Key& key) noexcept {
+inline const PinRef<Skin> getSkinByKey(const Key& key) noexcept {
     return getKey<Key, Skin, Shared>(key);
 }
 
@@ -21,7 +21,7 @@ inline SkinHandle tryGetOwnedSkinByKey(const Key& key) noexcept {
 
 namespace unsafe {
 template <typename Key>
-inline Ref<Skin, Shared> getSkinByKey(const Key& key) noexcept {
+inline PinRef<Skin> getSkinByKey(const Key& key) noexcept {
     return getKey<Key, Skin, Shared>(key);
 }
 
@@ -36,7 +36,7 @@ inline AnimationHandle registerAnimation(Animation&& animation) noexcept {
 }
 
 template <typename Key>
-inline const Ref<Animation, Shared> getAnimationByKey(const Key& key) noexcept {
+inline const PinRef<Animation> getAnimationByKey(const Key& key) noexcept {
     return getKey<Key, Animation, Shared>(key);
 }
 
@@ -47,7 +47,7 @@ inline AnimationHandle tryGetOwnedAnimationByKey(const Key& key) noexcept {
 
 namespace unsafe {
 template <typename Key>
-inline Ref<Animation, Shared> getAnimationByKey(const Key& key) noexcept {
+inline PinRef<Animation> getAnimationByKey(const Key& key) noexcept {
     return getKey<Key, Animation, Shared>(key);
 }
 }  // namespace unsafe

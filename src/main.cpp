@@ -12,8 +12,8 @@
 #include <stdexcept>
 
 #include "collections/unique_list.h"
+#include "graphics/assets/bundle.h"
 #include "graphics/assets/gltf.h"
-#include "graphics/assets/gltf/bundle.h"
 #include "graphics/assets/model.h"
 #include "graphics/debug.h"
 #include "graphics/renderer.h"

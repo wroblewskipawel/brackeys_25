@@ -8,7 +8,7 @@
 template <typename Key, typename Item, typename Ownership>
 class KeyHandleMap {
    public:
-    using Ref = Ref<Item, Ownership>;
+    using Ref = PinRef<Item>;
     using Handle = Handle<Item, Ownership>;
     using HandleId = HandleId<Item, Ownership>;
 

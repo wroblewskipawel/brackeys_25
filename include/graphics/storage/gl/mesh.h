@@ -15,7 +15,7 @@ inline MeshPackHandle<Vertex> registerMeshPack(
 }
 
 template <typename Key, typename Vertex>
-inline const Ref<MeshPack<Vertex>, Shared> getMeshPackByKey(
+inline const PinRef<MeshPack<Vertex>> getMeshPackByKey(
     const Key& key) noexcept {
     return getKey<Key, MeshPack<Vertex>, Shared>(key);
 }
@@ -28,7 +28,7 @@ inline MeshPackHandle<Vertex> tryGetOwnedMeshPackByKey(
 
 namespace unsafe {
 template <typename Key, typename Vertex>
-inline Ref<MeshPack<Vertex>, Shared> getMeshPackByKey(const Key& key) noexcept {
+inline PinRef<MeshPack<Vertex>> getMeshPackByKey(const Key& key) noexcept {
     return getKey<Key, MeshPack<Vertex>, Shared>(key);
 }
 }  // namespace unsafe

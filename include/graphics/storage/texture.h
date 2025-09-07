@@ -12,8 +12,7 @@ inline TextureDataHandle registerTextureData(TextureData&& texture) noexcept {
 }
 
 template <typename Key>
-inline const Ref<TextureData, Shared> getTextureDataByKey(
-    const Key& key) noexcept {
+inline const PinRef<TextureData> getTextureDataByKey(const Key& key) noexcept {
     return getKey<Key, TextureData, Shared>(key);
 }
 
@@ -24,7 +23,7 @@ inline TextureDataHandle tryGetOwnedTextureDataByKey(const Key& key) noexcept {
 
 namespace unsafe {
 template <typename Key>
-inline Ref<TextureData, Shared> getTextureDataByKey(const Key& key) noexcept {
+inline PinRef<TextureData> getTextureDataByKey(const Key& key) noexcept {
     return getKey<Key, TextureData, Shared>(key);
 }
 }  // namespace unsafe

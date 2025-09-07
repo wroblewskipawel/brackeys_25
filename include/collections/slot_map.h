@@ -6,6 +6,8 @@
 #include <ranges>
 #include <vector>
 
+#include "collections/pin_ref.h"
+
 template <typename Item, typename Ownership>
 class SlotMap;
 
@@ -225,41 +227,6 @@ struct hash<Handle<Item, Ownership>> {
 };
 }  // namespace std
 
-template <typename Item, typename Ownership>
-class Ref {
-   public:
-    const Item& get() const noexcept {
-        if (itemRef == nullptr) {
-            std::println(std::cerr, "Ref: get called on null reference");
-            std::abort();
-        }
-        return *itemRef;
-    }
-
-    Item& get() noexcept {
-        if (itemRef == nullptr) {
-            std::println(std::cerr, "Ref: get called on null reference");
-            std::abort();
-        }
-        return *itemRef;
-    }
-
-    bool isValid() const noexcept { return itemRef != nullptr; }
-
-   private:
-    friend class SlotMap<Item, Ownership>;
-
-    Ref(Item* itemRef) : itemRef(itemRef) {};
-
-    Ref(const Ref&) = delete;
-    Ref& operator=(const Ref&) = delete;
-
-    Ref(Ref&&) = delete;
-    Ref& operator=(Ref&&) = delete;
-
-    Item* itemRef;
-};
-
 namespace unsafe {
 template <typename Item, typename Ownership>
 struct Index;
@@ -269,7 +236,7 @@ template <typename Item, typename Ownership>
 class SlotMap {
    public:
     using Handle = Handle<Item, Ownership>;
-    using Ref = Ref<Item, Ownership>;
+    using PinRef = PinRef<Item>;
 
     SlotMap() = default;
 
@@ -279,20 +246,20 @@ class SlotMap {
     SlotMap(SlotMap&&) = delete;
     SlotMap& operator=(SlotMap&&) = delete;
 
-    const Ref get(const Handle& handle) const noexcept {
+    const PinRef get(const Handle& handle) const noexcept {
         Item* itemRef = nullptr;
         if (isHandleValid(handle.getId())) {
             itemRef = storageCells[handle.storageIndex].operator->();
         }
-        return Ref(itemRef);
+        return PinRef(itemRef);
     }
 
-    Ref get(const Handle& handle) noexcept {
+    PinRef get(const Handle& handle) noexcept {
         Item* itemRef = nullptr;
         if (isHandleValid(handle.getId())) {
             itemRef = storageCells[handle.storageIndex].operator->();
         }
-        return Ref(itemRef);
+        return PinRef(itemRef);
     }
 
     auto forEach() const noexcept {
@@ -369,20 +336,20 @@ class SlotMap {
                cellGenerations[handle.storageIndex] == handle.generation;
     }
 
-    const Ref get(HandleId<Item, Ownership> handle) const noexcept {
+    const PinRef get(HandleId<Item, Ownership> handle) const noexcept {
         Item* itemRef = nullptr;
         if (isHandleValid(handle)) {
             itemRef = storageCells[handle.storageIndex].operator->();
         }
-        return Ref(itemRef);
+        return PinRef(itemRef);
     }
 
-    Ref get(HandleId<Item, Ownership> handle) noexcept {
+    PinRef get(HandleId<Item, Ownership> handle) noexcept {
         Item* itemRef = nullptr;
         if (isHandleValid(handle)) {
             itemRef = storageCells[handle.storageIndex].operator->();
         }
-        return Ref(itemRef);
+        return PinRef(itemRef);
     }
 
     std::vector<std::optional<Item>> storageCells;
@@ -436,12 +403,11 @@ struct CopyHandle<Item, Shared> {
 namespace unsafe {
 template <typename Item, typename Ownership>
 struct Index {
-    static Ref<Item, Ownership> get(
-        HandleId<Item, Ownership> handleId,
-        SlotMap<Item, Ownership>& slotMap) noexcept {
+    static PinRef<Item> get(HandleId<Item, Ownership> handleId,
+                            SlotMap<Item, Ownership>& slotMap) noexcept {
         return slotMap.get(handleId);
     }
-    static const Ref<Item, Ownership> get(
+    static const PinRef<Item> get(
         HandleId<Item, Ownership> handleId,
         const SlotMap<Item, Ownership>& slotMap) noexcept {
         return slotMap.get(handleId);
@@ -449,15 +415,14 @@ struct Index {
 };
 
 template <typename Item, typename Ownership>
-Ref<Item, Ownership> get(HandleId<Item, Ownership> handleId,
-                         SlotMap<Item, Ownership>& slotMap) noexcept {
+PinRef<Item> get(HandleId<Item, Ownership> handleId,
+                 SlotMap<Item, Ownership>& slotMap) noexcept {
     return Index<Item, Ownership>::get(handleId, slotMap);
 }
 
 template <typename Item, typename Ownership>
-const Ref<Item, Ownership> get(
-    HandleId<Item, Ownership> handleId,
-    const SlotMap<Item, Ownership>& slotMap) noexcept {
+const PinRef<Item> get(HandleId<Item, Ownership> handleId,
+                       const SlotMap<Item, Ownership>& slotMap) noexcept {
     return Index<Item, Ownership>::get(handleId, slotMap);
 }
 }  // namespace unsafe
