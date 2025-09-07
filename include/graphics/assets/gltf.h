@@ -608,6 +608,13 @@ inline AnimationHandle readAnimation(const SkinData& skinData,
 
     return animationBuilder.build();
 }
+
+struct ModelIndices {
+    size_t meshIndex;
+    size_t materialIndex;
+    std::vector<size_t> animationIndices;
+};
+
 template <typename Vertex, typename Material>
 class DocumentReader {
    public:
@@ -704,7 +711,8 @@ class DocumentReader {
     }
 
     void loadMeshes(const fx::gltf::Document& document) noexcept {
-        for (const auto& mesh : document.meshes) {
+        for (const auto& [documentIndex, mesh] :
+             std::views::enumerate(document.meshes)) {
             if (mesh.primitives.size() != 1) {
                 std::println(
                     std::cout,
@@ -715,8 +723,30 @@ class DocumentReader {
                 continue;
             }
             const auto& primitive = mesh.primitives.front();
-            meshes.emplace(std::string(mesh.name),
-                           readMeshData<Vertex>(document, primitive));
+            if (primitive.material < 0) {
+                std::println(
+                    std::cout,
+                    "DocumentReader::LoadMeshes: Skipping {} mesh processing "
+                    "as it has undefined material property."
+                    "Currently meshes using defailt material are not supported",
+                    mesh.name);
+                continue;
+            }
+            auto meshIndex =
+                meshes.emplace(std::string(mesh.name),
+                               readMeshData<Vertex>(document, primitive));
+            // Currently we load every material in the document in the order
+            // they are defined This makes the document material maping coherent
+            // with the ordering in the created material storage
+            // This could lead to unnecessary material loads, if the mesh was
+            // skipped here
+            auto materialIndex = static_cast<size_t>(primitive.material);
+            modelIndices.emplace(documentIndex,
+                                 ModelIndices{
+                                     .meshIndex = meshIndex,
+                                     .materialIndex = materialIndex,
+                                     .animationIndices = std::vector<size_t>(),
+                                 });
         }
     }
 
@@ -726,12 +756,20 @@ class DocumentReader {
         for (const auto& skin : document.skins) {
             skinDatas.emplace_back(readSkinData(document, skin));
         }
+        auto skinMeshMap = getSkinMeshMap(document);
         for (const auto& animation : document.animations) {
-            for (const auto& skinData : skinDatas) {
+            for (const auto& [skinIndex, skinData] :
+                 std::views::enumerate(skinDatas)) {
                 if (isSkinAnimation(skinData, animation)) {
-                    animations.emplace(
+                    auto animationIndex = animations.emplace(
                         std::string(animation.name),
                         readAnimation(skinData, document, animation));
+                    auto animationModel =
+                        modelIndices.tryGet(skinMeshMap[skinIndex]);
+                    if (animationModel.isValid()) {
+                        animationModel.get().animationIndices.emplace_back(
+                            animationIndex);
+                    }
                 }
             }
         }
@@ -746,7 +784,20 @@ class DocumentReader {
         }
     }
 
+    auto getSkinMeshMap(const fx::gltf::Document& document) const noexcept {
+        auto skinMeshMap = std::unordered_map<size_t, size_t>();
+        for (const auto& node : document.nodes) {
+            if (node.skin >= 0) {
+                // By glTF2.0 if node has skin defined then it must also provide
+                // valid mesh index
+                skinMeshMap.emplace(node.skin, static_cast<size_t>(node.mesh));
+            }
+        }
+        return skinMeshMap;
+    }
+
     NamedVector<MeshDataHandle> meshes;
     NamedVector<MaterialBuilder> materials;
     NamedVector<AnimationHandle> animations;
+    MapVector<size_t, ModelIndices> modelIndices;
 };

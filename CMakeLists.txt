@@ -35,6 +35,7 @@ endif()
 find_package(OpenGL REQUIRED)
 list(APPEND EXTERNAL_LIBS ${OpenGL_LIBRARIES})
 
+
 add_executable(
     ${PROJECT_NAME}
     ${SOURCE} ${HEADERS}
@@ -42,6 +43,7 @@ add_executable(
     ${IMGUI_BACKEND_SOURCE} ${IMGUI_BACKEND_HEADERS}
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC ${EXTERNAL_LIBS})
+target_compile_options(${PROJECT_NAME} PRIVATE /bigobj)
 
 target_include_directories(
     ${PROJECT_NAME}
