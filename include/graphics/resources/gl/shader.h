@@ -109,8 +109,9 @@ class ShaderBuilder {
         glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
         if (status != GL_TRUE) {
             glGetShaderInfoLog(shader, infoLogLen, NULL, infoLog);
-            std::println(std::cerr, "Failed to compile shader [{}]\n{}",
-                         source.c_str(), infoLog);
+            std::println(std::cerr,
+                         "Failed to compile shader [filepath: {}]\n{}",
+                         filepath.string(), infoLog);
             glDeleteShader(shader);
         } else {
             stages.find(stage) != stages.end() ? glDeleteShader(stages[stage])
