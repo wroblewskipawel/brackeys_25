@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 
 #include "graphics/resources/gl/buffer/std140.h"
+#include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/texture.h"
 #include "graphics/resources/material.h"
 #include "graphics/storage/gl/material.h"
@@ -78,34 +79,6 @@ class EmptyMaterial {
     void setResident() {}
     void setNotResident() {}
 };
-
-template <typename Material>
-struct MaterialHandle {
-    size_t materialIndex;
-    MaterialPackHandle<Material> packHandle;
-
-    MaterialHandle copy() const noexcept {
-        return {materialIndex, packHandle.copy()};
-    }
-
-    static auto getPackHandles(
-        const MaterialPackHandle<Material>& packHandle) noexcept {
-        const auto& materialPack = packHandle.get().get();
-        auto materialHandles = std::vector<MaterialHandle<Material>>();
-        for (size_t materialIndex = 0;
-             materialIndex < materialPack.numMaterials(); materialIndex++) {
-            materialHandles.emplace_back(
-                MaterialHandle(materialIndex, packHandle.copy()));
-        }
-        return materialHandles;
-    }
-};
-
-template <typename Material>
-inline auto getPackHandles(
-    const MaterialPackHandle<Material>& packHandle) noexcept {
-    return MaterialHandle<Material>::getPackHandles(packHandle);
-}
 
 template <typename Material>
 class MaterialPackBuilder;

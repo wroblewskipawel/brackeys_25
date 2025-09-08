@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iostream>
+
 template <typename Item, typename Ownership>
 class SlotMap;
 
@@ -9,6 +11,8 @@ struct MapVector;
 template <typename Item>
 class PinRef {
    public:
+    static PinRef null() noexcept { return PinRef(nullptr); }
+
     const Item& get() const noexcept {
         if (itemRef == nullptr) {
             std::println(std::cerr, "Ref: get called on null reference");

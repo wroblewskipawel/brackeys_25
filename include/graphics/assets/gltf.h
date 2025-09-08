@@ -609,6 +609,7 @@ inline AnimationHandle readAnimation(const SkinData& skinData,
     return animationBuilder.build();
 }
 
+template <typename Vertex, typename Material>
 struct ModelIndices {
     size_t meshIndex;
     size_t materialIndex;
@@ -726,6 +727,8 @@ class DocumentReader {
         return animations.takeItems();
     }
 
+    using ModelIndices = ModelIndices<Vertex, Material>;
+
     const PinRef<ModelIndices> getIndices(size_t meshIndex) const noexcept {
         return modelIndices.getAtIndex(meshIndex);
     }
@@ -744,12 +747,12 @@ class DocumentReader {
         return modelIndices.tryTake(name);
     }
 
-    const std::vector<ModelIndices>& getIndices() const noexcept {
+    const NamedVector<ModelIndices>& getIndices() const noexcept {
         return modelIndices.dataStorage;
     }
 
-    std::vector<ModelIndices> takeIndices() noexcept {
-        return modelIndices.takeItems();
+    NamedVector<ModelIndices> takeIndices() noexcept {
+        return std::move(modelIndices);
     }
 
     std::optional<std::string> tryGetModelName(
@@ -760,14 +763,6 @@ class DocumentReader {
     std::optional<size_t> tryModelIndex(
         const std::string& meshName) const noexcept {
         return modelIndices.tryGetIndex(meshName);
-    }
-
-    const std::unordered_map<std::string, size_t>& getModelNameMap() noexcept {
-        return modelIndices.nameMap;
-    }
-
-    std::unordered_map<std::string, size_t> takeModelNameMap() noexcept {
-        return modelIndices.takeNameMap();
     }
 
    private:

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "graphics/resources/gl/material.h"
+#include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/shader.h"
 #include "graphics/resources/gl/vertex_array.h"
 #include "graphics/resources/mesh.h"
@@ -49,31 +50,6 @@ struct Mesh {
     }
 };
 
-template <typename Vertex>
-struct MeshHandle {
-    size_t meshIndex;
-    MeshPackHandle<Vertex> packHandle;
-
-    MeshHandle copy() const noexcept { return {meshIndex, packHandle.copy()}; }
-
-    static auto getPackHandles(
-        const MeshPackHandle<Vertex>& packHandle) noexcept {
-        const auto& meshPack = packHandle.get().get();
-        auto materialHandles = std::vector<MeshHandle<Vertex>>();
-        for (size_t meshIndex = 0; meshIndex < meshPack.numMeshes();
-             meshIndex++) {
-            materialHandles.emplace_back(
-                MeshHandle(meshIndex, packHandle.copy()));
-        }
-        return materialHandles;
-    }
-};
-
-template <typename Vertex>
-inline auto getPackHandles(const MeshPackHandle<Vertex>& packHandle) noexcept {
-    return MeshHandle<Vertex>::getPackHandles(packHandle);
-}
-
 namespace std {
 template <>
 struct hash<Mesh> {
@@ -93,7 +69,8 @@ template <typename Vertex>
 class MeshPack {
    public:
     static Mesh getMesh(const MeshHandle<Vertex>& meshHandle) noexcept {
-        return meshHandle.packHandle.get().get().getMesh(meshHandle.meshIndex);
+        return meshHandle.packHandle.get().get().getMesh(
+            meshHandle.packItemIndex);
     }
 
     static void bind(const MeshPackHandle<Vertex>& packHandle) {

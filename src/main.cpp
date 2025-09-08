@@ -88,91 +88,11 @@ int main(void) {
 
         auto resourceBundle = ResourceBundle(documentBundle);
 
-        auto materialPacksBuilder =
-            UniqueTypeListBuilder()
-                .withType<MaterialPackHandle<EmptyMaterial>>()
-                .withType<MaterialPackHandle<UnlitMaterial>>();
-
-        auto meshPacksBuilder =
-            UniqueTypeListBuilder()
-                .withType<MeshPackHandle<ColoredVertex>>()
-                .withType<MeshPackHandle<UnlitVertex>>()
-                .withType<MeshPackHandle<UnlitAnimatedVertex>>();
-
-        auto productCollections =
-            meshPacksBuilder.product<std::pair>(materialPacksBuilder)
-                .wrap<std::vector>()
-                .build();
-
-        auto& coloredEmptyModelCollection = productCollections.get<
-            std::vector<std::pair<MeshPackHandle<ColoredVertex>,
-                                  MaterialPackHandle<EmptyMaterial>>>>();
-
-        auto& coloredUnlitModelCollection = productCollections.get<
-            std::vector<std::pair<MeshPackHandle<ColoredVertex>,
-                                  MaterialPackHandle<UnlitMaterial>>>>();
-
-        auto& unlitEmptyModelCollection = productCollections.get<
-            std::vector<std::pair<MeshPackHandle<UnlitVertex>,
-                                  MaterialPackHandle<EmptyMaterial>>>>();
-
-        auto& unlitUnlitModelCollection = productCollections.get<
-            std::vector<std::pair<MeshPackHandle<UnlitVertex>,
-                                  MaterialPackHandle<UnlitMaterial>>>>();
-
-        auto& unlitAnimatedEmptyModelCollection = productCollections.get<
-            std::vector<std::pair<MeshPackHandle<UnlitAnimatedVertex>,
-                                  MaterialPackHandle<EmptyMaterial>>>>();
-
-        auto& unlitAnimatedUnlitModelCollection = productCollections.get<
-            std::vector<std::pair<MeshPackHandle<UnlitAnimatedVertex>,
-                                  MaterialPackHandle<UnlitMaterial>>>>();
-
-        DocumentReader<UnlitVertex, UnlitMaterial> waterBottle{
-            "assets/WaterBottle/glTF/WaterBottle.gltf"};
-
-        DocumentReader<UnlitAnimatedVertex, UnlitMaterial> cesiumMan{
-            "assets/CesiumMan/glTF/CesiumMan.gltf"};
-
-        MaterialPackBuilder<EmptyMaterial> emptyMaterialPackBuilder{};
-        emptyMaterialPackBuilder.addMaterial(MaterialBuilder<EmptyMaterial>{});
-        auto emptyMaterialPack = emptyMaterialPackBuilder.build();
-        auto emptyMaterial = getPackHandles(emptyMaterialPack)[0].copy();
-
-        MeshPackBuilder<UnlitVertex> unlitMeshPackBuilder{};
-        unlitMeshPackBuilder.addMesh(getCubeMesh<UnlitVertex>())
-            .addMeshMulti(waterBottle.takeMeshes());
-        auto unlitMeshPack = unlitMeshPackBuilder.build();
-        auto unlitMeshes = getPackHandles(unlitMeshPack);
-        auto unlitCubeMesh = unlitMeshes[0].copy();
-        auto waterBottleMesh = unlitMeshes[1].copy();
-
-        MeshPackBuilder<UnlitAnimatedVertex> unlitAnimatedMeshPackBuilder{};
-        unlitAnimatedMeshPackBuilder.addMeshMulti(cesiumMan.takeMeshes());
-        auto unlitAnimatedMeshPack = unlitAnimatedMeshPackBuilder.build();
-        auto unlitAnimatedMeshes = getPackHandles(unlitAnimatedMeshPack);
-        auto cesiumManMesh = unlitAnimatedMeshes[0].copy();
-
-        MaterialPackBuilder<UnlitMaterial> unlitMaterialPackBuilder{};
-
-        MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
-        unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(
-            "assets/textures/tile_1.png", TextureFormat::RGB));
-
-        MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_2{};
-        unlitMaterialBuilder_2.setAlbedoTextureData(TextureData::loadFromFile(
-            "assets/textures/tile_2.png", TextureFormat::RGB));
-
-        unlitMaterialPackBuilder.addMaterialMulti(waterBottle.takeMaterials())
-            .addMaterialMulti(cesiumMan.takeMaterials())
-            .addMaterial(unlitMaterialBuilder_1)
-            .addMaterial(unlitMaterialBuilder_2);
-        auto unlitMaterialPack = unlitMaterialPackBuilder.build();
-        auto unlitMaterials = getPackHandles(unlitMaterialPack);
-        auto waterBottleMaterial = unlitMaterials[0].copy();
-        auto cesiumManMaterial = unlitMaterials[1].copy();
-        auto unlitMaterial_1 = unlitMaterials[2].copy();
-        auto unlitMaterial_2 = unlitMaterials[3].copy();
+        auto waterBottle = resourceBundle.getModel<UnlitVertex, UnlitMaterial>(
+            "assets/WaterBottle/glTF/WaterBottle.gltf", "WaterBottle");
+        auto cesiumMan =
+            resourceBundle.getModel<UnlitAnimatedVertex, UnlitMaterial>(
+                "assets/CesiumMan/glTF/CesiumMan.gltf", "Cesium_Man");
 
         ShaderBuilder unlitShaderBuilder{};
         unlitShaderBuilder.addStage(ShaderStage::Vertex,
@@ -181,23 +101,15 @@ int main(void) {
                                     "shaders/unlit/shader.frag");
         auto unlitShader = unlitShaderBuilder.build();
 
-        unlitUnlitModelCollection.emplace_back(unlitMeshPack.copy(),
-                                               unlitMaterialPack.copy());
-
         auto unlitDrawPack =
-            Model<UnlitVertex, UnlitMaterial>::drawPackBuilder<glm::mat4>(
-                unlitMeshPack, unlitMaterialPack);
+            resourceBundle
+                .getDrawPackBuilder<UnlitVertex, UnlitMaterial, glm::mat4>();
         unlitDrawPack.addDraw(
-            unlitCubeMesh, unlitMaterial_1,
-            glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
-        unlitDrawPack.addDraw(
-            unlitCubeMesh, unlitMaterial_2,
-            glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
-        unlitDrawPack.addDraw(
-            waterBottleMesh, waterBottleMaterial,
+            waterBottle,
             glm::scale(
                 glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 0.0f)),
                 glm::vec3(6.0f)));
+
         auto unlitStage = Stage(std::move(unlitDrawPack));
         unlitStage.setShader(unlitShader);
 
@@ -208,53 +120,19 @@ int main(void) {
             ShaderStage::Fragment, "shaders/unlit_animated/shader.frag");
         auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
 
-        unlitAnimatedUnlitModelCollection.emplace_back(
-            unlitAnimatedMeshPack.copy(), unlitMaterialPack.copy());
-
         auto unlitAnimatedDrawPack =
-            Model<UnlitAnimatedVertex, UnlitMaterial>::drawPackBuilder<
-                glm::mat4>(unlitAnimatedMeshPack, unlitMaterialPack);
+            resourceBundle.getDrawPackBuilder<UnlitAnimatedVertex,
+                                              UnlitMaterial, glm::mat4>();
         unlitAnimatedDrawPack.addDraw(
-            cesiumManMesh, cesiumManMaterial,
-            glm::scale(
-                glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
-                glm::vec3(2.0f)));
+            cesiumMan, glm::scale(glm::translate(glm::mat4(1.0f),
+                                                 glm::vec3(0.0f, 0.0f, -1.0f)),
+                                  glm::vec3(2.0f)));
         ;
         auto unlitAnimatedStage = Stage(std::move(unlitAnimatedDrawPack));
         unlitAnimatedStage.setShader(unlitAnimatedShader);
 
-        MeshPackBuilder<ColoredVertex> coloredMeshPackBuilder{};
-        coloredMeshPackBuilder.addMesh(getCubeMesh<ColoredVertex>());
-        auto coloredMeshPack = coloredMeshPackBuilder.build();
-        auto coloredCubeMesh = getPackHandles(coloredMeshPack)[0].copy();
-
-        coloredEmptyModelCollection.emplace_back(coloredMeshPack.copy(),
-                                                 emptyMaterialPack.copy());
-
-        ShaderBuilder coloredShaderBuilder{};
-        coloredShaderBuilder.addStage(ShaderStage::Vertex,
-                                      "shaders/colored/shader.vert");
-        coloredShaderBuilder.addStage(ShaderStage::Fragment,
-                                      "shaders/colored/shader.frag");
-        auto coloredShader = coloredShaderBuilder.build();
-
-        auto coloredDrawPackBuilder =
-            Model<ColoredVertex, EmptyMaterial>::drawPackBuilder<glm::mat4>(
-                coloredMeshPack, emptyMaterialPack);
-        coloredDrawPackBuilder.addDraw(
-            coloredCubeMesh, emptyMaterial,
-            glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f)));
-        coloredDrawPackBuilder.addDraw(
-            coloredCubeMesh, emptyMaterial,
-            glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 2.0f)));
-        coloredDrawPackBuilder.addDraw(
-            coloredCubeMesh, emptyMaterial,
-            glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, -2.0f)));
-        auto coloredStage = Stage(std::move(coloredDrawPackBuilder));
-        coloredStage.setShader(coloredShader);
-
-        auto pipeline = Pipeline(std::move(coloredStage), std::move(unlitStage),
-                                 std::move(unlitAnimatedStage));
+        auto pipeline =
+            Pipeline(std::move(unlitStage), std::move(unlitAnimatedStage));
 
         CameraMatrices cameraMatrices{};
         cameraMatrices.view =
@@ -263,7 +141,10 @@ int main(void) {
         cameraMatrices.projection =
             glm::perspective(glm::radians(45.0f), 480.0f / 640.0f, 1e-1f, 1e3f);
 
-        auto animations = cesiumMan.takeAnimations();
+        auto animations =
+            resourceBundle
+                .getModelAnimations<UnlitAnimatedVertex, UnlitMaterial>(
+                    "assets/CesiumMan/glTF/CesiumMan.gltf", "Cesium_Man");
         auto animationPlayer = AnimationPlayer(animations[0]);
         animationPlayer.loopAnimation(true);
 

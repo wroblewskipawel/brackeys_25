@@ -97,6 +97,16 @@ class StaticHandle {
 
     StaticHandle copy() const noexcept { return StaticHandle(*this); }
 
+    friend auto copyVector(
+        const std::vector<StaticHandle>& handleVector) noexcept {
+        auto vectorCopy = std::vector<StaticHandle>();
+        vectorCopy.reserve(handleVector.size());
+        for (const auto& handle : handleVector) {
+            vectorCopy.emplace_back(handle.copy());
+        }
+        return vectorCopy;
+    }
+
     template <typename Key>
     bool registerKey(Key&& key) const noexcept {
         return getKeyMap<Key>().insert(std::forward<Key>(key), handle);

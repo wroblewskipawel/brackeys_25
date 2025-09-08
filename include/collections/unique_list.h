@@ -96,6 +96,12 @@ class UniqueTypeList<Type, Types...> {
    public:
     UniqueTypeList() = default;
 
+    UniqueTypeList(const UniqueTypeList&) = default;
+    UniqueTypeList& operator=(const UniqueTypeList&) = default;
+
+    UniqueTypeList(UniqueTypeList&&) = default;
+    UniqueTypeList& operator=(UniqueTypeList&&) = default;
+
     UniqueTypeList(Type&& type, Types&&... types)
         : value(std::forward<Type>(type)),
           next(std::forward<Types>(types)...) {}

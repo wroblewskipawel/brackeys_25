@@ -10,6 +10,14 @@ struct MapVector {
     std::vector<Item> itemStorage;
     std::unordered_map<Key, size_t> nameMap;
 
+    MapVector() = default;
+
+    MapVector(const MapVector&) = default;
+    MapVector& operator=(const MapVector&) = default;
+
+    MapVector(MapVector&&) = default;
+    MapVector& operator=(MapVector&&) = default;
+
     size_t emplace(Item&& data) noexcept {
         auto dataIndex = itemStorage.size();
         itemStorage.emplace_back(std::move(data));
@@ -72,7 +80,7 @@ struct MapVector {
         Item* itemRef = nullptr;
         auto itemIndex = nameMap.find(key);
         if (itemIndex != nameMap.end()) {
-            itemRef = &itemStorage[itemIndex->second];
+            itemRef = const_cast<Item*>(&itemStorage[itemIndex->second]);
         }
         return PinRef(itemRef);
     };
@@ -85,11 +93,17 @@ struct MapVector {
         return std::nullopt;
     };
 
-    std::vector<Item> takeItems() noexcept { return std::move(itemStorage); }
+    const auto& getItems() const noexcept { return itemStorage; }
 
-    std::unordered_map<Key, size_t> takeNameMap() noexcept {
-        return std::move(nameMap);
-    }
+    auto& getItems() noexcept { return itemStorage; }
+
+    auto takeItems() noexcept { return std::move(itemStorage); }
+
+    const auto& getNameMap() const noexcept { return nameMap; }
+
+    auto& getNameMap() noexcept { return nameMap; }
+
+    auto takeNameMap() noexcept { return std::move(nameMap); }
 };
 
 template <typename Item>

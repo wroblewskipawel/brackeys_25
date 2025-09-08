@@ -21,6 +21,12 @@ class VectorList {
 
     VectorList() : listIndex(nextListIndex++) {};
 
+    VectorList(const VectorList&) = delete;
+    VectorList& operator=(const VectorList&) = delete;
+
+    VectorList(VectorList&&) = default;
+    VectorList& operator=(VectorList&&) = default;
+
     template <typename Type>
     Index<Type> insert(Type&& handle) noexcept {
         auto& typeStorage = vectorStorage.get<std::vector<Type>>();
@@ -48,6 +54,11 @@ class VectorList {
             const auto& typeStorage = vectorStorage.get<std::vector<Type>>();
             typeStorage[index.itemIndex] = Type::getInvalid();
         }
+    }
+
+    template <typename Type>
+    size_t size() const noexcept {
+        return vectorStorage.get<std::vector<Type>>().size();
     }
 
     template <typename Type>

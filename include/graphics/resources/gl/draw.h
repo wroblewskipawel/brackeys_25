@@ -120,30 +120,18 @@ class DrawPack {
     MeshPackHandle<Vertex> meshPack;
 };
 
-template <typename Vertex, typename Material>
-class Model {
-   public:
-    template <typename Instance>
-    static DrawPackBuilder<Vertex, Material, Instance> drawPackBuilder(
-        const MeshPackHandle<Vertex>& meshPack,
-        const MaterialPackHandle<Material>& materialPack) noexcept {
-        return DrawPackBuilder<Vertex, Material, Instance>(meshPack,
-                                                           materialPack);
-    }
-};
-
 template <typename Vertex, typename Material, typename Instance>
 class DrawPackBuilder {
    public:
+    using Model = Model<Vertex, Material>;
+
     DrawPackBuilder(const MeshPackHandle<Vertex>& meshPack,
                     const MaterialPackHandle<Material>& materialPack) noexcept
         : meshPack(meshPack.copy()), materialPack(materialPack.copy()) {}
 
-    DrawPackBuilder& addDraw(const MeshHandle<Vertex>& meshHandle,
-                             const MaterialHandle<Material>& materialHandle,
-                             Instance instanceData) {
-        Mesh mesh = getMesh(meshHandle);
-        DrawInfo drawInfo{mesh, materialHandle.materialIndex};
+    DrawPackBuilder& addDraw(const Model& model, Instance instanceData) {
+        Mesh mesh = getMesh(model.mesh);
+        DrawInfo drawInfo{mesh, model.material.packItemIndex};
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
             drawDataIt->second.emplace_back(instanceData);
@@ -156,12 +144,10 @@ class DrawPackBuilder {
         return *this;
     }
 
-    DrawPackBuilder& addDrawMulti(
-        const MeshHandle<Vertex>& meshHandle,
-        const MaterialHandle<Material>& materialHandle,
-        std::vector<Instance>&& instanceData) {
-        Mesh mesh = getMesh(meshHandle);
-        DrawInfo drawInfo{mesh, materialHandle.uniformIndex};
+    DrawPackBuilder& addDrawMulti(const Model& model,
+                                  std::vector<Instance>&& instanceData) {
+        Mesh mesh = getMesh(model.mesh);
+        DrawInfo drawInfo{mesh, model.material.packItemIndex};
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
             drawDataIt->second.insert(drawDataIt->second.end(),
