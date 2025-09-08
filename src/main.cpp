@@ -66,6 +66,7 @@ int main() {
     glFrontFace(GL_CCW);
     glClearDepth(1.0f);
     glDepthFunc(GL_LEQUAL);
+    glfwSwapInterval(0); // disable VSync
 
 #ifndef NDEBUG
     glEnable(GL_DEBUG_OUTPUT);
