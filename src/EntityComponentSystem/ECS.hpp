@@ -72,6 +72,7 @@ public:
 
     template<typename T>
     void addComponent(EntityID entity, const T& component) {
+        if (entityStorage.hasComponent<T>(entity)) return;
         auto component_index = getStorage<T>().add(entity, component);
         entityStorage.addComponent<T>(entity, component_index);
     }

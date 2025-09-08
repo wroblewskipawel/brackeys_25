@@ -17,6 +17,13 @@ inline void collisionResolutionSystem(ECS& ecs, const float& deltaTime, Renderin
                 ecs.addComponent(other, RemoveComponent{});
             }
 
+            if (ecs.entityStorage.hasComponent<BulletComponent>(other)) {
+                if (ecs.entityStorage.hasComponent<BulletComponent>(entity)) continue;
+                if (ecs.entityStorage.hasComponent<PlayerMovementComponent>(entity)) continue;
+                if (ecs.entityStorage.hasComponent<FollowPlayerComponent>(entity)) ecs.addComponent(entity, RemoveComponent{});;
+                ecs.addComponent(other, RemoveComponent{});
+            }
+
             if (entity < other) {
                 auto posB = ecs.getComponent<PositionComponent>(other);
                 auto colB = ecs.getComponent<HitBoxComponent>(other);

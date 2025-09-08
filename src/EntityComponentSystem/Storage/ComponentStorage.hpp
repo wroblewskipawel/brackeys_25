@@ -74,8 +74,8 @@ public:
     void removeEntity(EntityID id, EntityStorage& es) override {
         for (size_t i = 0; i < entityIDs.size(); ++i) {
             if (entityIDs[i].entityId == id) {
-                entityIDs[i].state = CellState::Free;
-                entityIDs[i].entityId = firstFreeCell;
+                if (entityIDs[i].state == CellState::Occupied) break;
+                entityIDs[i] = { CellState::Free, firstFreeCell};
                 firstFreeCell = i;
                 break;
             }

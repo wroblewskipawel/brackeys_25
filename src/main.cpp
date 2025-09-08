@@ -18,6 +18,7 @@
 #include "EntityComponentSystem/Systems/PlayerMovementSystem.hpp"
 #include "EntityComponentSystem/Systems/RemoveEntitySystem.hpp"
 #include "EntityComponentSystem/Systems/RenderingSystem.hpp"
+#include "EntityComponentSystem/Systems/BulletSystem.hpp"
 #include "ImGui/ImGui.hpp"
 #include "InputHandler/InputHandler.hpp"
 #include "MusicManager/MusicManager.hpp"
@@ -296,14 +297,15 @@ int main() {
     }
 
     ecs.nextStage(ECS::StageType::Sequential)
+        .addSystem(playerMovementSystem)
+        .addSystem(followingPlayerSystem)
+        .addSystem(bulletSystem)
+        .addSystem(movementSystem)
         .addSystem(collidingSystem)
         .addSystem(collisionResolutionSystem)
-        .addSystem(playerMovementSystem)
-        .addSystem(movementSystem)
-        .addSystem(renderingSystem)
         .addSystem(debugSystem)
-        .addSystem(followingPlayerSystem)
-        .addSystem(removeEntitySystem);
+        .addSystem(removeEntitySystem)
+        .addSystem(renderingSystem);
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = static_cast<float>(glfwGetTime());
@@ -317,12 +319,33 @@ int main() {
         if (gInputHandler.isPressed(Key::Num_1)) cameraOffset.z += 10 * deltaTime;
         if (gInputHandler.isPressed(Key::Num_2)) cameraOffset.z -= 10 * deltaTime;
 
+        auto position = ecs.getComponent<PositionComponent>(player);
+        auto [x, y, z] = *position;
+        if (gInputHandler.isPressed(Key::Space)) {
+            std::cout << "Space" << std::endl;
+            auto bullet = ecs.createEntity();
+            ecs.addComponent(bullet, PositionComponent{x, y, z});
+            ecs.addComponent(bullet, BulletComponent{270.f, 20.f});
+            ecs.addComponent(bullet, MovableComponent(20, 50));
+            ecs.addComponent(bullet, HitBoxComponent{0.5});
+            ecs.addComponent(bullet, CollidingComponent{});
+            ecs.addComponent(bullet, RenderableComponent{barrelPartial, glm::vec3(2.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)});
+        }
+
+        if (ecs.entityStorage.getNumberOfEntities() < 500) {
+            EntityID followingPlayer = ecs.createEntity();
+            ecs.addComponent(followingPlayer, PositionComponent{x - 5.f, y - 5.f, 0.f});
+            ecs.addComponent(followingPlayer, MovableComponent{5.f, 2.f});
+            ecs.addComponent(followingPlayer, HitBoxComponent(0.5f));
+            ecs.addComponent(followingPlayer, CollidingComponent{});
+            ecs.addComponent(followingPlayer, FollowPlayerComponent{});
+            ecs.addComponent(followingPlayer, RenderableComponent{cubeUnlitPartial_1});
+        }
+
         gInputHandler.update();
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        auto position = ecs.getComponent<PositionComponent>(player);
-        auto [x, y, z] = *position;
         glm::vec3 targetCameraPos = glm::vec3(x, y, z) + cameraOffset;
         cameraPos = glm::mix(cameraPos, targetCameraPos, 1.0f - expf(-smoothSpeed * deltaTime));
         glm::vec3 lookTarget = cameraPos - cameraOffset;
