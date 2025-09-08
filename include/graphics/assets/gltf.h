@@ -23,6 +23,7 @@
 #include "graphics/resources/material.h"
 #include "graphics/resources/mesh.h"
 #include "graphics/storage/animation.h"
+#include "graphics/storage/material.h"
 #include "graphics/storage/mesh.h"
 #include "graphics/storage/texture.h"
 
@@ -395,12 +396,12 @@ TextureDataHandle getTextureDataHandle(
 };
 
 template <typename Material>
-typename MaterialBuilder<Material> readMaterialData(
+typename MaterialBuilderHandle<Material> readMaterialData(
     const std::filesystem::path& documentPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material);
 
 template <>
-typename MaterialBuilder<UnlitMaterial> readMaterialData<UnlitMaterial>(
+typename MaterialBuilderHandle<UnlitMaterial> readMaterialData<UnlitMaterial>(
     const std::filesystem::path& documentPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material) {
     // baseColorTexture could be empty, add support for handling such missing
@@ -412,18 +413,18 @@ typename MaterialBuilder<UnlitMaterial> readMaterialData<UnlitMaterial>(
 
     MaterialBuilder<UnlitMaterial> builder{};
     builder.setAlbedoTextureData(std::move(albedoTextureData));
-    return builder;
+    return registerMaterialBuilder(std::move(builder));
 }
 
 // Instead we could omit the EmptyMaterial creation entirely leveraging
 // constexpr conditional compilation For now leave this as it is to keep the
 // same DocumentReader behavior for any material type
 template <>
-typename MaterialBuilder<EmptyMaterial> readMaterialData<EmptyMaterial>(
+typename MaterialBuilderHandle<EmptyMaterial> readMaterialData<EmptyMaterial>(
     const std::filesystem::path& documentPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material) {
     MaterialBuilder<EmptyMaterial> builder{};
-    return builder;
+    return registerMaterialBuilder(std::move(builder));
 }
 
 inline std::vector<glm::mat4> readInverseBindMatrices(
@@ -671,32 +672,32 @@ class DocumentReader {
         return meshes.takeItems();
     }
 
-    using MaterialBuilder = MaterialBuilder<Material>;
+    using MaterialBuilderHandle = MaterialBuilderHandle<Material>;
 
-    const PinRef<MaterialBuilder> getMaterial(
+    const PinRef<MaterialBuilderHandle> getMaterial(
         size_t materialIndex) const noexcept {
         return materials.getAtIndex(materialIndex);
     }
 
-    MaterialBuilder takeMaterial(size_t materialIndex) noexcept {
+    MaterialBuilderHandle takeMaterial(size_t materialIndex) noexcept {
         return materials.takeAtIndex(materialIndex);
     }
 
-    const PinRef<MaterialBuilder> tryGetMaterial(
+    const PinRef<MaterialBuilderHandle> tryGetMaterial(
         const std::string& name) const noexcept {
         return materials.tryGet(name);
     }
 
-    std::optional<MaterialBuilder> tryTakeMaterial(
+    std::optional<MaterialBuilderHandle> tryTakeMaterial(
         const std::string& name) noexcept {
         return materials.tryTake(name);
     }
 
-    const std::vector<MaterialBuilder>& getMaterials() const noexcept {
+    const std::vector<MaterialBuilderHandle>& getMaterials() const noexcept {
         return materials.dataStorage;
     }
 
-    std::vector<MaterialBuilder> takeMaterials() noexcept {
+    std::vector<MaterialBuilderHandle> takeMaterials() noexcept {
         return materials.takeItems();
     }
 
@@ -856,12 +857,12 @@ class DocumentReader {
     void loadMaterials(const std::filesystem::path& documentPath,
                        const fx::gltf::Document& document) noexcept {
         for (const auto& material : document.materials) {
-            auto materialBuilder =
+            auto materialBuilderHandle =
                 readMaterialData<Material>(documentPath, document, material);
             material.name.empty()
-                ? materials.emplace(std::move(materialBuilder))
+                ? materials.emplace(std::move(materialBuilderHandle))
                 : materials.emplace(std::string(material.name),
-                                    std::move(materialBuilder));
+                                    std::move(materialBuilderHandle));
         }
     }
 
@@ -881,7 +882,7 @@ class DocumentReader {
     }
 
     NamedVector<MeshDataHandle> meshes;
-    NamedVector<MaterialBuilder> materials;
+    NamedVector<MaterialBuilderHandle> materials;
     NamedVector<AnimationHandle> animations;
     NamedVector<ModelIndices> modelIndices;
     std::unordered_map<size_t, size_t> documentMeshIndexMap;

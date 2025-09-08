@@ -92,6 +92,8 @@
         "coroutine": "cpp",
         "resumable": "cpp",
         "queue": "cpp",
-        "typeindex": "cpp"
+        "typeindex": "cpp",
+        "*.rh": "cpp",
+        "*.def": "cpp"
     }
 }

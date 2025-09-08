@@ -100,13 +100,17 @@ class DrawPack {
 
     void draw(const UniformLocations& uniformLocations) {
         MeshPack<Vertex>::bind(meshPack);
-        MaterialPack<Material>::bind(materialPack);
+        if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
+            MaterialPack<Material>::bind(materialPack);
+        }
         for (const auto& [draw, instanceBuffer] :
              std::views::zip(meshes, instanceBuffers)) {
             VertexArray<Vertex, Instance>::getVertexArray()
                 .bindBuffer<BindingIndex::InstanceAttributes>(instanceBuffer);
-            glUniform1ui(uniformLocations.materialIndex,
-                         static_cast<GLuint>(draw.drawInfo.materialIndex));
+            if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
+                glUniform1ui(uniformLocations.materialIndex,
+                             static_cast<GLuint>(draw.drawInfo.materialIndex));
+            }
             glDrawElementsInstanced(
                 GL_TRIANGLES, draw.drawInfo.mesh.indexCount, GL_UNSIGNED_INT,
                 (void*)(draw.drawInfo.mesh.indexOffset * sizeof(GLuint)),

@@ -104,6 +104,25 @@ struct MapVector {
     auto& getNameMap() noexcept { return nameMap; }
 
     auto takeNameMap() noexcept { return std::move(nameMap); }
+
+    void extend(MapVector&& other) noexcept {
+        for (const auto& [key, _] : other.nameMap) {
+            if (nameMap.find(key) != nameMap.end()) {
+                std::println(std::cerr,
+                             "MapVector::extend: tried to emplace item with "
+                             "duplicated key {}",
+                             key);
+                std::abort();
+            }
+        }
+        auto indexOffset = itemStorage.size();
+        itemStorage.insert(itemStorage.end(),
+                           std::make_move_iterator(other.itemStorage.begin()),
+                           std::make_move_iterator(other.itemStorage.end()));
+        for (auto&& [key, index] : std::move(other.nameMap)) {
+            nameMap.emplace(std::move(key), indexOffset + index);
+        }
+    }
 };
 
 template <typename Item>

@@ -395,7 +395,9 @@ struct CopyHandle<Item, Shared> {
     static Handle<Item, Shared> copy(
         const Handle<Item, Shared>& handle,
         SlotMap<Item, Shared>& collection) noexcept {
-        collection.ownershipData.share(handle.storageIndex);
+        if (collection.isHandleValid(handle.getId())) {
+            collection.ownershipData.share(handle.storageIndex);
+        }
         return handle;
     }
 

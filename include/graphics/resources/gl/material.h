@@ -22,11 +22,11 @@ class MaterialData;
 class UnlitMaterial {
    public:
     using BufferType = std140::Block<GLuint64>;
-    using BuilderType = MaterialBuilder<UnlitMaterial>;
+    using BuilderHandleType = MaterialBuilderHandle<UnlitMaterial>;
 
-    UnlitMaterial(const BuilderType& builder)
-        : albedoTexture(
-              tryLoadFromDataHandle(builder.albedoTexture, SamplerConfig{})) {}
+    UnlitMaterial(const BuilderHandleType& builderHandle)
+        : albedoTexture(tryLoadFromDataHandle(
+              builderHandle.get().get().albedoTexture, SamplerConfig{})) {}
 
     UnlitMaterial(const UnlitMaterial&) = delete;
     UnlitMaterial& operator=(const UnlitMaterial&) = delete;
@@ -55,9 +55,9 @@ class UnlitMaterial {
 class EmptyMaterial {
    public:
     using BufferType = std140::Block<>;
-    using BuilderType = MaterialBuilder<EmptyMaterial>;
+    using BuilderHandleType = MaterialBuilderHandle<EmptyMaterial>;
 
-    EmptyMaterial(const BuilderType&) {}
+    EmptyMaterial(const BuilderHandleType&) {}
 
     EmptyMaterial(const EmptyMaterial&) = delete;
     EmptyMaterial& operator=(const EmptyMaterial&) = delete;
@@ -177,18 +177,18 @@ class MaterialPackBuilder {
 
     ~MaterialPackBuilder() = default;
 
-    using BuilderType = typename Material::BuilderType;
+    using BuilderHandleType = typename Material::BuilderHandleType;
 
-    MaterialPackBuilder& addMaterial(const BuilderType& materialBuilder) {
-        materialData.emplace_back(materialBuilder);
+    MaterialPackBuilder& addMaterial(const BuilderHandleType& builderHandle) {
+        materialData.emplace_back(builderHandle.copy());
         materialUniforms.push(materialData.back().getUniformBuffer());
         return *this;
     }
 
     MaterialPackBuilder& addMaterialMulti(
-        const std::vector<BuilderType>& materialBuilders) {
-        for (const auto& materialBuilder : materialBuilders) {
-            addMaterial(materialBuilder);
+        const std::vector<BuilderHandleType>& builderHandles) {
+        for (const auto& handle : builderHandles) {
+            addMaterial(handle);
         }
         return *this;
     }

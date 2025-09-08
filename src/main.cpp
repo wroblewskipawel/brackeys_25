@@ -78,21 +78,62 @@ int main(void) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
     {
-        auto documentBundle = DocumentBundle<MeshesList, MaterialList>();
+        MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
+        unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(
+            "assets/textures/tile_1.png", TextureFormat::RGB));
 
-        documentBundle.pushDocument<UnlitVertex, UnlitMaterial>(
-            "assets/WaterBottle/glTF/WaterBottle.gltf");
+        MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_2{};
+        unlitMaterialBuilder_2.setAlbedoTextureData(TextureData::loadFromFile(
+            "assets/textures/tile_2.png", TextureFormat::RGB));
 
-        documentBundle.pushDocument<UnlitAnimatedVertex, UnlitMaterial>(
-            "assets/CesiumMan/glTF/CesiumMan.gltf");
+        auto unlitMaterialBuilder_1Handle =
+            registerMaterialBuilder(std::move(unlitMaterialBuilder_1));
+        auto unlitMaterialBuilder_2Handle =
+            registerMaterialBuilder(std::move(unlitMaterialBuilder_2));
 
-        auto resourceBundle = ResourceBundle(documentBundle);
+        auto cubeMeshUnlit = getCubeMesh<UnlitVertex>();
+        auto cubeMeshColored = getCubeMesh<ColoredVertex>();
+
+        auto unlitCubeModel_1 = ModelDataBuilder<UnlitVertex, UnlitMaterial>{}
+                                    .withMesh(cubeMeshUnlit)
+                                    .withMaterial(unlitMaterialBuilder_1Handle)
+                                    .withName("unlitCube_1")
+                                    .build();
+        auto unlitCubeModel_2 = ModelDataBuilder<UnlitVertex, UnlitMaterial>{}
+                                    .withMesh(cubeMeshUnlit)
+                                    .withMaterial(unlitMaterialBuilder_2Handle)
+                                    .withName("unlitCube_2")
+                                    .build();
+        auto coloredCubeModel = ModelDataBuilder<ColoredVertex, EmptyMaterial>{}
+                                    .withMesh(cubeMeshColored)
+                                    .withName("coloredCube")
+                                    .build();
+
+        auto assetsBundle = AssetsBundle<MeshesList, MaterialList>();
+
+        assetsBundle
+            .pushDocument<UnlitVertex, UnlitMaterial>(
+                "gltf", "assets/WaterBottle/glTF/WaterBottle.gltf")
+            .pushDocument<UnlitAnimatedVertex, UnlitMaterial>(
+                "gltf", "assets/CesiumMan/glTF/CesiumMan.gltf")
+            .pushModel("cubes", unlitCubeModel_1)
+            .pushModel("cubes", unlitCubeModel_2)
+            .pushModel("cubes", coloredCubeModel);
+
+        auto resourceBundle = ResourceBundle(assetsBundle);
 
         auto waterBottle = resourceBundle.getModel<UnlitVertex, UnlitMaterial>(
-            "assets/WaterBottle/glTF/WaterBottle.gltf", "WaterBottle");
+            "gltf", "WaterBottle");
         auto cesiumMan =
             resourceBundle.getModel<UnlitAnimatedVertex, UnlitMaterial>(
-                "assets/CesiumMan/glTF/CesiumMan.gltf", "Cesium_Man");
+                "gltf", "Cesium_Man");
+        auto unlitCube_1 = resourceBundle.getModel<UnlitVertex, UnlitMaterial>(
+            "cubes", "unlitCube_1");
+        auto unlitCube_2 = resourceBundle.getModel<UnlitVertex, UnlitMaterial>(
+            "cubes", "unlitCube_2");
+        auto coloredCube =
+            resourceBundle.getModel<ColoredVertex, EmptyMaterial>(
+                "cubes", "coloredCube");
 
         ShaderBuilder unlitShaderBuilder{};
         unlitShaderBuilder.addStage(ShaderStage::Vertex,
@@ -104,6 +145,12 @@ int main(void) {
         auto unlitDrawPack =
             resourceBundle
                 .getDrawPackBuilder<UnlitVertex, UnlitMaterial, glm::mat4>();
+        unlitDrawPack.addDraw(
+            unlitCube_1,
+            glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
+        unlitDrawPack.addDraw(
+            unlitCube_2,
+            glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
         unlitDrawPack.addDraw(
             waterBottle,
             glm::scale(
@@ -131,8 +178,30 @@ int main(void) {
         auto unlitAnimatedStage = Stage(std::move(unlitAnimatedDrawPack));
         unlitAnimatedStage.setShader(unlitAnimatedShader);
 
-        auto pipeline =
-            Pipeline(std::move(unlitStage), std::move(unlitAnimatedStage));
+        ShaderBuilder coloredShaderBuilder{};
+        coloredShaderBuilder.addStage(ShaderStage::Vertex,
+                                      "shaders/colored/shader.vert");
+        coloredShaderBuilder.addStage(ShaderStage::Fragment,
+                                      "shaders/colored/shader.frag");
+        auto coloredShader = coloredShaderBuilder.build();
+
+        auto coloredDrawPackBuilder =
+            resourceBundle
+                .getDrawPackBuilder<ColoredVertex, EmptyMaterial, glm::mat4>();
+        coloredDrawPackBuilder.addDraw(
+            coloredCube,
+            glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f)));
+        coloredDrawPackBuilder.addDraw(
+            coloredCube,
+            glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 2.0f)));
+        coloredDrawPackBuilder.addDraw(
+            coloredCube,
+            glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, -2.0f)));
+        auto coloredStage = Stage(std::move(coloredDrawPackBuilder));
+        coloredStage.setShader(coloredShader);
+
+        auto pipeline = Pipeline(std::move(coloredStage), std::move(unlitStage),
+                                 std::move(unlitAnimatedStage));
 
         CameraMatrices cameraMatrices{};
         cameraMatrices.view =
@@ -144,7 +213,7 @@ int main(void) {
         auto animations =
             resourceBundle
                 .getModelAnimations<UnlitAnimatedVertex, UnlitMaterial>(
-                    "assets/CesiumMan/glTF/CesiumMan.gltf", "Cesium_Man");
+                    "gltf", "Cesium_Man");
         auto animationPlayer = AnimationPlayer(animations[0]);
         animationPlayer.loopAnimation(true);
 

@@ -1,9 +1,90 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <type_traits>
 
+#include "graphics/resources/material.h"
 #include "graphics/resources/mesh.h"
+#include "graphics/storage/material.h"
 #include "graphics/storage/mesh.h"
+
+template <typename Vertex, typename Material>
+class ModelDataBuilder;
+
+template <typename Vertex, typename Material>
+class ModelData {
+   public:
+    const auto& getMesh() const noexcept { return meshData; }
+
+    const auto& getMaterial() const noexcept { return materialBuilder; }
+
+    const auto& getAnimations() const noexcept { return animations; }
+
+    const auto& getName() const noexcept { return modelName; }
+
+   private:
+    friend class ModelDataBuilder<Vertex, Material>;
+
+    ModelData(const MeshDataHandle<Vertex>& meshData,
+              const MaterialBuilderHandle<Material>& materialBuilder,
+              const std::vector<AnimationHandle>& animations,
+              const std::string& modelName) noexcept
+        : meshData(meshData.copy()),
+          materialBuilder(materialBuilder.copy()),
+          animations(copyVector(animations)),
+          modelName(modelName) {}
+
+    MeshDataHandle<Vertex> meshData;
+    MaterialBuilderHandle<Material> materialBuilder;
+    std::vector<AnimationHandle> animations;
+    std::string modelName;
+};
+
+template <typename Vertex, typename Material>
+class ModelDataBuilder {
+   public:
+    ModelDataBuilder() noexcept
+        : meshData(MeshDataHandle<Vertex>::getInvalid()),
+          materialBuilder(MaterialBuilderHandle<Material>::getInvalid()) {}
+
+    auto& withMesh(const MeshDataHandle<Vertex>& meshHandle) {
+        meshData = meshHandle.copy();
+        return *this;
+    }
+
+    auto& withMaterial(const MaterialBuilderHandle<Material>& materialHandle) {
+        static_assert(!std::is_same_v<Material, EmptyMaterial>,
+                      "ModelDataBuilder::withMaterial called on model with "
+                      "EmptyMaterial material type");
+        materialBuilder = materialHandle.copy();
+        return *this;
+    }
+
+    auto& withAnimation(
+        const MaterialBuilderHandle<Material>& animationHandle) {
+        static_assert(isAnimatedVertex<Vertex>(),
+                      "ModelDataBuilder::withAnimation called on model with "
+                      "non-Animated Vertex type");
+        animations.emplace_back(animationHandle.copy());
+        return *this;
+    }
+
+    auto& withName(const std::string& name) {
+        modelName = name;
+        return *this;
+    }
+
+    auto build() const noexcept {
+        return ModelData<Vertex, Material>(meshData, materialBuilder,
+                                           animations, modelName);
+    }
+
+   private:
+    MeshDataHandle<Vertex> meshData;
+    MaterialBuilderHandle<Material> materialBuilder;
+    std::vector<AnimationHandle> animations;
+    std::string modelName;
+};
 
 template <typename Vertex>
 MeshDataHandle<Vertex> getCubeMesh();

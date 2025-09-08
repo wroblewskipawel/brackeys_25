@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>
 #include <variant>
 
 #include "collections/slot_map.h"
@@ -63,9 +64,11 @@ struct Model {
     }
 
     bool isValid() const noexcept {
-        // This forces Model to always have material defines, which may not be
-        // always desirable
-        return mesh.isValid() && material.isValid();
+        if constexpr (std::is_same_v<Material, EmptyMaterial>) {
+            return mesh.isValid();
+        } else {
+            return mesh.isValid() && material.isValid();
+        }
     }
 
     friend bool operator==(const Model& lhs, const Model& rhs) noexcept {

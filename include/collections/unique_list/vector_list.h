@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 template <typename... Types>
 class VectorListBuilder;
 
@@ -39,7 +41,17 @@ class VectorList {
     }
 
     template <typename Type>
-    Type get(Index<Type> index) const noexcept {
+    const Type& get(Index<Type> index) const noexcept {
+        auto handle = Type::getInvalid();
+        if (isIndexValid(index)) {
+            const auto& typeStorage = vectorStorage.get<std::vector<Type>>();
+            handle = typeStorage[index.itemIndex].copy();
+        }
+        return handle;
+    }
+
+    template <typename Type>
+    Type& get(Index<Type> index) noexcept {
         auto handle = Type::getInvalid();
         if (isIndexValid(index)) {
             const auto& typeStorage = vectorStorage.get<std::vector<Type>>();
@@ -59,6 +71,13 @@ class VectorList {
     template <typename Type>
     size_t size() const noexcept {
         return vectorStorage.get<std::vector<Type>>().size();
+    }
+
+    template <typename Type>
+    size_t find(const Type& item) const noexcept {
+        auto& typeStorage = vectorStorage.get<std::vector<Type>>();
+        auto result = std::find(typeStorage.begin(), typeStorage.end(), item);
+        return std::distance(typeStorage.begin(), result);
     }
 
     template <typename Type>

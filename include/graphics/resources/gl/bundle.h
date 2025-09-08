@@ -7,6 +7,8 @@
 #include "graphics/resources/gl/model.h"
 #include "graphics/storage/gl/material.h"
 #include "graphics/storage/gl/mesh.h"
+#include "graphics/storage/material.h"
+#include "graphics/storage/mesh.h"
 
 template <template <typename> typename HandleType, typename... Types>
 using HandleList = UniqueTypeList<HandleType<Types>...>;
@@ -60,7 +62,8 @@ template <typename... Materials>
 using MaterialPackHandleList = HandleList<MaterialPackHandle, Materials...>;
 
 template <typename... Materials>
-using MaterialBuilderList = VectorList<MaterialBuilder<Materials>...>;
+using MaterialBuilderHandleList =
+    VectorList<MaterialBuilderHandle<Materials>...>;
 
 template <typename Materials, typename PackHandleList, typename PackDataList>
 void loadMaterialPacks(Materials remaining, PackHandleList& packHandles,
@@ -69,17 +72,17 @@ void loadMaterialPacks(Materials remaining, PackHandleList& packHandles,
 template <typename... PackMaterials, typename... DataMaterials>
 void loadMaterialPacks(
     TypeList<> remaining, MaterialPackHandleList<PackMaterials...>& handleList,
-    const MaterialBuilderList<DataMaterials...>& dataList) noexcept {}
+    const MaterialBuilderHandleList<DataMaterials...>& dataList) noexcept {}
 
 template <typename Material, typename... Materials, typename... PackMaterials,
           typename... DataMaterials>
 void loadMaterialPacks(
     TypeList<Material, Materials...> remaining,
     MaterialPackHandleList<PackMaterials...>& handleList,
-    const MaterialBuilderList<DataMaterials...>& dataList) noexcept {
+    const MaterialBuilderHandleList<DataMaterials...>& dataList) noexcept {
     auto packBuilder = MaterialPackBuilder<Material>();
     packBuilder.addMaterialMulti(
-        dataList.getStorage<MaterialBuilder<Material>>());
+        dataList.getStorage<MaterialBuilderHandle<Material>>());
     auto& packHandle = handleList.get<MaterialPackHandle<Material>>();
     packHandle = packBuilder.build();
 
@@ -90,7 +93,8 @@ template <typename... Materials>
 class MaterialPackList {
    public:
     template <typename... Data>
-    MaterialPackList(const MaterialBuilderList<Data...>& packData) noexcept {
+    MaterialPackList(
+        const MaterialBuilderHandleList<Data...>& packData) noexcept {
         loadMaterialPacks(TypeList<Materials...>{}, packList, packData);
     };
 
@@ -110,52 +114,52 @@ template <typename... Vertices, typename... Materials>
 class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
    public:
     using IndexStorage =
-        DocumentIndicesStorage<TypeList<Vertices...>, TypeList<Materials...>>;
+        AssetsIndicesStorage<TypeList<Vertices...>, TypeList<Materials...>>;
 
     template <typename Vertex, typename Material>
     using Ref = typename IndexStorage::template Ref<Vertex, Material>;
 
     ResourceBundle(
-        const DocumentBundle<TypeList<Vertices...>, TypeList<Materials...>>&
-            documentBundle) noexcept
-        : animations(copyVector(documentBundle.getAnimations())),
-          meshPacks(documentBundle.getMeshes()),
-          materialPacks(documentBundle.getMaterials()),
-          documenIndexMap(documentBundle.getIndicesMap()) {}
+        const AssetsBundle<TypeList<Vertices...>, TypeList<Materials...>>&
+            assetsBundle) noexcept
+        : animations(copyVector(assetsBundle.getAnimations())),
+          meshPacks(assetsBundle.getMeshes()),
+          materialPacks(assetsBundle.getMaterials()),
+          documenIndexMap(assetsBundle.getIndicesMap()) {}
 
     template <typename Vertex, typename Material>
-    auto getModel(const std::filesystem::path& documentPath,
+    auto getModel(const std::string& modelNamespace,
                   const std::string& modelName) const noexcept {
         const auto modelIndices =
-            documenIndexMap.getModelIndices<Vertex, Material>(documentPath,
+            documenIndexMap.getModelIndices<Vertex, Material>(modelNamespace,
                                                               modelName);
         return tryGetModel(modelIndices);
     }
 
     template <typename Vertex, typename Material>
-    auto getModel(const std::filesystem::path& documentPath,
+    auto getModel(const std::string& modelNamespace,
                   size_t modelIndex) const noexcept {
         const auto modelIndices =
-            documenIndexMap.getModelIndices<Vertex, Material>(documentPath,
+            documenIndexMap.getModelIndices<Vertex, Material>(modelNamespace,
                                                               modelIndex);
         return tryGetModel(modelIndices);
     }
 
     // Add constexpr check if the Vertex type is AnimatedVertex type
     template <typename Vertex, typename Material>
-    auto getModelAnimations(const std::filesystem::path& documentPath,
+    auto getModelAnimations(const std::string& modelNamespace,
                             const std::string& modelName) const noexcept {
         const auto modelIndices =
-            documenIndexMap.getModelIndices<Vertex, Material>(documentPath,
+            documenIndexMap.getModelIndices<Vertex, Material>(modelNamespace,
                                                               modelName);
         return tryGetAnimations(modelIndices);
     }
 
     template <typename Vertex, typename Material>
-    auto getModelAnimations(const std::filesystem::path& documentPath,
+    auto getModelAnimations(const std::string& modelNamespace,
                             size_t modelIndex) const noexcept {
         const auto modelIndices =
-            documenIndexMap.getModelIndices<Vertex, Material>(documentPath,
+            documenIndexMap.getModelIndices<Vertex, Material>(modelNamespace,
                                                               modelIndex);
         return tryGetAnimations(modelIndices);
     }
@@ -201,5 +205,5 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
 
 template <typename... Vertices, typename... Materials>
 ResourceBundle(
-    const DocumentBundle<TypeList<Vertices...>, TypeList<Materials...>>&)
+    const AssetsBundle<TypeList<Vertices...>, TypeList<Materials...>>&)
     -> ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>>;
