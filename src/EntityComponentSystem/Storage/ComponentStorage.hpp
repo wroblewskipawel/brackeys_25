@@ -72,6 +72,7 @@ public:
     }
 
     void removeEntity(EntityID id, EntityStorage& es) override {
+        if (!es.hasComponent<T>(id)) return;
         for (size_t i = 0; i < entityIDs.size(); ++i) {
             if (entityIDs[i].entityId == id) {
                 if (entityIDs[i].state == CellState::Occupied) break;
@@ -85,12 +86,12 @@ public:
     void removeComponent(EntityID id, EntityStorage& es) override {
         for (size_t i = 0; i < entityIDs.size(); ++i) {
             if (entityIDs[i].entityId == id) {
-                entityIDs.erase(entityIDs.begin() + i);
-                components.erase(components.begin() + i);
-                return;
+                if (entityIDs[i].state == CellState::Occupied) break;
+                entityIDs[i] = { CellState::Free, firstFreeCell};
+                firstFreeCell = i;
+                break;
             }
         }
-        es.removeComponent<T>(id);
     }
 
     std::vector<T>& getAll() { return components; }

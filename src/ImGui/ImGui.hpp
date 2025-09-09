@@ -25,8 +25,13 @@ inline void updateImGui(GLFWwindow* window, size_t numOfEntities, float deltaTim
     ImGui::Begin("Debug");
     ImGui::Text("Entities: %zu", numOfEntities);
 
-    float fps = 1.0f / deltaTime;
-    ImGui::Text("FPS: %.1f", fps);
+    // Smoothed FPS
+    static float smoothedFPS = 0.0f;
+    float currentFPS = 1.0f / deltaTime;
+    const float smoothing = 0.98f; // closer to 1 = smoother, slower updates
+    smoothedFPS = smoothing * smoothedFPS + (1.0f - smoothing) * currentFPS;
+
+    ImGui::Text("FPS: %.1f", smoothedFPS);
 
     // Debug input states
     if (gInputHandler.isClicked(Key::W)) ImGui::Text("W clicked");

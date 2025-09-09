@@ -55,6 +55,13 @@ public:
     void update(const float& deltaTime);
 
     template<typename T>
+    void removeComponent(EntityID id) {
+        if (!entityStorage.hasComponent<T>(id)) return;
+        getStorage<T>().removeComponent(id, entityStorage);
+        entityStorage.removeComponent<T>(id);
+    }
+
+    template<typename T>
     T* getComponent(EntityID id) {
         auto indexInStorage = entityStorage.getComponentIndex<T>(id);
         if (indexInStorage == std::numeric_limits<size_t>::max()) {

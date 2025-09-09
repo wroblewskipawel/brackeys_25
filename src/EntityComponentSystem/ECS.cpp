@@ -9,7 +9,6 @@ EntityID ECS::createEntity() {
 }
 
 void ECS::removeEntity(EntityID id) {
-    // TODO: remove components only from storages that entity have
     for (auto& [type, storage] : storages) {
         storage->removeEntity(id, entityStorage);
     }
