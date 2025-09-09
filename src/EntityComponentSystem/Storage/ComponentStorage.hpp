@@ -55,15 +55,6 @@ public:
         return currentIndex;
     }
 
-    T* get(EntityID id) {
-        for (size_t i = 0; i < entityIDs.size(); ++i) {
-            if (entityIDs[i].state == CellState::Occupied && entityIDs[i].entityId == id) {
-                return &components[i];
-            }
-        }
-        return nullptr;
-    }
-
     T* getByIndex(size_t index) {
         if (entityIDs[index].state == CellState::Free) {
             return nullptr;
@@ -73,25 +64,17 @@ public:
 
     void removeEntity(EntityID id, EntityStorage& es) override {
         if (!es.hasComponent<T>(id)) return;
-        for (size_t i = 0; i < entityIDs.size(); ++i) {
-            if (entityIDs[i].entityId == id) {
-                if (entityIDs[i].state == CellState::Occupied) break;
-                entityIDs[i] = { CellState::Free, firstFreeCell};
-                firstFreeCell = i;
-                break;
-            }
-        }
+        auto componentIndex = es.getComponentIndex<T>(id);
+        if (entityIDs[componentIndex].state == CellState::Occupied) return;
+        entityIDs[componentIndex] = { CellState::Free, firstFreeCell};
+        firstFreeCell = componentIndex;
     }
 
     void removeComponent(EntityID id, EntityStorage& es) override {
-        for (size_t i = 0; i < entityIDs.size(); ++i) {
-            if (entityIDs[i].entityId == id) {
-                if (entityIDs[i].state == CellState::Occupied) break;
-                entityIDs[i] = { CellState::Free, firstFreeCell};
-                firstFreeCell = i;
-                break;
-            }
-        }
+        auto componentIndex = es.getComponentIndex<T>(id);
+        if (entityIDs[componentIndex].state == CellState::Occupied) return;
+        entityIDs[componentIndex] = { CellState::Free, firstFreeCell};
+        firstFreeCell = componentIndex;
     }
 
     std::vector<T>& getAll() { return components; }
