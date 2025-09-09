@@ -65,14 +65,12 @@ public:
     void removeEntity(EntityID id, EntityStorage& es) override {
         if (!es.hasComponent<T>(id)) return;
         auto componentIndex = es.getComponentIndex<T>(id);
-        if (entityIDs[componentIndex].state == CellState::Occupied) return;
         entityIDs[componentIndex] = { CellState::Free, firstFreeCell};
         firstFreeCell = componentIndex;
     }
 
     void removeComponent(EntityID id, EntityStorage& es) override {
         auto componentIndex = es.getComponentIndex<T>(id);
-        if (entityIDs[componentIndex].state == CellState::Occupied) return;
         entityIDs[componentIndex] = { CellState::Free, firstFreeCell};
         firstFreeCell = componentIndex;
     }
