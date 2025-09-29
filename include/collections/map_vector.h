@@ -3,7 +3,7 @@
 #include <iostream>
 #include <optional>
 
-#include "collections/pin_ref.h"
+#include "collections/pin.h"
 
 template <typename Key, typename Item>
 struct MapVector {

@@ -173,10 +173,6 @@ class UniformArray {
         return updateBuffer(&data, 1, indexOffset);
     }
 
-    void bind(GLenum target, GLuint index) const {
-        glBindBufferBase(target, index, uniformBlockBuffer);
-    }
-
     GLuint getBuffer() const noexcept { return uniformBlockBuffer; }
 
     size_t getNumElements() const noexcept { return numElements; }

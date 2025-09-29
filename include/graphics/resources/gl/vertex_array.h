@@ -13,13 +13,24 @@ template <typename Vertex>
 class MeshPack;
 
 template <typename Vertex, typename Material, typename Instance>
-class DrawPack;
+class StaticPack;
 
 template <typename Instance, size_t InstanceCount>
 class InstanceBuffer;
 
 template <typename Vertex, typename Instance>
 class VertexArray;
+
+struct BindingInfo {
+    GLuint buffer{0};
+    GLuint offset{0};
+
+    friend bool operator==(const BindingInfo&, const BindingInfo&) noexcept;
+};
+
+bool operator==(const BindingInfo& lhs, const BindingInfo& rhs) noexcept {
+    return lhs.buffer == rhs.buffer && lhs.offset == rhs.offset;
+}
 
 class VertexArrayStorage {
    public:
@@ -63,7 +74,11 @@ class VertexArray {
    private:
     friend class MeshPack<Vertex>;
     template <typename, typename, typename>
-    friend class DrawPack;
+    friend class StaticPack;
+    template <typename, typename, typename, size_t>
+    friend class DynamicPack;
+    template <typename, typename, typename, size_t>
+    friend class AnimatedPack;
     template <typename, size_t>
     friend class InstanceBuffer;
 
@@ -92,19 +107,20 @@ class VertexArray {
     }
 
     template <auto Binding>
-    void bindBuffer(GLuint buffer) {
+    void bindBuffer(BindingInfo bufferBinding) {
         static_assert(std::is_same_v<decltype(Binding), BindingIndex>);
         if constexpr (Binding == BindingIndex::ElementBuffer) {
-            if (currentElementBuffer != buffer) {
-                glVertexArrayElementBuffer(vao, buffer);
-                currentElementBuffer = buffer;
+            if (currentElementBuffer != bufferBinding.buffer) {
+                glVertexArrayElementBuffer(vao, bufferBinding.buffer);
+                currentElementBuffer = bufferBinding.buffer;
             }
         } else {
             constexpr auto bindingIndex = magic_enum::enum_underlying(Binding);
-            if (currentBufferBinding[bindingIndex] != buffer) {
-                glVertexArrayVertexBuffer(vao, bindingIndex, buffer, 0,
-                                          getAttributeSize<Binding>());
-                currentBufferBinding[bindingIndex] = buffer;
+            if (currentBufferBinding[bindingIndex] != bufferBinding) {
+                glVertexArrayVertexBuffer(
+                    vao, bindingIndex, bufferBinding.buffer,
+                    bufferBinding.offset, getAttributeSize<Binding>());
+                currentBufferBinding[bindingIndex] = bufferBinding;
             }
         }
     }
@@ -121,7 +137,7 @@ class VertexArray {
     GLuint vao{0};
     GLuint currentVertexBuffer{0};
     GLuint currentElementBuffer{0};
-    GLuint currentBufferBinding[bufferBindingCount] = {0};
+    BindingInfo currentBufferBinding[bufferBindingCount] = {};
 };
 
 template <>

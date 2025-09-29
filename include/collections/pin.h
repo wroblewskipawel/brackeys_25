@@ -47,3 +47,27 @@ class PinRef {
 
     Item* itemRef;
 };
+
+template <typename Item>
+class PinVal {
+   public:
+   PinVal(const Item& item) : item(item) {};
+   PinVal(Item&& item) : item(std::move(item)) {};
+
+   PinVal(const PinVal&) = delete;
+   PinVal& operator=(const PinVal&) = delete;
+
+   PinVal(PinVal&&) = delete;
+   PinVal& operator=(PinVal&&) = delete;
+
+    const Item& get() const noexcept {
+        return item;
+    }
+
+    Item& get() noexcept {
+        return item;
+    }
+
+   private:
+    Item item;
+};

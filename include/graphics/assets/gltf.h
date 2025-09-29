@@ -17,7 +17,7 @@
 #include <unordered_map>
 
 #include "collections/map_vector.h"
-#include "collections/pin_ref.h"
+#include "collections/pin.h"
 #include "graphics/resources/animation.h"
 #include "graphics/resources/animation/joint.h"
 #include "graphics/resources/material.h"

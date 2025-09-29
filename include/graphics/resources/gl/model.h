@@ -86,3 +86,4 @@ struct DrawDataInstanced {
     Model<Vertex, Material> model;
     std::vector<Instance> instanceData;
 };
+

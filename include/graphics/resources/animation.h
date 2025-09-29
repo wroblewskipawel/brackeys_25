@@ -206,6 +206,10 @@ class AnimationPlayer {
         currentKeyframes.resize(animationRef.numJoints());
     }
 
+    size_t numJoints() const noexcept {
+        return currentKeyframes.size();
+    }
+
     void update(float deltaTime) {
         const auto& animationRef = animationHandle.get().get();
         if (currentTime < duration) {

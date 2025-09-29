@@ -77,9 +77,9 @@ class MeshPack {
         auto& vertexArray = VertexArray<Vertex, glm::mat4>::getVertexArray();
         auto& meshPack = packHandle.get().get();
         vertexArray.bindBuffer<BindingIndex::VertexAttributes>(
-            meshPack.buffers.vbo);
+            BindingInfo{.buffer = meshPack.buffers.vbo, .offset = 0});
         vertexArray.bindBuffer<BindingIndex::ElementBuffer>(
-            meshPack.buffers.ebo);
+            BindingInfo{.buffer = meshPack.buffers.ebo, .offset = 0});
         vertexArray.bind();
     }
 

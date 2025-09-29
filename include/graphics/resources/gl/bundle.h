@@ -2,11 +2,15 @@
 
 #include "collections/unique_list.h"
 #include "graphics/assets/bundle.h"
+#include "graphics/resources/gl/draw/animated.h"
+#include "graphics/resources/gl/draw/dynamic.h"
+#include "graphics/resources/gl/draw/static.h"
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/model.h"
 #include "graphics/storage/gl/material.h"
 #include "graphics/storage/gl/mesh.h"
+#include "graphics/storage/gl/stream.h"
 #include "graphics/storage/material.h"
 #include "graphics/storage/mesh.h"
 
@@ -165,11 +169,31 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
     }
 
     template <typename Vertex, typename Material, typename Instance>
-    DrawPackBuilder<Vertex, Material, Instance> getDrawPackBuilder()
-        const noexcept {
-        return DrawPackBuilder<Vertex, Material, Instance>(
+    auto getStaticPackBuilder() const noexcept {
+        return StaticPackBuilder<Vertex, Material, Instance>(
             meshPacks.getPackHandle<Vertex>(),
             materialPacks.getPackHandle<Material>());
+    }
+
+    template <typename Vertex, typename Material, typename Instance,
+              size_t BufferSize>
+    auto getDynamicPackBuilder(
+        const StreamHandle<Instance, BufferSize>& streamBuffer) const noexcept {
+        return DynamicPackBuilder<Vertex, Material, Instance, BufferSize>(
+            meshPacks.getPackHandle<Vertex>(),
+            materialPacks.getPackHandle<Material>(), streamBuffer);
+    }
+
+    template <typename Vertex, typename Material, typename Instance,
+              size_t BufferSize>
+    auto getAnimatedPackBuilder(
+        const StreamHandle<Instance, BufferSize>& instanceStreamBuffer,
+        const StreamHandle<glm::mat4, BufferSize>& jointStreamBuffer)
+        const noexcept {
+        return AnimatedPackBuilder<Vertex, Material, Instance, BufferSize>(
+            meshPacks.getPackHandle<Vertex>(),
+            materialPacks.getPackHandle<Material>(), instanceStreamBuffer,
+            jointStreamBuffer);
     }
 
    private:

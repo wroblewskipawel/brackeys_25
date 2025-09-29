@@ -5,11 +5,13 @@
 #include <filesystem>
 #include <glm/glm.hpp>
 
+#include "graphics/resources/gl/buffer/binding.h"
 #include "graphics/resources/gl/buffer/std140.h"
 #include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/texture.h"
 #include "graphics/resources/material.h"
 #include "graphics/storage/gl/material.h"
+
 
 constexpr size_t materialPackBufferBinding = 0;
 
@@ -138,8 +140,10 @@ class MaterialPack {
             currentPackIndex = materialPack;
         }
         auto& currentPack = currentPackIndex.get().get();
-        currentPack.materialUniforms.bind(GL_SHADER_STORAGE_BUFFER,
-                                          materialPackBufferBinding);
+
+        BindingState::bindBuffer<BufferBindings::Storage>(
+            currentPack.materialUniforms.getBuffer(),
+            materialPackBufferBinding);
     }
 
     size_t numMaterials() const noexcept {

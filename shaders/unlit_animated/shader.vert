@@ -11,6 +11,8 @@ vs_out;
 
 uniform mat4 projection;
 uniform mat4 view;
+uniform uint jointMatrixOffset;
+uniform uint jointMatrixCount;
 
 layout(std140, binding = 1) readonly buffer JointMatrices {
     mat4 joints[];
@@ -18,9 +20,10 @@ layout(std140, binding = 1) readonly buffer JointMatrices {
 joint_matrices;
 
 void main() {
+    uint offset = jointMatrixOffset + jointMatrixCount * gl_InstanceID;
     mat4 joint_transform = mat4(0.0);
     for (int i = 0; i < 4; ++i) {
-        joint_transform += joint_matrices.joints[joints[i]] * weights[i];
+        joint_transform += joint_matrices.joints[offset + joints[i]] * weights[i];
     }
     vs_out.tex_coord = tex_coord;
     gl_Position = projection * view * model * joint_transform * vec4(pos, 1.0);

@@ -7,7 +7,7 @@
 #include <unordered_map>
 
 #include "collections/map_vector.h"
-#include "collections/pin_ref.h"
+#include "collections/pin.h"
 #include "collections/unique_list.h"
 #include "collections/unique_list/vector_list.h"
 #include "graphics/assets/gltf.h"

@@ -18,17 +18,20 @@
 #include "graphics/debug.h"
 #include "graphics/renderer.h"
 #include "graphics/resources/animation.h"
+#include "graphics/resources/gl/buffer/binding.h"
+#include "graphics/resources/gl/buffer/ring.h"
 #include "graphics/resources/gl/buffer/std140.h"
 #include "graphics/resources/gl/bundle.h"
 #include "graphics/resources/gl/draw.h"
+#include "graphics/resources/gl/draw/dynamic.h"
+#include "graphics/resources/gl/draw/static.h"
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/shader.h"
 #include "graphics/resources/gl/vertex_array.h"
 #include "graphics/resources/material.h"
 #include "graphics/resources/mesh.h"
-
-constexpr size_t jointMatrixBufferBinding = 1;
+#include "graphics/storage/gl/stream.h"
 
 using MaterialList = TypeList<EmptyMaterial, UnlitMaterial>;
 using MeshesList = TypeList<ColoredVertex, UnlitVertex, UnlitAnimatedVertex>;
@@ -78,6 +81,11 @@ int main(void) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
     {
+        auto instanceStreamHandle =
+            registerStreamBuffer(StreamBuffer<glm::mat4, 512>());
+        auto jointMatrixStreamHandle =
+            registerStreamBuffer(StreamBuffer<glm::mat4, 512>());
+
         MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
         unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(
             "assets/textures/tile_1.png", TextureFormat::RGB));
@@ -142,22 +150,17 @@ int main(void) {
                                     "shaders/unlit/shader.frag");
         auto unlitShader = unlitShaderBuilder.build();
 
-        auto unlitDrawPack =
+        auto unlitStaticPack =
             resourceBundle
-                .getDrawPackBuilder<UnlitVertex, UnlitMaterial, glm::mat4>();
-        unlitDrawPack.addDraw(
+                .getStaticPackBuilder<UnlitVertex, UnlitMaterial, glm::mat4>();
+        unlitStaticPack.addDraw(
             unlitCube_1,
             glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
-        unlitDrawPack.addDraw(
+        unlitStaticPack.addDraw(
             unlitCube_2,
             glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
-        unlitDrawPack.addDraw(
-            waterBottle,
-            glm::scale(
-                glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 0.0f)),
-                glm::vec3(6.0f)));
 
-        auto unlitStage = Stage(std::move(unlitDrawPack));
+        auto unlitStage = StaticStage(std::move(unlitStaticPack));
         unlitStage.setShader(unlitShader);
 
         ShaderBuilder unlitAnimatedShaderBuilder{};
@@ -167,16 +170,16 @@ int main(void) {
             ShaderStage::Fragment, "shaders/unlit_animated/shader.frag");
         auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
 
-        auto unlitAnimatedDrawPack =
-            resourceBundle.getDrawPackBuilder<UnlitAnimatedVertex,
-                                              UnlitMaterial, glm::mat4>();
-        unlitAnimatedDrawPack.addDraw(
-            cesiumMan, glm::scale(glm::translate(glm::mat4(1.0f),
-                                                 glm::vec3(0.0f, 0.0f, -1.0f)),
-                                  glm::vec3(2.0f)));
-        ;
-        auto unlitAnimatedStage = Stage(std::move(unlitAnimatedDrawPack));
+        auto unlitAnimatedStage = AnimatedStage(
+            resourceBundle.getAnimatedPackBuilder<UnlitAnimatedVertex,
+                                                  UnlitMaterial, glm::mat4>(
+                instanceStreamHandle, jointMatrixStreamHandle));
         unlitAnimatedStage.setShader(unlitAnimatedShader);
+
+        auto unlitDynamicStage = DynamicStage(
+            resourceBundle.getDynamicPackBuilder<UnlitVertex, UnlitMaterial>(
+                instanceStreamHandle));
+        unlitDynamicStage.setShader(unlitShader);
 
         ShaderBuilder coloredShaderBuilder{};
         coloredShaderBuilder.addStage(ShaderStage::Vertex,
@@ -185,22 +188,23 @@ int main(void) {
                                       "shaders/colored/shader.frag");
         auto coloredShader = coloredShaderBuilder.build();
 
-        auto coloredDrawPackBuilder =
-            resourceBundle
-                .getDrawPackBuilder<ColoredVertex, EmptyMaterial, glm::mat4>();
-        coloredDrawPackBuilder.addDraw(
+        auto coloredStaticPackBuilder =
+            resourceBundle.getStaticPackBuilder<ColoredVertex, EmptyMaterial,
+                                                glm::mat4>();
+        coloredStaticPackBuilder.addDraw(
             coloredCube,
             glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f)));
-        coloredDrawPackBuilder.addDraw(
+        coloredStaticPackBuilder.addDraw(
             coloredCube,
             glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 2.0f)));
-        coloredDrawPackBuilder.addDraw(
+        coloredStaticPackBuilder.addDraw(
             coloredCube,
             glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, -2.0f)));
-        auto coloredStage = Stage(std::move(coloredDrawPackBuilder));
+        auto coloredStage = StaticStage(std::move(coloredStaticPackBuilder));
         coloredStage.setShader(coloredShader);
 
         auto pipeline = Pipeline(std::move(coloredStage), std::move(unlitStage),
+                                 std::move(unlitDynamicStage),
                                  std::move(unlitAnimatedStage));
 
         CameraMatrices cameraMatrices{};
@@ -214,21 +218,17 @@ int main(void) {
             resourceBundle
                 .getModelAnimations<UnlitAnimatedVertex, UnlitMaterial>(
                     "gltf", "Cesium_Man");
-        auto animationPlayer = AnimationPlayer(animations[0]);
-        animationPlayer.loopAnimation(true);
-
-        auto jointMatrices = animationPlayer.getJointTransforms();
-
-        auto jointMatrixBufferBuilder =
-            std140::UniformArrayBuilder<glm::mat4>();
-        jointMatrixBufferBuilder.pushMulti(jointMatrices);
-        auto jointMatrixBuffer = jointMatrixBufferBuilder.build();
-
-        jointMatrixBuffer.bind(GL_SHADER_STORAGE_BUFFER,
-                               jointMatrixBufferBinding);
+        auto animationPlayer_1 = AnimationPlayer(animations[0]);
+        animationPlayer_1.loopAnimation(true);
+        auto animationPlayer_2 = AnimationPlayer(animations[0]);
+        animationPlayer_2.loopAnimation(true);
+        auto animationPlayer_3 = AnimationPlayer(animations[0]);
+        animationPlayer_3.loopAnimation(true);
 
         std::chrono::steady_clock clock{};
         auto lastFrameTime = clock.now();
+
+        float accumulatedTime = 0.0f;
 
         while (!glfwWindowShouldClose(window)) {
             auto currentFrameTime = clock.now();
@@ -236,11 +236,79 @@ int main(void) {
                 std::chrono::duration<float>(currentFrameTime - lastFrameTime)
                     .count();
             lastFrameTime = currentFrameTime;
+            accumulatedTime += deltaTime;
 
-            animationPlayer.update(deltaTime);
-            auto jointMatrices = animationPlayer.getJointTransforms();
+            auto& instanceStream = instanceStreamHandle.get().get();
+            auto& jointStream = jointMatrixStreamHandle.get().get();
 
-            jointMatrixBuffer.updateRange(jointMatrices, 0);
+            auto& dynamicStage = pipeline.getStage<
+                DynamicStage<UnlitVertex, UnlitMaterial, glm::mat4, 512>>();
+            auto& animatedStage = pipeline.getStage<AnimatedStage<
+                UnlitAnimatedVertex, UnlitMaterial, glm::mat4, 512>>();
+
+            animationPlayer_1.update(deltaTime);
+            animationPlayer_2.update(deltaTime / 2.0f);
+            animationPlayer_3.update(deltaTime / 4.0f);
+
+            instanceStream.beginGeneration();
+            jointStream.beginGeneration();
+
+            dynamicStage.addDraw(
+                waterBottle,
+                glm::scale(
+                    glm::rotate(glm::translate(glm::mat4(1.0f),
+                                               glm::vec3(-2.0f, 0.0f, 0.0f)),
+                                5.0f * 3.14f * accumulatedTime,
+                                glm::vec3(0.0f, 0.0f, 1.0f)),
+                    glm::vec3(6.0f)));
+
+            dynamicStage.addDraw(
+                waterBottle,
+                glm::scale(
+                    glm::rotate(glm::translate(glm::mat4(1.0f),
+                                               glm::vec3(2.0f, 0.0f, 0.0f)),
+                                -5.0f * 3.14f * accumulatedTime,
+                                glm::vec3(0.0f, 0.0f, 1.0f)),
+                    glm::vec3(6.0f)));
+
+            animatedStage.addDraw(
+                cesiumMan,
+                glm::scale(glm::translate(glm::mat4(1.0f),
+                                          glm::vec3(0.0f, 0.0f, -1.0f)),
+                           glm::vec3(2.0f)),
+                animationPlayer_1);
+
+            animatedStage.addDraw(
+                cesiumMan,
+                glm::scale(
+                    glm::rotate(glm::translate(glm::mat4(1.0f),
+                                               glm::vec3(0.0f, -2.0f, -1.0f)),
+                                -3.15f / 2.0f * accumulatedTime,
+                                glm::vec3(0.0f, 0.0f, 1.0f)),
+                    glm::vec3(2.0f)),
+                animationPlayer_2);
+
+            dynamicStage.addDraw(
+                waterBottle,
+                glm::scale(
+                    glm::rotate(glm::translate(glm::mat4(1.0f),
+                                               glm::vec3(0.0f, 0.0f, 2.5f)),
+                                5.0f * 3.14f * accumulatedTime,
+                                glm::vec3(0.0f, 1.0f, 0.0f)),
+                    glm::vec3(4.0f)));
+
+            animatedStage.addDraw(
+                cesiumMan,
+                glm::scale(
+                    glm::rotate(glm::translate(glm::mat4(1.0f),
+                                               glm::vec3(0.0f, 2.0f, -1.0f)),
+                                3.15f / 2.0f * accumulatedTime,
+                                glm::vec3(0.0f, 0.0f, 1.0f)),
+                    glm::vec3(2.0f)),
+                animationPlayer_3);
+
+            instanceStream.endGeneration();
+            jointStream.endGeneration();
 
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
@@ -248,11 +316,24 @@ int main(void) {
 
             ImGui::Begin("IDK");
             ImGui::Text("Hello World!");
+
+            // Smoothed FPS
+            static float smoothedFPS = 0.0f;
+            float currentFPS = 1.0f / deltaTime;
+            const float smoothing =
+                0.98f;  // closer to 1 = smoother, slower updates
+            smoothedFPS =
+                smoothing * smoothedFPS + (1.0f - smoothing) * currentFPS;
+
+            ImGui::Text("FPS: %.1f", smoothedFPS);
             ImGui::End();
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             pipeline.execute(cameraMatrices);
+
+            dynamicStage.clear();
+            animatedStage.clear();
 
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

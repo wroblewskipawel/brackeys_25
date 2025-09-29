@@ -22,6 +22,7 @@ struct UnlitAnimatedVertex {
     glm::vec4 weights;
 };
 
+// TODO: Reimplement following custom type-trait as concept
 template <typename Vertex>
 struct IsAnimatedVertex {
     static constexpr bool value = std::is_same_v<Vertex, UnlitAnimatedVertex>;

@@ -24,6 +24,8 @@ struct UniformLocations {
     GLint modelMatrix{-1};
     GLint viewMatrix{-1};
     GLint projectionMatrix{-1};
+    GLint jointMatrixCount{-1};
+    GLint jointMatrixOffset{-1};
 };
 
 class ShaderBuilder;
@@ -50,9 +52,13 @@ class Shader {
     ~Shader() noexcept { glDeleteProgram(program); }
 
    private:
-    template <typename, typename, typename>
-    friend class Stage;
     friend class ShaderBuilder;
+    template <typename, typename, typename>
+    friend class StaticStage;
+    template <typename, typename, typename, size_t>
+    friend class DynamicStage;
+    template <typename, typename, typename, size_t>
+    friend class AnimatedStage;
 
     static Shader invalid() noexcept { return Shader(0); }
 
@@ -75,6 +81,10 @@ class Shader {
             glGetUniformLocation(program, "projection");
         locations.materialIndex = glGetUniformLocation(program, "material");
         locations.materialPack = glGetUniformLocation(program, "materialPack");
+        locations.jointMatrixCount =
+            glGetUniformLocation(program, "jointMatrixCount");
+        locations.jointMatrixOffset =
+            glGetUniformLocation(program, "jointMatrixOffset");
         uniformLocations[program] = locations;
     }
 

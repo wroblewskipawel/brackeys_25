@@ -6,7 +6,7 @@
 #include <ranges>
 #include <vector>
 
-#include "collections/pin_ref.h"
+#include "collections/pin.h"
 
 template <typename Item, typename Ownership>
 class SlotMap;
