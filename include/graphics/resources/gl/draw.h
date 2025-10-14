@@ -20,16 +20,16 @@ class StaticPackBuilder;
 template <typename Vertex, typename Material, typename Instance>
 class StaticPack;
 
-template <typename Vertex, typename Material, typename Instance, size_t BufferSize>
+template <typename Vertex, typename Material, typename Instance>
 class DynamicPack;
 
-template <typename Vertex, typename Material, typename Instance, size_t BufferSize>
+template <typename Vertex, typename Material, typename Instance>
 class DynamicPackBuilder;
 
-template <typename Vertex, typename Material, typename Instance, size_t BufferSize>
+template <typename Vertex, typename Material, typename Instance>
 class AnimatedPack;
 
-template <typename Vertex, typename Material, typename Instance, size_t BufferSize>
+template <typename Vertex, typename Material, typename Instance>
 class AnimatedPackBuilder;
 
 template <typename Vertex, typename Material, typename Instance>

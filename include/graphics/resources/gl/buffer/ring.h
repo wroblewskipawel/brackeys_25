@@ -12,12 +12,13 @@
 #include "graphics/resources/gl/buffer/binding.h"
 
 
-template <typename Type, size_t BufferSize>
+template <typename Type>
 class StreamBuffer {
    public:
-    StreamBuffer(size_t reserveNumPages = 0,
+    StreamBuffer(size_t pageSize,
+                 size_t reserveNumPages = 0,
                  size_t initialRingSize = 3) noexcept
-        : hostBuffer(reserveNumPages, initialRingSize),
+        : hostBuffer(pageSize, reserveNumPages, initialRingSize),
           currentBufferIndex(0, 0),
           isWriteFinished(true) {
         appendBuffers(initialRingSize + reserveNumPages);
@@ -149,7 +150,7 @@ class StreamBuffer {
     }
 
     auto getBufferByteSize() const noexcept {
-        return sizeof(Type) * BufferSize;
+        return sizeof(Type) * hostBuffer.pageSize();
     }
 
     void appendBuffers(size_t appendCount) noexcept {
@@ -164,7 +165,7 @@ class StreamBuffer {
         }
     }
 
-    DynamicRing<Type, BufferSize> hostBuffer;
+    DynamicRing<Type> hostBuffer;
     std::vector<GLuint> deviceBuffers;
     GenerationIndices currentBufferIndex;
     bool isWriteFinished;

@@ -75,12 +75,10 @@ class VertexArray {
     friend class MeshPack<Vertex>;
     template <typename, typename, typename>
     friend class StaticPack;
-    template <typename, typename, typename, size_t>
+    template <typename, typename, typename>
     friend class DynamicPack;
-    template <typename, typename, typename, size_t>
+    template <typename, typename, typename>
     friend class AnimatedPack;
-    template <typename, size_t>
-    friend class InstanceBuffer;
 
     static VertexArray& getVertexArray() noexcept {
         static auto vertexArray = VertexArray<Vertex, Instance>();

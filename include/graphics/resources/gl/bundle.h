@@ -175,22 +175,20 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
             materialPacks.getPackHandle<Material>());
     }
 
-    template <typename Vertex, typename Material, typename Instance,
-              size_t BufferSize>
+    template <typename Vertex, typename Material, typename Instance>
     auto getDynamicPackBuilder(
-        const StreamHandle<Instance, BufferSize>& streamBuffer) const noexcept {
-        return DynamicPackBuilder<Vertex, Material, Instance, BufferSize>(
+        const StreamHandle<Instance>& streamBuffer) const noexcept {
+        return DynamicPackBuilder<Vertex, Material, Instance>(
             meshPacks.getPackHandle<Vertex>(),
             materialPacks.getPackHandle<Material>(), streamBuffer);
     }
 
-    template <typename Vertex, typename Material, typename Instance,
-              size_t BufferSize>
+    template <typename Vertex, typename Material, typename Instance>
     auto getAnimatedPackBuilder(
-        const StreamHandle<Instance, BufferSize>& instanceStreamBuffer,
-        const StreamHandle<glm::mat4, BufferSize>& jointStreamBuffer)
+        const StreamHandle<Instance>& instanceStreamBuffer,
+        const StreamHandle<glm::mat4>& jointStreamBuffer)
         const noexcept {
-        return AnimatedPackBuilder<Vertex, Material, Instance, BufferSize>(
+        return AnimatedPackBuilder<Vertex, Material, Instance>(
             meshPacks.getPackHandle<Vertex>(),
             materialPacks.getPackHandle<Material>(), instanceStreamBuffer,
             jointStreamBuffer);

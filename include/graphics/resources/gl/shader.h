@@ -55,9 +55,9 @@ class Shader {
     friend class ShaderBuilder;
     template <typename, typename, typename>
     friend class StaticStage;
-    template <typename, typename, typename, size_t>
+    template <typename, typename, typename>
     friend class DynamicStage;
-    template <typename, typename, typename, size_t>
+    template <typename, typename, typename>
     friend class AnimatedStage;
 
     static Shader invalid() noexcept { return Shader(0); }

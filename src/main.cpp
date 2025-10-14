@@ -82,9 +82,9 @@ int main(void) {
     ImGui_ImplOpenGL3_Init("#version 460");
     {
         auto instanceStreamHandle =
-            registerStreamBuffer(StreamBuffer<glm::mat4, 512>());
+            registerStreamBuffer(StreamBuffer<glm::mat4>(256));
         auto jointMatrixStreamHandle =
-            registerStreamBuffer(StreamBuffer<glm::mat4, 512>());
+            registerStreamBuffer(StreamBuffer<glm::mat4>(512));
 
         MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
         unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(
@@ -242,9 +242,9 @@ int main(void) {
             auto& jointStream = jointMatrixStreamHandle.get().get();
 
             auto& dynamicStage = pipeline.getStage<
-                DynamicStage<UnlitVertex, UnlitMaterial, glm::mat4, 512>>();
+                DynamicStage<UnlitVertex, UnlitMaterial, glm::mat4>>();
             auto& animatedStage = pipeline.getStage<AnimatedStage<
-                UnlitAnimatedVertex, UnlitMaterial, glm::mat4, 512>>();
+                UnlitAnimatedVertex, UnlitMaterial, glm::mat4>>();
 
             animationPlayer_1.update(deltaTime);
             animationPlayer_2.update(deltaTime / 2.0f);

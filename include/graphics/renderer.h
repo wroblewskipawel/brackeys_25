@@ -87,14 +87,13 @@ class StaticStage {
     StaticPack<Vertex, Material, Instance> staticPack;
 };
 
-template <typename Vertex, typename Material, typename Instance,
-          size_t BufferSize>
+template <typename Vertex, typename Material, typename Instance>
 class DynamicStage {
    public:
     using Model = Model<Vertex, Material>;
 
     DynamicStage(
-        DynamicPackBuilder<Vertex, Material, Instance, BufferSize>&& builder)
+        DynamicPackBuilder<Vertex, Material, Instance>&& builder)
         : dynamicPack(builder.build()) {}
 
     DynamicStage& setShader(const Shader& shader) {
@@ -138,17 +137,16 @@ class DynamicStage {
     }
 
     GLuint shaderProgram{0};
-    DynamicPack<Vertex, Material, Instance, BufferSize> dynamicPack;
+    DynamicPack<Vertex, Material, Instance> dynamicPack;
 };
 
-template <typename Vertex, typename Material, typename Instance,
-          size_t BufferSize>
+template <typename Vertex, typename Material, typename Instance>
 class AnimatedStage {
    public:
     using Model = Model<Vertex, Material>;
 
     AnimatedStage(
-        AnimatedPackBuilder<Vertex, Material, Instance, BufferSize>&& builder)
+        AnimatedPackBuilder<Vertex, Material, Instance>&& builder)
         : animatedPack(builder.build()) {}
 
     AnimatedStage& setShader(const Shader& shader) {
@@ -197,5 +195,5 @@ class AnimatedStage {
     }
 
     GLuint shaderProgram{0};
-    AnimatedPack<Vertex, Material, Instance, BufferSize> animatedPack;
+    AnimatedPack<Vertex, Material, Instance> animatedPack;
 };

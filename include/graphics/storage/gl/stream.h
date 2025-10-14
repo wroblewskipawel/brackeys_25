@@ -2,36 +2,36 @@
 
 #include "collections/slot_map/static.h"
 
-template <typename Type, size_t BufferSize>
+template <typename Type>
 class StreamBuffer;
 
-template <typename Type, size_t BufferSize>
-using StreamHandle = StaticHandle<StreamBuffer<Type, BufferSize>, Shared>;
+template <typename Type>
+using StreamHandle = StaticHandle<StreamBuffer<Type>, Shared>;
 
-template <typename Type, size_t BufferSize>
-inline StreamHandle<Type, BufferSize> registerStreamBuffer(
-    StreamBuffer<Type, BufferSize>&& stream) noexcept {
-    return registerResource<StreamBuffer<Type, BufferSize>, Shared>(
+template <typename Type>
+inline StreamHandle<Type> registerStreamBuffer(
+    StreamBuffer<Type>&& stream) noexcept {
+    return registerResource<StreamBuffer<Type>, Shared>(
         std::move(stream));
 }
 
-template <typename Key, typename Type, size_t BufferSize>
-inline const PinRef<StreamHandle<Type, BufferSize>> getStreamBufferByKey(
+template <typename Key, typename Type>
+inline const PinRef<StreamHandle<Type>> getStreamBufferByKey(
     const Key& key) noexcept {
-    return getKey<Key, StreamHandle<Type, BufferSize>, Shared>(key);
+    return getKey<Key, StreamHandle<Type>, Shared>(key);
 }
 
-template <typename Key, typename Type, size_t BufferSize>
-inline StreamHandle<Type, BufferSize> tryGetOwnedStreamBufferByKey(
+template <typename Key, typename Type>
+inline StreamHandle<Type> tryGetOwnedStreamBufferByKey(
     const Key& key) noexcept {
-    return tryGetOwned<Key, StreamHandle<Type, BufferSize>, Shared>(key);
+    return tryGetOwned<Key, StreamHandle<Type>, Shared>(key);
 }
 
 namespace unsafe {
-template <typename Key, typename Type, size_t BufferSize>
-inline PinRef<StreamHandle<Type, BufferSize>> getStreamBufferByKey(
+template <typename Key, typename Type>
+inline PinRef<StreamHandle<Type>> getStreamBufferByKey(
     const Key& key) noexcept {
-    return getKey<Key, StreamHandle<Type, BufferSize>, Shared>(key);
+    return getKey<Key, StreamHandle<Type>, Shared>(key);
 }
 
 }  // namespace unsafe

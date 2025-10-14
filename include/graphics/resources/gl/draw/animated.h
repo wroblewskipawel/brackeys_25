@@ -20,8 +20,7 @@
 
 constexpr size_t jointMatrixBufferBinding = 1;
 
-template <typename Vertex, typename Material, typename Instance,
-          size_t BufferSize>
+template <typename Vertex, typename Material, typename Instance>
 class AnimatedPack {
    public:
     using Model = Model<Vertex, Material>;
@@ -36,8 +35,8 @@ class AnimatedPack {
           meshPack(std::move(other.meshPack)) {
         other.meshPack = MeshPackHandle<Vertex>::getInvalid();
         other.materialPack = MaterialPackHandle<Material>::getInvalid();
-        other.instanceStream = StreamHandle<Instance, BufferSize>::getInvalid();
-        other.jointStream = StreamHandle<glm::mat4, BufferSize>::getInvalid();
+        other.instanceStream = StreamHandle<Instance>::getInvalid();
+        other.jointStream = StreamHandle<glm::mat4>::getInvalid();
     }
 
     AnimatedPack& operator=(AnimatedPack&& other) noexcept {
@@ -48,9 +47,9 @@ class AnimatedPack {
             jointStream = other.jointStream;
 
             other.jointStream =
-                StreamHandle<glm::mat4, BufferSize>::getInvalid();
+                StreamHandle<glm::mat4>::getInvalid();
             other.instanceStream =
-                StreamHandle<Instance, BufferSize>::getInvalid();
+                StreamHandle<Instance>::getInvalid();
             other.meshPack = MeshPackHandle<Material>::getInvalid();
             other.materialPack = MaterialPackHandle<Material>::getInvalid();
         }
@@ -86,8 +85,8 @@ class AnimatedPack {
     void clear() noexcept { drawCalls.clear(); }
 
    private:
-    friend class AnimatedPackBuilder<Vertex, Material, Instance, BufferSize>;
-    friend class AnimatedStage<Vertex, Material, Instance, BufferSize>;
+    friend class AnimatedPackBuilder<Vertex, Material, Instance>;
+    friend class AnimatedStage<Vertex, Material, Instance>;
 
     struct Draw {
         DrawInfo drawInfo;
@@ -98,8 +97,8 @@ class AnimatedPack {
 
     AnimatedPack(MaterialPackHandle<Material>&& materialPack,
                  MeshPackHandle<Vertex>&& meshPack,
-                 StreamHandle<Instance, BufferSize>&& instanceStream,
-                 StreamHandle<glm::mat4, BufferSize>&& jointStream) noexcept
+                 StreamHandle<Instance>&& instanceStream,
+                 StreamHandle<glm::mat4>&& jointStream) noexcept
         : jointStream(std::move(jointStream)),
           instanceStream(std::move(instanceStream)),
           materialPack(std::move(materialPack)),
@@ -215,15 +214,14 @@ class AnimatedPack {
         }
     }
 
-    StreamHandle<glm::mat4, BufferSize> jointStream;
-    StreamHandle<Instance, BufferSize> instanceStream;
+    StreamHandle<glm::mat4> jointStream;
+    StreamHandle<Instance> instanceStream;
     MaterialPackHandle<Material> materialPack;
     MeshPackHandle<Vertex> meshPack;
     std::vector<Draw> drawCalls;
 };
 
-template <typename Vertex, typename Material, typename Instance,
-          size_t BufferSize>
+template <typename Vertex, typename Material, typename Instance>
 class AnimatedPackBuilder {
    public:
     using Model = Model<Vertex, Material>;
@@ -231,8 +229,8 @@ class AnimatedPackBuilder {
     AnimatedPackBuilder(
         const MeshPackHandle<Vertex>& meshPack,
         const MaterialPackHandle<Material>& materialPack,
-        const StreamHandle<Instance, BufferSize>& instanceStream,
-        const StreamHandle<glm::mat4, BufferSize>& jointStream) noexcept
+        const StreamHandle<Instance>& instanceStream,
+        const StreamHandle<glm::mat4>& jointStream) noexcept
         : meshPack(meshPack.copy()),
           materialPack(materialPack.copy()),
           instanceStream(instanceStream.copy()),
@@ -242,8 +240,8 @@ class AnimatedPackBuilder {
             "AnimatedPackBuilder Vertex type argument is not AnimatedVertex");
     }
 
-    AnimatedPack<Vertex, Material, Instance, BufferSize> build() {
-        return AnimatedPack<Vertex, Material, Instance, BufferSize>{
+    AnimatedPack<Vertex, Material, Instance> build() {
+        return AnimatedPack<Vertex, Material, Instance>{
             std::move(materialPack), std::move(meshPack),
             std::move(instanceStream), std::move(jointStream)};
     }
@@ -251,6 +249,6 @@ class AnimatedPackBuilder {
    private:
     MeshPackHandle<Vertex> meshPack;
     MaterialPackHandle<Material> materialPack;
-    StreamHandle<Instance, BufferSize> instanceStream;
-    StreamHandle<glm::mat4, BufferSize> jointStream;
+    StreamHandle<Instance> instanceStream;
+    StreamHandle<glm::mat4> jointStream;
 };

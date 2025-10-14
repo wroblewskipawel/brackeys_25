@@ -21,7 +21,9 @@ struct BufferAllocation {
 
     void join(const BufferAllocation& other) noexcept {
         if (!canJoin(other)) {
-            std::println(std::cerr, "BufferAllocation::join: Invalid BufferAllocation join operation");
+            std::println(std::cerr,
+                         "BufferAllocation::join: Invalid BufferAllocation "
+                         "join operation");
             std::abort();
         }
         numInstances += other.numInstances;
@@ -45,7 +47,7 @@ struct BufferAllocation {
     }
 
     BufferAllocation takeFirst(size_t numTake) noexcept {
-        auto chunk = BufferAllocation {
+        auto chunk = BufferAllocation{
             .physicalBufferIndex = physicalBufferIndex,
             .numInstances = numTake,
             .bufferOffset = bufferOffset,
@@ -64,11 +66,68 @@ struct BufferAllocation {
     }
 };
 
-template <typename Type, size_t BufferSize>
+template <typename Type>
+class PageVector {
+   public:
+    PageVector(size_t pageSize) noexcept : pageSize(pageSize), numPages(0) {}
+
+    PageVector(const PageVector&) = default;
+    PageVector& operator=(const PageVector&) = default;
+
+    PageVector(PageVector&&) = default;
+    PageVector& operator=(PageVector&&) = default;
+
+    ~PageVector() = default;
+
+    void reserve(size_t numReserve) noexcept {
+        dataStorage.reserve(numReserve * pageSize);
+    }
+
+    void resize(size_t newSize) noexcept {
+        numPages = newSize;
+        dataStorage.resize(numPages * pageSize);
+    }
+
+    auto size() const noexcept { return numPages; }
+
+    auto operator[](size_t pageIndex) noexcept {
+        auto [begin, end] = rangeIndices(*this, pageIndex);
+        return std::ranges::subrange(begin, end);
+    }
+
+    auto operator[](size_t pageIndex) const noexcept {
+        auto [begin, end] = rangeIndices(*this, pageIndex);
+        return std::ranges::subrange(begin, end);
+    }
+
+    const size_t pageSize;
+
+   private:
+    template<typename Vector>
+    friend auto rangeIndices(Vector&&, size_t) noexcept;
+
+    std::vector<Type> dataStorage;
+    size_t numPages;
+};
+
+template<typename Vector>
+auto rangeIndices(Vector&& vector, size_t pageIndex) noexcept {
+    if (pageIndex >= vector.numPages) {
+            std::println(std::cerr,
+                         "PageVector::getPage: pageIndex out of range");
+            std::abort();
+        }
+    auto storageOffset = pageIndex * vector.pageSize;
+    return std::pair{vector.dataStorage.begin() + storageOffset,
+                     vector.dataStorage.begin() + storageOffset + vector.pageSize};
+}
+
+template <typename Type>
 class DynamicRing {
    public:
-    DynamicRing(size_t reserveNumPages = 0, size_t initialRingSize = 3) noexcept
-        : isWraparound(false) {
+    DynamicRing(size_t pageSize, size_t reserveNumPages = 0,
+                size_t initialRingSize = 3) noexcept
+        : dataStorage(pageSize), isWraparound(false) {
         dataStorage.reserve(initialRingSize + reserveNumPages);
         dataCount.reserve(initialRingSize + reserveNumPages);
         dataGeneration.reserve(initialRingSize + reserveNumPages);
@@ -82,6 +141,8 @@ class DynamicRing {
     DynamicRing& operator=(DynamicRing&&) noexcept = default;
 
     ~DynamicRing() noexcept = default;
+
+    auto pageSize() const noexcept { return dataStorage.pageSize; }
 
     auto nextGeneration() noexcept {
         previousGeneration = currentGeneration;
@@ -128,9 +189,9 @@ class DynamicRing {
                          "allocate empty range");
             std::abort();
         }
-        if (numToCopy > BufferSize) {
+        if (numToCopy > dataStorage.pageSize) {
             std::println(std::cerr,
-                         "DynamicRing::pushDataContiguous: BufferSize not "
+                         "DynamicRing::pushDataContiguous: page size not "
                          "sufficient for contiguous allocation request");
             std::abort();
         }
@@ -182,13 +243,14 @@ class DynamicRing {
     }
 
     auto getCurrentFree() const noexcept {
-        return BufferSize - getCurrentCount();
+        return dataStorage.pageSize - getCurrentCount();
     }
 
     auto createAllocationBuffer(size_t numData) const noexcept {
         size_t additionalBuffers =
             (numData > getCurrentFree())
-                ? (numData - getCurrentFree() + (BufferSize - 1)) / BufferSize
+                ? (numData - getCurrentFree() + (dataStorage.pageSize - 1)) /
+                      dataStorage.pageSize
                 : 0;
         return std::vector<BufferAllocation<Type>>(1 + additionalBuffers);
     }
@@ -236,7 +298,7 @@ class DynamicRing {
     // getBufferRange
     void updateCurrentCount(size_t numData) noexcept {
         dataCount[currentGeneration.bufferIndex] += numData;
-        if (dataCount[currentGeneration.bufferIndex] == BufferSize) {
+        if (dataCount[currentGeneration.bufferIndex] == dataStorage.pageSize) {
             nextBuffer();
         }
     }
@@ -249,7 +311,7 @@ class DynamicRing {
                               currentGeneration.generation);
     }
 
-    std::vector<std::array<Type, BufferSize>> dataStorage;
+    PageVector<Type> dataStorage;
     std::vector<size_t> dataCount;
     std::vector<size_t> dataGeneration;
     GenerationIndices currentGeneration;

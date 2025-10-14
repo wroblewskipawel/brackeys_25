@@ -17,8 +17,7 @@
 #include "graphics/storage/gl/material.h"
 #include "graphics/storage/gl/stream.h"
 
-template <typename Vertex, typename Material, typename Instance,
-          size_t BufferSize>
+template <typename Vertex, typename Material, typename Instance>
 class DynamicPack {
    public:
     using Model = Model<Vertex, Material>;
@@ -32,7 +31,7 @@ class DynamicPack {
           meshPack(std::move(other.meshPack)) {
         other.meshPack = MeshPackHandle<Vertex>::getInvalid();
         other.materialPack = MaterialPackHandle<Material>::getInvalid();
-        other.streamBuffer = StreamHandle<Instance, BufferSize>::getInvalid();
+        other.streamBuffer = StreamHandle<Instance>::getInvalid();
     };
 
     DynamicPack& operator=(DynamicPack&& other) noexcept {
@@ -42,7 +41,7 @@ class DynamicPack {
             streamBuffer = other.streamBuffer;
 
             other.streamBuffer =
-                StreamHandle<Instance, BufferSize>::getInvalid();
+                StreamHandle<Instance>::getInvalid();
             other.meshPack = MeshPackHandle<Material>::getInvalid();
             other.materialPack = MaterialPackHandle<Material>::getInvalid();
         }
@@ -68,8 +67,8 @@ class DynamicPack {
     void clear() noexcept { drawCalls.clear(); }
 
    private:
-    friend class DynamicPackBuilder<Vertex, Material, Instance, BufferSize>;
-    friend class DynamicStage<Vertex, Material, Instance, BufferSize>;
+    friend class DynamicPackBuilder<Vertex, Material, Instance>;
+    friend class DynamicStage<Vertex, Material, Instance>;
 
     struct Draw {
         DrawInfo drawInfo;
@@ -78,7 +77,7 @@ class DynamicPack {
 
     DynamicPack(MaterialPackHandle<Material>&& materialPack,
                 MeshPackHandle<Vertex>&& meshPack,
-                StreamHandle<Instance, BufferSize>&& streamBuffer) noexcept
+                StreamHandle<Instance>&& streamBuffer) noexcept
         : streamBuffer(std::move(streamBuffer)),
           materialPack(std::move(materialPack)),
           meshPack(std::move(meshPack)) {}
@@ -123,14 +122,13 @@ class DynamicPack {
         }
     }
 
-    StreamHandle<Instance, BufferSize> streamBuffer;
+    StreamHandle<Instance> streamBuffer;
     MaterialPackHandle<Material> materialPack;
     MeshPackHandle<Vertex> meshPack;
     std::vector<Draw> drawCalls;
 };
 
-template <typename Vertex, typename Material, typename Instance,
-          size_t BufferSize>
+template <typename Vertex, typename Material, typename Instance>
 class DynamicPackBuilder {
    public:
     using Model = Model<Vertex, Material>;
@@ -138,13 +136,13 @@ class DynamicPackBuilder {
     DynamicPackBuilder(
         const MeshPackHandle<Vertex>& meshPack,
         const MaterialPackHandle<Material>& materialPack,
-        const StreamHandle<Instance, BufferSize>& streamBuffer) noexcept
+        const StreamHandle<Instance>& streamBuffer) noexcept
         : meshPack(meshPack.copy()),
           materialPack(materialPack.copy()),
           streamBuffer(streamBuffer.copy()) {}
 
-    DynamicPack<Vertex, Material, Instance, BufferSize> build() {
-        return DynamicPack<Vertex, Material, Instance, BufferSize>{
+    DynamicPack<Vertex, Material, Instance> build() {
+        return DynamicPack<Vertex, Material, Instance>{
             std::move(materialPack), std::move(meshPack),
             std::move(streamBuffer)};
     }
@@ -152,5 +150,5 @@ class DynamicPackBuilder {
    private:
     MeshPackHandle<Vertex> meshPack;
     MaterialPackHandle<Material> materialPack;
-    StreamHandle<Instance, BufferSize> streamBuffer;
+    StreamHandle<Instance> streamBuffer;
 };
