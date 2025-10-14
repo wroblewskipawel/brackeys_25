@@ -117,8 +117,7 @@ class AnimatedPack {
             VertexArray<Vertex, Instance>::getVertexArray()
                 .bindBuffer<BindingIndex::InstanceAttributes>(BindingInfo{
                     .buffer = instanceBuffer.get(),
-                    .offset = static_cast<GLuint>(
-                        instanceAllocation.bufferOffset * sizeof(Instance)),
+                    .offset = 0,
                 });
             if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
                 glUniform1ui(uniformLocations.materialIndex,
@@ -130,10 +129,10 @@ class AnimatedPack {
                          draw.jointMatrixCount);
             glUniform1ui(uniformLocations.jointMatrixOffset,
                          draw.jointAllocation.bufferOffset);
-            glDrawElementsInstanced(
+            glDrawElementsInstancedBaseInstance(
                 GL_TRIANGLES, draw.drawInfo.mesh.indexCount, GL_UNSIGNED_INT,
                 (void*)(draw.drawInfo.mesh.indexOffset * sizeof(GLuint)),
-                instanceAllocation.numInstances);
+                instanceAllocation.numInstances, instanceAllocation.bufferOffset);
         }
     }
 
