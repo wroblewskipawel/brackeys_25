@@ -19,6 +19,10 @@ struct BufferAllocation {
     size_t bufferOffset;
     size_t generation;
 
+    bool isEmpty() const noexcept {
+        return numInstances == 0;
+    }
+
     void join(const BufferAllocation& other) noexcept {
         if (!canJoin(other)) {
             std::println(std::cerr,
@@ -66,6 +70,18 @@ struct BufferAllocation {
     }
 };
 
+template<typename Type>
+struct IsBufferAllocationT: std::false_type {};
+
+template<typename Type>
+struct IsBufferAllocationT<BufferAllocation<Type>>: std::true_type {};
+
+template<typename Type>
+inline constexpr bool IsBufferAllocationV = IsBufferAllocationT<std::remove_cvref_t<Type>>::value;
+
+template<typename Type>
+concept BufferAllocationType = IsBufferAllocationV<Type>;
+
 template <typename Type>
 class PageVector {
    public:
@@ -109,6 +125,9 @@ class PageVector {
     std::vector<Type> dataStorage;
     size_t numPages;
 };
+
+template<typename Range, typename Type>
+concept RefConstRange = std::is_convertible_v<std::ranges::range_value_t<Range>, const Type&>;
 
 template<typename Vector>
 auto rangeIndices(Vector&& vector, size_t pageIndex) noexcept {
@@ -157,7 +176,7 @@ class DynamicRing {
     }
 
     template <typename Range>
-        requires std::is_convertible_v<std::ranges::range_value_t<Range>, Type>
+        requires RefConstRange<Range, Type>
     auto pushData(Range&& range) noexcept {
         auto numToCopy = static_cast<size_t>(std::ranges::distance(range));
         if (numToCopy == 0) {
@@ -180,7 +199,7 @@ class DynamicRing {
     }
 
     template <typename Range>
-        requires std::is_convertible_v<std::ranges::range_value_t<Range>, Type>
+        requires RefConstRange<Range, Type>
     auto pushDataContiguous(Range&& range) noexcept {
         auto numToCopy = static_cast<size_t>(std::ranges::distance(range));
         if (numToCopy == 0) {
@@ -225,7 +244,7 @@ class DynamicRing {
 
    private:
     template <typename Range>
-        requires std::is_convertible_v<std::ranges::range_value_t<Range>, Type>
+        requires RefConstRange<Range, Type>
     auto writeDataUnchecked(Range&& range) noexcept {
         auto numInstances = static_cast<size_t>(std::ranges::distance(range));
         auto bufferOffset = getCurrentCount();

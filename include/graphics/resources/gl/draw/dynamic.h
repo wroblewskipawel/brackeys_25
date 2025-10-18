@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "graphics/resources/buffer/ring.h"
-#include "graphics/resources/gl/buffer/ring.h"
+#include "graphics/resources/gl/buffer/stream.h"
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/shader.h"
@@ -52,14 +52,13 @@ class DynamicPack {
         return addDraw(model, std::views::single(instanceData));
     }
 
-    template <typename Range>
-        requires std::is_convertible_v<std::ranges::range_value_t<Range>,
-                                       Instance>
-    DynamicPack& addDraw(const Model& model, Range&& instanceData) {
+    template <typename Instances>
+        requires RefConstRange<Instances, Instance>
+    DynamicPack& addDraw(const Model& model, Instances&& instanceData) {
         Mesh mesh = getMesh(model.mesh);
         DrawInfo drawInfo{mesh, model.material.packItemIndex};
         auto instanceAllocations = streamBuffer.get().get().pushData(
-            std::forward<Range>(instanceData));
+            std::forward<Instances>(instanceData));
         pushDrawCalls(drawInfo, instanceAllocations);
         return *this;
     }

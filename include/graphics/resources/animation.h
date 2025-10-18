@@ -206,6 +206,12 @@ class AnimationPlayer {
         currentKeyframes.resize(animationRef.numJoints());
     }
 
+    AnimationPlayer(const AnimationPlayer&) = delete;
+    AnimationPlayer& operator=(const AnimationPlayer&) = delete;
+
+    AnimationPlayer(AnimationPlayer&&) = default;
+    AnimationPlayer& operator=(AnimationPlayer&&) = default;
+
     size_t numJoints() const noexcept {
         return currentKeyframes.size();
     }

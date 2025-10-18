@@ -10,7 +10,7 @@
 
 #include "graphics/resources/animation.h"
 #include "graphics/resources/buffer/ring.h"
-#include "graphics/resources/gl/buffer/ring.h"
+#include "graphics/resources/gl/buffer/stream.h"
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/shader.h"
@@ -63,10 +63,8 @@ class AnimatedPack {
     }
 
     template <typename Instances, typename Samplers>
-        requires std::is_convertible_v<std::ranges::range_value_t<Instances>,
-                                       Instance> &&
-                 std::is_convertible_v<std::ranges::range_value_t<Samplers>,
-                                       const AnimationPlayer&>
+        requires RefConstRange<Instances, Instance> &&
+                 RefConstRange<Samplers, AnimationPlayer>
     AnimatedPack& addDrawMulti(const Model& model, Instances&& instanceData,
                                Samplers&& samplers) {
         Mesh mesh = getMesh(model.mesh);
@@ -136,16 +134,14 @@ class AnimatedPack {
     }
 
     template <typename Instances>
-        requires std::is_convertible_v<std::ranges::range_value_t<Instances>,
-                                       Instance>
+        requires RefConstRange<Instances, Instance>
     auto writeInstanceData(Instances&& range) noexcept {
         return instanceStream.get().get().pushData(
             std::forward<Instances>(range));
     }
 
     template <typename Samplers>
-        requires std::is_convertible_v<std::ranges::range_value_t<Samplers>,
-                                       const AnimationPlayer&>
+        requires RefConstRange<Samplers, AnimationPlayer>
     auto writeJointeData(Samplers&& samplers) noexcept {
         auto numSamplers = std::ranges::distance(samplers);
         auto allocations = std::vector<BufferAllocation<glm::mat4>>{};
@@ -202,7 +198,7 @@ class AnimatedPack {
             if (lastDraw.jointMatrixCount == drawBegin->jointMatrixCount &&
                 lastDraw.instanceAllocation.canJoin(
                     drawBegin->instanceAllocation) &&
-                lastDraw.jointAllocation.canJoin(drawBegin->jointAllocation)) {
+                lastDraw.jointAllocation.canJoin(drawBegin->jointAllocation)) {  
                 lastDraw.instanceAllocation.join(drawBegin->instanceAllocation);
                 lastDraw.jointAllocation.join(drawBegin->jointAllocation);
                 drawBegin += 1;

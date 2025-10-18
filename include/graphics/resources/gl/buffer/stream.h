@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <ranges>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -67,7 +68,7 @@ class StreamBuffer {
     }
 
     template <typename Range>
-        requires std::is_convertible_v<std::ranges::range_value_t<Range>, Type>
+        requires RefConstRange<Range, Type>
     auto pushDataContiguous(Range&& data) noexcept {
         if (isWriteFinished) {
             std::println(std::cerr,
@@ -82,7 +83,7 @@ class StreamBuffer {
     }
 
     template <typename Range>
-        requires std::is_convertible_v<std::ranges::range_value_t<Range>, Type>
+        requires RefConstRange<Range, Type>
     auto pushData(Range&& data) noexcept {
         if (isWriteFinished) {
             std::println(std::cerr,
@@ -170,3 +171,15 @@ class StreamBuffer {
     GenerationIndices currentBufferIndex;
     bool isWriteFinished;
 };
+
+template<typename Type>
+struct IsStreamT: std::false_type {};
+
+template<typename Type>
+struct IsStreamT<StreamBuffer<Type>>: std::true_type {};
+
+template<typename Type>
+inline constexpr bool IsStreamV = IsStreamT<std::remove_cvref_t<Type>>::value;
+
+template<typename Type>
+concept StreamBufferType = IsStreamV<Type>;

@@ -111,11 +111,10 @@ class DynamicStage {
         return *this;
     }
 
-    template <typename Range>
-        requires std::is_convertible_v<std::ranges::range_value_t<Range>,
-                                       Instance>
-    DynamicStage& addDraw(const Model& model, Range&& range) {
-        dynamicPack.addDraw(model, std::forward<Range>(range));
+    template <typename Instances>
+        requires RefConstRange<Instances, Instance>
+    DynamicStage& addDraw(const Model& model, Instances&& range) {
+        dynamicPack.addDraw(model, std::forward<Instances>(range));
         return *this;
     }
 
@@ -166,10 +165,8 @@ class AnimatedStage {
     }
 
     template <typename Instances, typename Samplers>
-        requires std::is_convertible_v<std::ranges::range_value_t<Instances>,
-                                       Instance> &&
-                 std::is_convertible_v<std::ranges::range_value_t<Samplers>,
-                                       AnimationPlayer>
+        requires RefConstRange<Instances, Instance> &&
+                 RefConstRange<Samplers, AnimationPlayer>
     AnimatedStage& addDraw(const Model& model, Instances&& instances,
                            Samplers&& samplers) {
         animatedPack.addDraw(model, std::forward<Instances>(instances),

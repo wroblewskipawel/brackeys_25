@@ -19,8 +19,9 @@
 #include "graphics/renderer.h"
 #include "graphics/resources/animation.h"
 #include "graphics/resources/gl/buffer/binding.h"
-#include "graphics/resources/gl/buffer/ring.h"
 #include "graphics/resources/gl/buffer/std140.h"
+#include "graphics/resources/gl/buffer/stream.h"
+#include "graphics/resources/gl/buffer/stream/pack.h"
 #include "graphics/resources/gl/bundle.h"
 #include "graphics/resources/gl/draw.h"
 #include "graphics/resources/gl/draw/dynamic.h"
@@ -243,8 +244,8 @@ int main(void) {
 
             auto& dynamicStage = pipeline.getStage<
                 DynamicStage<UnlitVertex, UnlitMaterial, glm::mat4>>();
-            auto& animatedStage = pipeline.getStage<AnimatedStage<
-                UnlitAnimatedVertex, UnlitMaterial, glm::mat4>>();
+            auto& animatedStage = pipeline.getStage<
+                AnimatedStage<UnlitAnimatedVertex, UnlitMaterial, glm::mat4>>();
 
             animationPlayer_1.update(deltaTime);
             animationPlayer_2.update(deltaTime / 2.0f);

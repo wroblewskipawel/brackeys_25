@@ -132,6 +132,13 @@ class UniqueTypeList<Type, Types...> {
         }
     }
 
+    friend bool operator==(const UniqueTypeList& lhs,
+                           const UniqueTypeList& rhs) noexcept
+        requires std::equality_comparable<Type>
+    {
+        return lhs.value == rhs.value && lhs.next == rhs.next;
+    }
+
    private:
     Type value;
     UniqueTypeList<Types...> next;
