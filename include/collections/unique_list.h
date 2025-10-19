@@ -106,6 +106,9 @@ class UniqueTypeList<Type, Types...> {
         : value(std::forward<Type>(type)),
           next(std::forward<Types>(types)...) {}
 
+    UniqueTypeList(Type&& type, UniqueTypeList<Types...>&& list)
+        : value(std::forward<Type>(type)), next(std::move(list)) {}
+
     template <typename Search>
     constexpr Search& get() noexcept {
         if constexpr (std::is_same_v<Search, Type>) {
