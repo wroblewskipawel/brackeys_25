@@ -175,25 +175,6 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
             materialPacks.getPackHandle<Material>());
     }
 
-    template <typename Vertex, typename Material, typename Instance>
-    auto getDynamicPackBuilder(
-        const StreamHandle<Instance>& streamBuffer) const noexcept {
-        return DynamicPackBuilder<Vertex, Material, Instance>(
-            meshPacks.getPackHandle<Vertex>(),
-            materialPacks.getPackHandle<Material>(), streamBuffer);
-    }
-
-    template <typename Vertex, typename Material, typename Instance>
-    auto getAnimatedPackBuilder(
-        const StreamHandle<Instance>& instanceStreamBuffer,
-        const StreamHandle<glm::mat4>& jointStreamBuffer)
-        const noexcept {
-        return AnimatedPackBuilder<Vertex, Material, Instance>(
-            meshPacks.getPackHandle<Vertex>(),
-            materialPacks.getPackHandle<Material>(), instanceStreamBuffer,
-            jointStreamBuffer);
-    }
-
    private:
     template <typename Vertex, typename Material>
     auto tryGetModel(const Ref<Vertex, Material>& modelRef) const noexcept {

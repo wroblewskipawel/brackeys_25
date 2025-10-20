@@ -6,12 +6,14 @@
 #include <glm/glm.hpp>
 #include <ranges>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 #include "graphics/resources/buffer/ring.h"
 #include "graphics/resources/gl/buffer/stream.h"
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
+#include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/shader.h"
 #include "graphics/resources/gl/vertex_array.h"
 #include "graphics/storage/gl/material.h"
@@ -22,28 +24,23 @@ class DynamicPack {
    public:
     using Model = Model<Vertex, Material>;
 
+    DynamicPack(StreamHandle<Instance>&& streamBuffer) noexcept
+        : streamBuffer(std::move(streamBuffer)) {}
+
     DynamicPack(const DynamicPack&) = delete;
     DynamicPack& operator=(const DynamicPack&) = delete;
 
     DynamicPack(DynamicPack&& other) noexcept
         : streamBuffer(std::move(other.streamBuffer)),
-          materialPack(std::move(other.materialPack)),
-          meshPack(std::move(other.meshPack)) {
-        other.meshPack = MeshPackHandle<Vertex>::getInvalid();
-        other.materialPack = MaterialPackHandle<Material>::getInvalid();
+          drawCallMap(std::move(other.drawCallMap)) {
         other.streamBuffer = StreamHandle<Instance>::getInvalid();
     };
 
     DynamicPack& operator=(DynamicPack&& other) noexcept {
         if (this != &other) {
-            meshPack = other.meshPack;
-            materialPack = other.materialPack;
+            drawCallMap = std::move(other.drawCallMap);
             streamBuffer = other.streamBuffer;
-
-            other.streamBuffer =
-                StreamHandle<Instance>::getInvalid();
-            other.meshPack = MeshPackHandle<Material>::getInvalid();
-            other.materialPack = MaterialPackHandle<Material>::getInvalid();
+            other.streamBuffer = StreamHandle<Instance>::getInvalid();
         }
         return *this;
     };
@@ -55,18 +52,25 @@ class DynamicPack {
     template <typename Instances>
         requires RefConstRange<Instances, Instance>
     DynamicPack& addDraw(const Model& model, Instances&& instanceData) {
-        Mesh mesh = getMesh(model.mesh);
-        DrawInfo drawInfo{mesh, model.material.packItemIndex};
         auto instanceAllocations = streamBuffer.get().get().pushData(
             std::forward<Instances>(instanceData));
-        pushDrawCalls(drawInfo, instanceAllocations);
+        pushDrawCalls(model, instanceAllocations);
         return *this;
     }
 
-    void clear() noexcept { drawCalls.clear(); }
+    void clear() noexcept {
+        // We never remove entries from the map, making the draw pack owner of
+        // the shared resources (MeshPack, MaterialPack) and thus extending it
+        // lifetime til the DrawPack gets destroyed,
+        // This is not desirable and may lead to situations where resources that
+        // are no longer intented to be used, aren't released when expected
+        // TODO: Resolve
+        for (auto& [_, drawCalls] : drawCallMap) {
+            drawCalls.clear();
+        }
+    }
 
    private:
-    friend class DynamicPackBuilder<Vertex, Material, Instance>;
     friend class DynamicStage<Vertex, Material, Instance>;
 
     struct Draw {
@@ -74,42 +78,56 @@ class DynamicPack {
         BufferAllocation<Instance> instanceAllocation;
     };
 
-    DynamicPack(MaterialPackHandle<Material>&& materialPack,
-                MeshPackHandle<Vertex>&& meshPack,
-                StreamHandle<Instance>&& streamBuffer) noexcept
-        : streamBuffer(std::move(streamBuffer)),
-          materialPack(std::move(materialPack)),
-          meshPack(std::move(meshPack)) {}
+    using DrawCallMap =
+        std::unordered_map<PackHandles<Vertex, Material>, std::vector<Draw>>;
+
+    auto getDrawInfo(const Model& model) noexcept {
+        return DrawInfo{getMesh(model.mesh), model.material.packItemIndex};
+    }
+
+    auto& getDrawCallVector(const Model& model) noexcept {
+        auto packHandles = model.getPackHandles();
+        auto drawCallVectorIt = drawCallMap.find(packHandles);
+        if (drawCallVectorIt == drawCallMap.end()) {
+            drawCallMap.emplace(std::piecewise_construct,
+                                std::forward_as_tuple(packHandles.copy()),
+                                std::forward_as_tuple(std::vector<Draw>{}));
+        }
+        return drawCallMap.find(packHandles)->second;
+    };
 
     void draw(const UniformLocations& uniformLocations) {
-        MeshPack<Vertex>::bind(meshPack);
-        if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
-            MaterialPack<Material>::bind(materialPack);
-        }
-        auto& stream = streamBuffer.get().get();
-        for (const auto& draw : drawCalls) {
-            auto& instanceAllocation = draw.instanceAllocation;
-            auto instanceBuffer = stream.getBuffer(instanceAllocation);
-            VertexArray<Vertex, Instance>::getVertexArray()
-                .bindBuffer<BindingIndex::InstanceAttributes>(BindingInfo{
-                    .buffer = instanceBuffer.get(),
-                    .offset = 0,
-                });
-            if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
-                glUniform1ui(uniformLocations.materialIndex,
-                             static_cast<GLuint>(draw.drawInfo.materialIndex));
+        for (auto& [packHandles, drawCalls] : drawCallMap) {
+            if (drawCalls.empty()) continue;
+            packHandles.bind();
+            auto& stream = streamBuffer.get().get();
+            for (const auto& draw : drawCalls) {
+                auto& instanceAllocation = draw.instanceAllocation;
+                auto instanceBuffer = stream.getBuffer(instanceAllocation);
+                VertexArray<Vertex, Instance>::getVertexArray()
+                    .bindBuffer<BindingIndex::InstanceAttributes>(BindingInfo{
+                        .buffer = instanceBuffer.get(),
+                        .offset = 0,
+                    });
+                if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
+                    glUniform1ui(
+                        uniformLocations.materialIndex,
+                        static_cast<GLuint>(draw.drawInfo.materialIndex));
+                }
+                glDrawElementsInstancedBaseInstance(
+                    GL_TRIANGLES, draw.drawInfo.mesh.indexCount,
+                    GL_UNSIGNED_INT,
+                    (void*)(draw.drawInfo.mesh.indexOffset * sizeof(GLuint)),
+                    instanceAllocation.numInstances,
+                    instanceAllocation.bufferOffset);
             }
-            glDrawElementsInstancedBaseInstance(
-                GL_TRIANGLES, draw.drawInfo.mesh.indexCount, GL_UNSIGNED_INT,
-                (void*)(draw.drawInfo.mesh.indexOffset * sizeof(GLuint)),
-                instanceAllocation.numInstances,
-                instanceAllocation.bufferOffset);
         }
     }
 
     void pushDrawCalls(
-        DrawInfo drawInfo,
+        const Model& model,
         std::vector<BufferAllocation<Instance>> instanceAllocations) noexcept {
+        auto& drawCalls = getDrawCallVector(model);
         auto allocationsBegin = instanceAllocations.begin();
         if (!drawCalls.empty() && drawCalls.back().instanceAllocation.tryJoin(
                                       instanceAllocations.front())) {
@@ -117,37 +135,11 @@ class DynamicPack {
         }
         for (const auto& instanceAllocation : std::ranges::subrange(
                  allocationsBegin, instanceAllocations.end())) {
-            drawCalls.emplace_back(Draw(drawInfo, instanceAllocation));
+            drawCalls.emplace_back(
+                Draw(getDrawInfo(model), instanceAllocation));
         }
     }
 
     StreamHandle<Instance> streamBuffer;
-    MaterialPackHandle<Material> materialPack;
-    MeshPackHandle<Vertex> meshPack;
-    std::vector<Draw> drawCalls;
-};
-
-template <typename Vertex, typename Material, typename Instance>
-class DynamicPackBuilder {
-   public:
-    using Model = Model<Vertex, Material>;
-
-    DynamicPackBuilder(
-        const MeshPackHandle<Vertex>& meshPack,
-        const MaterialPackHandle<Material>& materialPack,
-        const StreamHandle<Instance>& streamBuffer) noexcept
-        : meshPack(meshPack.copy()),
-          materialPack(materialPack.copy()),
-          streamBuffer(streamBuffer.copy()) {}
-
-    DynamicPack<Vertex, Material, Instance> build() {
-        return DynamicPack<Vertex, Material, Instance>{
-            std::move(materialPack), std::move(meshPack),
-            std::move(streamBuffer)};
-    }
-
-   private:
-    MeshPackHandle<Vertex> meshPack;
-    MaterialPackHandle<Material> materialPack;
-    StreamHandle<Instance> streamBuffer;
+    DrawCallMap drawCallMap;
 };

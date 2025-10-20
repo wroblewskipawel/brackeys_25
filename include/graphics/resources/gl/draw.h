@@ -24,13 +24,7 @@ template <typename Vertex, typename Material, typename Instance>
 class DynamicPack;
 
 template <typename Vertex, typename Material, typename Instance>
-class DynamicPackBuilder;
-
-template <typename Vertex, typename Material, typename Instance>
 class AnimatedPack;
-
-template <typename Vertex, typename Material, typename Instance>
-class AnimatedPackBuilder;
 
 template <typename Vertex, typename Material, typename Instance>
 class Stage;
@@ -43,7 +37,7 @@ struct DrawInfo {
         return mesh == other.mesh && materialIndex == other.materialIndex;
     }
 };
- namespace std {
+namespace std {
 template <>
 struct hash<DrawInfo> {
     std::size_t operator()(const DrawInfo& drawInfo) const noexcept {

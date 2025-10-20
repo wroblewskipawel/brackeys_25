@@ -92,9 +92,8 @@ class DynamicStage {
    public:
     using Model = Model<Vertex, Material>;
 
-    DynamicStage(
-        DynamicPackBuilder<Vertex, Material, Instance>&& builder)
-        : dynamicPack(builder.build()) {}
+    DynamicStage(const StreamHandle<Instance>& streamBuffer)
+        : dynamicPack(streamBuffer.copy()) {}
 
     DynamicStage& setShader(const Shader& shader) {
         shaderProgram = shader.program;
@@ -144,9 +143,9 @@ class AnimatedStage {
    public:
     using Model = Model<Vertex, Material>;
 
-    AnimatedStage(
-        AnimatedPackBuilder<Vertex, Material, Instance>&& builder)
-        : animatedPack(builder.build()) {}
+    AnimatedStage(const StreamHandle<Instance>& instanceStreamBuffer,
+                  const StreamHandle<glm::mat4>& jointStreamBuffer)
+        : animatedPack(instanceStreamBuffer, jointStreamBuffer) {}
 
     AnimatedStage& setShader(const Shader& shader) {
         shaderProgram = shader.program;

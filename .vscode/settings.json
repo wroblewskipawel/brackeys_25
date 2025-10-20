@@ -94,6 +94,7 @@
         "queue": "cpp",
         "typeindex": "cpp",
         "*.rh": "cpp",
-        "*.def": "cpp"
+        "*.def": "cpp",
+        "print": "cpp"
     }
 }

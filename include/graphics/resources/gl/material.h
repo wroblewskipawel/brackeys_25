@@ -12,7 +12,6 @@
 #include "graphics/resources/material.h"
 #include "graphics/storage/gl/material.h"
 
-
 constexpr size_t materialPackBufferBinding = 0;
 
 template <typename Material>
@@ -129,14 +128,21 @@ class MaterialPack {
     MaterialPack(MaterialPack&&) = default;
     MaterialPack& operator=(MaterialPack&&) = default;
 
-    static void bind(MaterialPackHandle<Material>& materialPack) {
+    static void bind(const MaterialPackHandle<Material>& materialPack) {
         if (currentPackIndex != materialPack) {
             if (!currentPackIndex.isInvalid()) {
                 auto& currentPack = currentPackIndex.get().get();
                 currentPack.materialData.setNotResident();
             }
             auto& newPack = materialPack.get().get();
-            newPack.materialData.setResident();
+
+            // Crude hack to be able to store MaterialPackHandle as key in map
+            // and call bind on it wile iteratin overt the contaier
+            // TODO: Remove - do not use handles as hash map keys, instead
+            // introduce cheaply copyable stand in type for map lookup, and
+            // store handle as key value
+            const_cast<std::remove_cvref_t<decltype(newPack)>&>(newPack)
+                .materialData.setResident();
             currentPackIndex = materialPack;
         }
         auto& currentPack = currentPackIndex.get().get();

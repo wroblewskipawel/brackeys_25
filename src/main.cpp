@@ -132,15 +132,14 @@ int main(void) {
                                         "shaders/unlit_animated/shader.frag");
     auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
 
-    auto unlitAnimatedStage = AnimatedStage(
-        resourceBundle.getAnimatedPackBuilder<UnlitAnimatedVertex,
-                                              UnlitMaterial, glm::mat4>(
-            instanceStreamHandle, jointMatrixStreamHandle));
+    auto unlitAnimatedStage =
+        AnimatedStage<UnlitAnimatedVertex, UnlitMaterial, glm::mat4>(
+            instanceStreamHandle, jointMatrixStreamHandle);
     unlitAnimatedStage.setShader(unlitAnimatedShader);
 
-    auto unlitDynamicStage = DynamicStage(
-        resourceBundle.getDynamicPackBuilder<UnlitVertex, UnlitMaterial>(
-            instanceStreamHandle));
+    auto unlitDynamicStage =
+        DynamicStage<UnlitVertex, UnlitMaterial, glm::mat4>(
+            instanceStreamHandle);
     unlitDynamicStage.setShader(unlitShader);
 
     ShaderBuilder coloredShaderBuilder{};
