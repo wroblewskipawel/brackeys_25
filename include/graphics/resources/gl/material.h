@@ -46,9 +46,9 @@ class UnlitMaterial {
     friend class MaterialPack<UnlitMaterial>;
     friend class MaterialData<UnlitMaterial>;
 
-    void setResident() { albedoTexture.setResident(); }
+    void setResident() const { albedoTexture.setResident(); }
 
-    void setNotResident() { albedoTexture.setNotResident(); }
+    void setNotResident() const { albedoTexture.setNotResident(); }
 
     Texture albedoTexture;
 };
@@ -77,8 +77,8 @@ class EmptyMaterial {
     friend class MaterialPack<EmptyMaterial>;
     friend class MaterialData<EmptyMaterial>;
 
-    void setResident() {}
-    void setNotResident() {}
+    void setResident() const {}
+    void setNotResident() const {}
 };
 
 template <typename Material>
@@ -96,7 +96,7 @@ class MaterialData {
     MaterialData(MaterialData&&) = default;
     MaterialData& operator=(MaterialData&&) = default;
 
-    void setResident() {
+    void setResident() const {
         if (!isResident) {
             for (auto& material : materialData) {
                 material.setResident();
@@ -105,7 +105,7 @@ class MaterialData {
         }
     }
 
-    void setNotResident() {
+    void setNotResident() const {
         if (isResident) {
             for (auto& material : materialData) {
                 material.setNotResident();
@@ -116,7 +116,7 @@ class MaterialData {
 
    private:
     std::vector<Material> materialData;
-    bool isResident;
+    mutable bool isResident;
 };
 
 template <typename Material>
@@ -136,13 +136,7 @@ class MaterialPack {
             }
             auto& newPack = materialPack.get().get();
 
-            // Crude hack to be able to store MaterialPackHandle as key in map
-            // and call bind on it wile iteratin overt the contaier
-            // TODO: Remove - do not use handles as hash map keys, instead
-            // introduce cheaply copyable stand in type for map lookup, and
-            // store handle as key value
-            const_cast<std::remove_cvref_t<decltype(newPack)>&>(newPack)
-                .materialData.setResident();
+            newPack.materialData.setResident();
             currentPackIndex = materialPack;
         }
         auto& currentPack = currentPackIndex.get().get();

@@ -86,8 +86,10 @@ class Texture {
     };
 
     GLuint64 getBindlessHandle() const { return bindlessHandle; }
-    void setResident() { glMakeTextureHandleResidentARB(bindlessHandle); }
-    void setNotResident() { glMakeTextureHandleNonResidentARB(bindlessHandle); }
+    void setResident() const { glMakeTextureHandleResidentARB(bindlessHandle); }
+    void setNotResident() const {
+        glMakeTextureHandleNonResidentARB(bindlessHandle);
+    }
 
     ~Texture() { glDeleteTextures(1, &texture); }
 
