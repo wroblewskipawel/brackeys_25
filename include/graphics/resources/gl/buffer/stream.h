@@ -115,7 +115,7 @@ class StreamBuffer {
     }
 
    private:
-    auto checkAccessAllowed(
+    void checkAccessAllowed(
         const BufferAllocation<Type>& allocation) const noexcept {
         if (!isWriteFinished) {
             std::println(std::cerr,
@@ -131,7 +131,7 @@ class StreamBuffer {
         }
     }
 
-    auto registerHostAllocation(
+    void registerHostAllocation(
         const BufferAllocation<Type>& allocation) noexcept {
         if (allocation.physicalBufferIndex != currentBufferIndex.bufferIndex) {
             flushCurrentBuffer();
@@ -145,7 +145,7 @@ class StreamBuffer {
         }
     }
 
-    auto flushCurrentBuffer() noexcept {
+    void flushCurrentBuffer() noexcept {
         const auto hostData = hostBuffer.getBufferRange(currentBufferIndex);
         auto numInstances = std::ranges::distance(hostData);
         glNamedBufferSubData(deviceBuffers[currentBufferIndex.bufferIndex], 0,

@@ -54,8 +54,8 @@ class MeshPackList {
     };
 
     template <typename Vertex>
-    auto getPackHandle() const noexcept {
-        return packList.get<MeshPackHandle<Vertex>>().copy();
+    auto& getPackHandleRef() const noexcept {
+        return packList.get<MeshPackHandle<Vertex>>();
     }
 
    private:
@@ -103,8 +103,8 @@ class MaterialPackList {
     };
 
     template <typename Material>
-    auto getPackHandle() const noexcept {
-        return packList.get<MaterialPackHandle<Material>>().copy();
+    auto& getPackHandleRef() const noexcept {
+        return packList.get<MaterialPackHandle<Material>>();
     }
 
    private:
@@ -171,8 +171,7 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
     template <typename Vertex, typename Material, typename Instance>
     auto getStaticPackBuilder() const noexcept {
         return StaticPackBuilder<Vertex, Material, Instance>(
-            meshPacks.getPackHandle<Vertex>(),
-            materialPacks.getPackHandle<Material>());
+            getPackHandlesView<Vertex, Material>().getOwned());
     }
 
    private:
@@ -181,9 +180,10 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
         auto model = Model<Vertex, Material>::getInvalid();
         if (modelRef.isValid()) {
             model.mesh.packItemIndex = modelRef.get().meshIndex;
-            model.mesh.packHandle = meshPacks.getPackHandle<Vertex>();
+            model.mesh.packHandle = meshPacks.getPackHandleRef<Vertex>().copy();
             model.material.packItemIndex = modelRef.get().materialIndex;
-            model.material.packHandle = materialPacks.getPackHandle<Material>();
+            model.material.packHandle =
+                materialPacks.getPackHandleRef<Material>().copy();
         }
         return std::move(model);
     }
@@ -198,6 +198,13 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
             }
         }
         return std::move(modelAnimations);
+    }
+
+    template <typename Vertex, typename Material>
+    auto getPackHandlesView() const noexcept {
+        return PackHandlesView<Vertex, Material>(
+            meshPacks.getPackHandleRef<Vertex>(),
+            materialPacks.getPackHandleRef<Material>());
     }
 
     std::vector<AnimationHandle> animations;

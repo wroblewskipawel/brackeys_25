@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "graphics/resources/gl/buffer/static.h"
 #include "graphics/resources/gl/draw.h"
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
@@ -22,86 +23,62 @@ class StaticPack {
     StaticPack(const StaticPack&) = delete;
     StaticPack& operator=(const StaticPack&) = delete;
 
-    StaticPack(StaticPack&& other) noexcept
-        : meshes(std::move(other.meshes)),
-          instanceBuffers(std::move(other.instanceBuffers)),
-          materialPack(std::move(other.materialPack)),
-          meshPack(std::move(other.meshPack)) {
-        other.meshPack = MeshPackHandle<Vertex>::getInvalid();
-        other.materialPack = MaterialPackHandle<Material>::getInvalid();
-    };
-
-    StaticPack& operator=(StaticPack&& other) noexcept {
-        if (this != &other) {
-            meshPack = other.meshPack;
-            materialPack = other.materialPack;
-            meshes = std::move(other.meshes);
-            instanceBuffers = std::move(other.instanceBuffers);
-
-            other.meshPack = MeshPackHandle<Material>::getInvalid();
-            other.materialPack = MaterialPackHandle<Material>::getInvalid();
-        }
-        return *this;
-    };
-
-    ~StaticPack() {
-        glDeleteBuffers(instanceBuffers.size(), instanceBuffers.data());
-    }
+    StaticPack(StaticPack&&) = default;
+    StaticPack& operator=(StaticPack&& other) = default;
 
    private:
     friend class StaticPackBuilder<Vertex, Material, Instance>;
     friend class StaticStage<Vertex, Material, Instance>;
 
-    struct DrawInstanced {
+    struct Draw {
         DrawInfo drawInfo;
-        size_t numInstances;
-    };
+        StaticBuffer<Instance> instanceBuffer;
 
-    StaticPack(std::unordered_map<DrawInfo, std::vector<Instance>>&& drawData,
-               MaterialPackHandle<Material>&& materialPack,
-               MeshPackHandle<Vertex>&& meshPack) noexcept
-        : instanceBuffers(drawData.size()),
-          materialPack(std::move(materialPack)),
-          meshPack(std::move(meshPack)) {
-        glCreateBuffers(instanceBuffers.size(), instanceBuffers.data());
-        meshes.reserve(drawData.size());
-        for (const auto& [i, meshDrawData] : std::views::enumerate(drawData)) {
-            const auto& [drawInfo, instances] = meshDrawData;
-            meshes.emplace_back(drawInfo, instances.size());
-            glNamedBufferStorage(instanceBuffers[i],
-                                 sizeof(Instance) * instances.size(),
-                                 instances.data(), GL_NONE);
-        }
-    }
+        bool canJoin(const Draw& other) const noexcept { return false; }
 
-    void draw(const UniformLocations& uniformLocations) {
-        MeshPack<Vertex>::bind(meshPack);
-        if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
-            MaterialPack<Material>::bind(materialPack);
-        }
-        for (const auto& [draw, instanceBuffer] :
-             std::views::zip(meshes, instanceBuffers)) {
+        void join(const Draw& other) noexcept { std::unreachable(); }
+
+        auto getDrawCall(
+            const UniformLocations& uniformLocations) const noexcept {
+            auto bufferInfo = instanceBuffer.getBufferInfo();
             VertexArray<Vertex, Instance>::getVertexArray()
                 .bindBuffer<BindingIndex::InstanceAttributes>(BindingInfo{
-                    .buffer = instanceBuffer,
+                    .buffer = bufferInfo.buffer,
                     .offset = 0,
                 });
             if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
                 glUniform1ui(uniformLocations.materialIndex,
-                             static_cast<GLuint>(draw.drawInfo.materialIndex));
+                             static_cast<GLuint>(drawInfo.materialIndex));
             }
-            glDrawElementsInstanced(
-                GL_TRIANGLES, draw.drawInfo.meshOffsets.indexCount,
-                GL_UNSIGNED_INT,
-                (void*)(draw.drawInfo.meshOffsets.indexOffset * sizeof(GLuint)),
-                draw.numInstances);
+            return [this, bufferInfo]() {
+                glDrawElementsInstanced(
+                    GL_TRIANGLES, drawInfo.meshOffsets.indexCount,
+                    GL_UNSIGNED_INT,
+                    (void*)(drawInfo.meshOffsets.indexOffset * sizeof(GLuint)),
+                    bufferInfo.numItems);
+            };
+        }
+    };
+
+    StaticPack(std::unordered_map<DrawInfo, std::vector<Instance>>&& drawData,
+               PackHandles<Vertex, Material>&& packHandles) noexcept
+        : packHandles(std::move(packHandles)) {
+        drawCalls.reserve(drawData.size());
+        for (const auto& [drawInfo, instances] : drawData) {
+            drawCalls.emplace_back(
+                Draw(drawInfo, StaticBuffer<Instance>(instances)));
         }
     }
 
-    std::vector<DrawInstanced> meshes;
-    std::vector<GLuint> instanceBuffers;
-    MaterialPackHandle<Material> materialPack;
-    MeshPackHandle<Vertex> meshPack;
+    void draw(const UniformLocations& uniformLocations) {
+        packHandles.bind();
+        for (const auto& drawCall : drawCalls) {
+            drawCall.getDrawCall(uniformLocations)();
+        }
+    }
+
+    std::vector<Draw> drawCalls;
+    PackHandles<Vertex, Material> packHandles;
 };
 
 template <typename Vertex, typename Material, typename Instance>
@@ -109,9 +86,8 @@ class StaticPackBuilder {
    public:
     using Model = Model<Vertex, Material>;
 
-    StaticPackBuilder(const MeshPackHandle<Vertex>& meshPack,
-                      const MaterialPackHandle<Material>& materialPack) noexcept
-        : meshPack(meshPack.copy()), materialPack(materialPack.copy()) {}
+    StaticPackBuilder(PackHandles<Vertex, Material>&& packHandles) noexcept
+        : packHandles(std::move(packHandles)) {}
 
     StaticPackBuilder& addDraw(const Model& model, Instance instanceData) {
         auto drawInfo = DrawInfo(model);
@@ -143,12 +119,11 @@ class StaticPackBuilder {
     }
 
     StaticPack<Vertex, Material, Instance> build() {
-        return StaticPack<Vertex, Material, Instance>{
-            std::move(drawData), std::move(materialPack), std::move(meshPack)};
+        return StaticPack<Vertex, Material, Instance>{std::move(drawData),
+                                                      std::move(packHandles)};
     }
 
    private:
-    MeshPackHandle<Vertex> meshPack;
-    MaterialPackHandle<Material> materialPack;
+    PackHandles<Vertex, Material> packHandles;
     std::unordered_map<DrawInfo, std::vector<Instance>> drawData;
 };
