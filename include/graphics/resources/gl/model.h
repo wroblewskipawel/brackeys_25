@@ -1,6 +1,7 @@
 #pragma once
 
 #include <type_traits>
+#include <unordered_map>
 #include <variant>
 
 #include "collections/slot_map.h"
@@ -9,6 +10,7 @@
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/storage/gl/material.h"
 #include "graphics/storage/gl/mesh.h"
+#include "utility/hash.h"
 
 template <typename PackHandle>
 struct PackItemIndex {
@@ -44,38 +46,16 @@ struct PackItemIndex {
 
 template <typename Vertex, typename Material>
 struct PackHandles {
-    // Here owned handles are created via .copy() call
-    // this causes incrementation of reference count, which most often that
-    // now would not be necessary - this structure main intention is to
-    // index hash map for the the Model draw call insertion.
-    // Copying the handles would be only necessary if this is the first
-    // model using given pack handles being added to the draw call map
-    // TODO: Introduce model->packHandles map index matching mechanis that
-    // do not require to copy the handles
-    PackHandles(const MeshPackHandle<Vertex>& meshPackHandle,
-                const MaterialPackHandle<Material>& materialPackHandle) noexcept
-        : meshPackHandle(meshPackHandle.copy()),
-          materialPackHandle(materialPackHandle.copy()) {}
+    PackHandles(MeshPackHandle<Vertex>&& meshPackHandle,
+                MaterialPackHandle<Material>&& materialPackHandle) noexcept
+        : meshPackHandle(std::move(meshPackHandle)),
+          materialPackHandle(std::move(materialPackHandle)) {}
 
     PackHandles(const PackHandles&) = delete;
     PackHandles& operator=(const PackHandles&) = delete;
 
     PackHandles(PackHandles&&) = default;
     PackHandles& operator=(PackHandles&&) = default;
-
-    friend class std::hash<PackHandles>;
-
-    friend bool operator==(const PackHandles& lhs,
-                           const PackHandles& rhs) noexcept {
-        return lhs.meshPackHandle == rhs.meshPackHandle &&
-               lhs.materialPackHandle == rhs.materialPackHandle;
-    }
-
-    friend bool operator<(const PackHandles& lhs,
-                          const PackHandles& rhs) noexcept {
-        return std::tie(lhs.meshPackHandle, lhs.materialPackHandle) <
-               std::tie(rhs.meshPackHandle, rhs.materialPackHandle);
-    }
 
     void bind() const noexcept {
         MeshPack<Vertex>::bind(meshPackHandle);
@@ -85,26 +65,144 @@ struct PackHandles {
     };
 
     PackHandles copy() const noexcept {
-        return PackHandles(meshPackHandle, materialPackHandle);
+        return PackHandles(meshPackHandle.copy(), materialPackHandle.copy());
     }
 
     MeshPackHandle<Vertex> meshPackHandle;
     MaterialPackHandle<Material> materialPackHandle;
 };
 
-namespace std {
 template <typename Vertex, typename Material>
-struct hash<PackHandles<Vertex, Material>> {
-    std::size_t operator()(
-        const PackHandles<Vertex, Material>& packHandles) const noexcept {
-        std::size_t h1 =
-            std::hash<MeshPackHandle<Vertex>>{}(packHandles.meshPackHandle);
-        std::size_t h2 = std::hash<MaterialPackHandle<Material>>{}(
-            packHandles.materialPackHandle);
-        return h1 ^ (h2 << 1);
+struct PackHandlesView {
+    PackHandlesView(
+        const MeshPackHandle<Vertex>& meshPackHandle,
+        const MaterialPackHandle<Material>& materialPackHandle) noexcept
+        : meshPackHandle(meshPackHandle),
+          materialPackHandle(materialPackHandle) {}
+
+    PackHandlesView(const PackHandlesView&) = delete;
+    PackHandlesView& operator=(const PackHandlesView&) = delete;
+
+    PackHandlesView(PackHandlesView&&) = delete;
+    PackHandlesView& operator=(PackHandlesView&&) = delete;
+
+    friend bool operator==(const PackHandlesView& lhs,
+                           const PackHandlesView& rhs) noexcept {
+        return lhs.meshPackHandle == rhs.meshPackHandle &&
+               lhs.materialPackHandle == rhs.materialPackHandle;
+    }
+
+    auto getOwned() const noexcept {
+        return PackHandles<Vertex, Material>(meshPackHandle.copy(),
+                                             materialPackHandle.copy());
+    }
+
+    void bind() const noexcept {
+        MeshPack<Vertex>::bind(meshPackHandle);
+        if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
+            MaterialPack<Material>::bind(materialPackHandle);
+        }
+    };
+
+    const MeshPackHandle<Vertex>& meshPackHandle;
+    const MaterialPackHandle<Material>& materialPackHandle;
+};
+
+template <typename Pack>
+concept PackHandleViewType = requires(Pack p) {
+    p.meshPackHandle;
+    p.materialPackHandle;
+};
+
+template <PackHandleViewType Handles>
+std::size_t hashHandles(const Handles& handles) noexcept {
+    std::size_t h1 = hashValue(handles.meshPackHandle);
+    std::size_t h2 = hashValue(handles.materialPackHandle);
+    return h1 ^ (h2 << 1);
+}
+
+template <PackHandleViewType Lhs, PackHandleViewType Rhs = Lhs>
+bool compareHandlesEqual(const Lhs& lhs, const Rhs& rhs) noexcept {
+    return lhs.meshPackHandle == rhs.meshPackHandle &&
+           lhs.materialPackHandle == rhs.materialPackHandle;
+}
+
+template <PackHandleViewType Lhs, PackHandleViewType Rhs = Lhs>
+bool compareHandlesLess(const Lhs& lhs, const Rhs& rhs) noexcept {
+    return std::tie(lhs.meshPackHandle, lhs.materialPackHandle) <
+           std::tie(rhs.meshPackHandle, rhs.materialPackHandle);
+}
+
+template <typename Vertex, typename Material>
+struct PackHandlesHasher {
+    using is_transparent = void;
+
+    using PackHandles = PackHandles<Vertex, Material>;
+    using PackHandlesView = PackHandlesView<Vertex, Material>;
+
+    size_t operator()(const PackHandles& handle) const {
+        return hashHandles(handle);
+    }
+
+    size_t operator()(const PackHandlesView& handle) const {
+        return hashHandles(handle);
     }
 };
-}  // namespace std
+
+template <typename Vertex, typename Material>
+struct PackHandlesEqual {
+    using is_transparent = void;
+
+    using PackHandles = PackHandles<Vertex, Material>;
+    using PackHandlesView = PackHandlesView<Vertex, Material>;
+
+    bool operator()(const PackHandles& lhs, const PackHandles& rhs) const {
+        return compareHandlesEqual(lhs, rhs);
+    }
+
+    bool operator()(const PackHandlesView& lhs,
+                    const PackHandlesView& rhs) const {
+        return compareHandlesEqual(lhs, rhs);
+    }
+
+    bool operator()(const PackHandlesView& lhs, const PackHandles& rhs) const {
+        return compareHandlesEqual(lhs, rhs);
+    }
+
+    bool operator()(const PackHandles& lhs, const PackHandlesView& rhs) const {
+        return compareHandlesEqual(lhs, rhs);
+    }
+};
+
+template <typename Vertex, typename Material>
+struct PackHandlesLess {
+    using is_transparent = void;
+
+    using PackHandles = PackHandles<Vertex, Material>;
+    using PackHandlesView = PackHandlesView<Vertex, Material>;
+
+    bool operator()(const PackHandles& lhs, const PackHandles& rhs) const {
+        return compareHandlesLess(lhs, rhs);
+    }
+
+    bool operator()(const PackHandlesView& lhs,
+                    const PackHandlesView& rhs) const {
+        return compareHandlesLess(lhs, rhs);
+    }
+
+    bool operator()(const PackHandlesView& lhs, const PackHandles& rhs) const {
+        return compareHandlesLess(lhs, rhs);
+    }
+
+    bool operator()(const PackHandles& lhs, const PackHandlesView& rhs) const {
+        return compareHandlesLess(lhs, rhs);
+    }
+};
+
+template <typename Vertex, typename Material, typename Item>
+using PackUnorderedMap = std::unordered_map<PackHandles<Vertex, Material>, Item,
+                                            PackHandlesHasher<Vertex, Material>,
+                                            PackHandlesEqual<Vertex, Material>>;
 
 template <typename Vertex>
 using MeshHandle = PackItemIndex<MeshPackHandle<Vertex>>;
@@ -116,7 +214,9 @@ template <typename Vertex, typename Material>
 struct Model {
     using MeshHandle = MeshHandle<Vertex>;
     using MaterialHandle = MaterialHandle<Material>;
-    using PackHandles = PackHandles<Vertex, Material>;
+    using PackHandlesView = PackHandlesView<Vertex, Material>;
+    template <typename Item>
+    using PackUnorderedMap = PackUnorderedMap<Vertex, Material, Item>;
 
     MeshHandle mesh;
     MaterialHandle material;
@@ -136,8 +236,8 @@ struct Model {
         }
     }
 
-    PackHandles getPackHandles() const noexcept {
-        return PackHandles(mesh.packHandle, material.packHandle);
+    PackHandlesView getPackHandlesView() const noexcept {
+        return PackHandlesView(mesh.packHandle, material.packHandle);
     }
 
     MeshOffsets getMeshOffsets() const noexcept {

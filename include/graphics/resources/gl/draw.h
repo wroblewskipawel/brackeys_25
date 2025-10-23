@@ -73,7 +73,6 @@ class DrawCallMap {
    public:
     using Draw = typename Pack::Draw;
     using Model = typename Pack::Model;
-    using PackHandles = typename Model::PackHandles;
 
     DrawCallMap() = default;
 
@@ -107,15 +106,15 @@ class DrawCallMap {
 
    private:
     auto& getDrawCallVector(const Model& model) noexcept {
-        auto packHandles = model.getPackHandles();
+        auto packHandles = model.getPackHandlesView();
         auto drawCallVectorIt = drawCallMap.find(packHandles);
         if (drawCallVectorIt == drawCallMap.end()) {
             drawCallMap.emplace(std::piecewise_construct,
-                                std::forward_as_tuple(packHandles.copy()),
+                                std::forward_as_tuple(packHandles.getOwned()),
                                 std::forward_as_tuple(std::vector<Draw>{}));
         }
         return drawCallMap.find(packHandles)->second;
     };
 
-    std::unordered_map<PackHandles, std::vector<Draw>> drawCallMap{};
+    Model::template PackUnorderedMap<std::vector<Draw>> drawCallMap{};
 };
