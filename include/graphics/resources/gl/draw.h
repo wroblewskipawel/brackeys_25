@@ -30,7 +30,7 @@ template <typename Vertex, typename Material, typename Instance>
 class Stage;
 
 struct DrawInfo {
-    Mesh mesh;
+    MeshOffsets mesh;
     size_t materialIndex;
 
     bool operator==(const DrawInfo& other) const noexcept {
@@ -41,7 +41,7 @@ namespace std {
 template <>
 struct hash<DrawInfo> {
     std::size_t operator()(const DrawInfo& drawInfo) const noexcept {
-        std::size_t h1 = std::hash<Mesh>{}(drawInfo.mesh);
+        std::size_t h1 = std::hash<MeshOffsets>{}(drawInfo.mesh);
         std::size_t h2 = std::hash<size_t>{}(drawInfo.materialIndex);
         return h1 ^ (h2 << 1);
     }

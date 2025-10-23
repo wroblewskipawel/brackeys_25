@@ -112,7 +112,7 @@ class AnimatedPack {
     };
 
     auto getDrawInfo(const Model& model) noexcept {
-        return DrawInfo{getMesh(model.mesh), model.material.packItemIndex};
+        return DrawInfo{getMeshOffsets(model.mesh), model.material.packItemIndex};
     }
 
     void draw(const UniformLocations& uniformLocations) {

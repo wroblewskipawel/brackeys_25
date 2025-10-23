@@ -82,7 +82,8 @@ class DynamicPack {
         std::unordered_map<PackHandles<Vertex, Material>, std::vector<Draw>>;
 
     auto getDrawInfo(const Model& model) noexcept {
-        return DrawInfo{getMesh(model.mesh), model.material.packItemIndex};
+        return DrawInfo{getMeshOffsets(model.mesh),
+                        model.material.packItemIndex};
     }
 
     auto& getDrawCallVector(const Model& model) noexcept {

@@ -38,12 +38,12 @@ struct MeshBuffers {
     };
 };
 
-struct Mesh {
+struct MeshOffsets {
     size_t indexCount;
     size_t indexOffset;
     size_t vertexOffset;
 
-    bool operator==(const Mesh& other) const noexcept {
+    bool operator==(const MeshOffsets& other) const noexcept {
         return indexCount == other.indexCount &&
                indexOffset == other.indexOffset &&
                vertexOffset == other.vertexOffset;
@@ -52,8 +52,8 @@ struct Mesh {
 
 namespace std {
 template <>
-struct hash<Mesh> {
-    std::size_t operator()(const Mesh& mesh) const noexcept {
+struct hash<MeshOffsets> {
+    std::size_t operator()(const MeshOffsets& mesh) const noexcept {
         std::size_t h1 = std::hash<size_t>{}(mesh.indexCount);
         std::size_t h2 = std::hash<size_t>{}(mesh.indexOffset);
         std::size_t h3 = std::hash<size_t>{}(mesh.vertexOffset);
@@ -68,8 +68,9 @@ class MeshPackBuilder;
 template <typename Vertex>
 class MeshPack {
    public:
-    static Mesh getMesh(const MeshHandle<Vertex>& meshHandle) noexcept {
-        return meshHandle.packHandle.get().get().getMesh(
+    static MeshOffsets getMeshOffsets(
+        const MeshHandle<Vertex>& meshHandle) noexcept {
+        return meshHandle.packHandle.get().get().getMeshOffsets(
             meshHandle.packItemIndex);
     }
 
@@ -107,18 +108,21 @@ class MeshPack {
    private:
     friend class MeshPackBuilder<Vertex>;
 
-    MeshPack(MeshBuffers&& buffers, std::vector<Mesh>&& meshes)
+    MeshPack(MeshBuffers&& buffers, std::vector<MeshOffsets>&& meshes)
         : buffers(std::move(buffers)), meshes(std::move(meshes)) {}
 
-    Mesh getMesh(size_t meshIndex) const noexcept { return meshes[meshIndex]; }
+    MeshOffsets getMeshOffsets(size_t meshIndex) const noexcept {
+        return meshes[meshIndex];
+    }
 
     MeshBuffers buffers;
-    std::vector<Mesh> meshes;
+    std::vector<MeshOffsets> meshes;
 };
 
 template <typename Vertex>
-inline Mesh getMesh(const MeshHandle<Vertex>& meshHandle) noexcept {
-    return MeshPack<Vertex>::getMesh(meshHandle);
+inline MeshOffsets getMeshOffsets(
+    const MeshHandle<Vertex>& meshHandle) noexcept {
+    return MeshPack<Vertex>::getMeshOffsets(meshHandle);
 }
 
 template <typename Vertex>
@@ -151,16 +155,16 @@ class MeshPackBuilder {
         }
 
         MeshBuffers buffers{};
-        std::vector<Mesh> meshes;
+        std::vector<MeshOffsets> meshes;
 
         size_t indexOffset = 0;
         size_t vertexOffset = 0;
         for (auto& meshData : meshDatas) {
             const auto& meshRef = meshData.get().get();
 
-            Mesh mesh{.indexCount = meshRef.indices.size(),
-                      .indexOffset = indexOffset,
-                      .vertexOffset = vertexOffset};
+            MeshOffsets mesh{.indexCount = meshRef.indices.size(),
+                             .indexOffset = indexOffset,
+                             .vertexOffset = vertexOffset};
             indexOffset += mesh.indexCount;
             vertexOffset += meshRef.vertices.size();
             meshes.push_back(mesh);

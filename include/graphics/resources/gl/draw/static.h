@@ -115,7 +115,7 @@ class StaticPackBuilder {
         : meshPack(meshPack.copy()), materialPack(materialPack.copy()) {}
 
     StaticPackBuilder& addDraw(const Model& model, Instance instanceData) {
-        Mesh mesh = getMesh(model.mesh);
+        MeshOffsets mesh = getMeshOffsets(model.mesh);
         DrawInfo drawInfo{mesh, model.material.packItemIndex};
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
@@ -131,7 +131,7 @@ class StaticPackBuilder {
 
     StaticPackBuilder& addDrawMulti(const Model& model,
                                     std::vector<Instance>&& instanceData) {
-        Mesh mesh = getMesh(model.mesh);
+        MeshOffsets mesh = getMeshOffsets(model.mesh);
         DrawInfo drawInfo{mesh, model.material.packItemIndex};
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
