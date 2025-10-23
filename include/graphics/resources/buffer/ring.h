@@ -19,9 +19,7 @@ struct BufferAllocation {
     size_t bufferOffset;
     size_t generation;
 
-    bool isEmpty() const noexcept {
-        return numInstances == 0;
-    }
+    bool isEmpty() const noexcept { return numInstances == 0; }
 
     void join(const BufferAllocation& other) noexcept {
         if (!canJoin(other)) {
@@ -70,16 +68,17 @@ struct BufferAllocation {
     }
 };
 
-template<typename Type>
-struct IsBufferAllocationT: std::false_type {};
+template <typename Type>
+struct IsBufferAllocationT : std::false_type {};
 
-template<typename Type>
-struct IsBufferAllocationT<BufferAllocation<Type>>: std::true_type {};
+template <typename Type>
+struct IsBufferAllocationT<BufferAllocation<Type>> : std::true_type {};
 
-template<typename Type>
-inline constexpr bool IsBufferAllocationV = IsBufferAllocationT<std::remove_cvref_t<Type>>::value;
+template <typename Type>
+inline constexpr bool IsBufferAllocationV =
+    IsBufferAllocationT<std::remove_cvref_t<Type>>::value;
 
-template<typename Type>
+template <typename Type>
 concept BufferAllocationType = IsBufferAllocationV<Type>;
 
 template <typename Type>
@@ -119,26 +118,27 @@ class PageVector {
     const size_t pageSize;
 
    private:
-    template<typename Vector>
+    template <typename Vector>
     friend auto rangeIndices(Vector&&, size_t) noexcept;
 
     std::vector<Type> dataStorage;
     size_t numPages;
 };
 
-template<typename Range, typename Type>
-concept RefConstRange = std::is_convertible_v<std::ranges::range_value_t<Range>, const Type&>;
+template <typename Range, typename Type>
+concept RefConstRange =
+    std::is_convertible_v<std::ranges::range_value_t<Range>, const Type&>;
 
-template<typename Vector>
+template <typename Vector>
 auto rangeIndices(Vector&& vector, size_t pageIndex) noexcept {
     if (pageIndex >= vector.numPages) {
-            std::println(std::cerr,
-                         "PageVector::getPage: pageIndex out of range");
-            std::abort();
-        }
+        std::println(std::cerr, "PageVector::getPage: pageIndex out of range");
+        std::abort();
+    }
     auto storageOffset = pageIndex * vector.pageSize;
-    return std::pair{vector.dataStorage.begin() + storageOffset,
-                     vector.dataStorage.begin() + storageOffset + vector.pageSize};
+    return std::pair{
+        vector.dataStorage.begin() + storageOffset,
+        vector.dataStorage.begin() + storageOffset + vector.pageSize};
 }
 
 template <typename Type>

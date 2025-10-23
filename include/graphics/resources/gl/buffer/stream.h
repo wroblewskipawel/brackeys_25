@@ -12,12 +12,10 @@
 #include "graphics/resources/buffer/ring.h"
 #include "graphics/resources/gl/buffer/binding.h"
 
-
 template <typename Type>
 class StreamBuffer {
    public:
-    StreamBuffer(size_t pageSize,
-                 size_t reserveNumPages = 0,
+    StreamBuffer(size_t pageSize, size_t reserveNumPages = 0,
                  size_t initialRingSize = 3) noexcept
         : hostBuffer(pageSize, reserveNumPages, initialRingSize),
           currentBufferIndex(0, 0),
@@ -77,7 +75,8 @@ class StreamBuffer {
             std::abort();
         }
 
-        auto allocation = hostBuffer.pushDataContiguous(std::forward<Range>(data));
+        auto allocation =
+            hostBuffer.pushDataContiguous(std::forward<Range>(data));
         registerHostAllocation(allocation);
         return allocation;
     }
@@ -131,13 +130,15 @@ class StreamBuffer {
         }
     }
 
-    auto registerHostAllocation(const BufferAllocation<Type>& allocation) noexcept {
+    auto registerHostAllocation(
+        const BufferAllocation<Type>& allocation) noexcept {
         if (allocation.physicalBufferIndex != currentBufferIndex.bufferIndex) {
             flushCurrentBuffer();
             currentBufferIndex = allocation.getBufferIndices();
             if (currentBufferIndex.bufferIndex >= deviceBuffers.size()) {
                 auto lastBufferIndex = deviceBuffers.size() - 1;
-                auto requiredBuffers = currentBufferIndex.bufferIndex - lastBufferIndex;
+                auto requiredBuffers =
+                    currentBufferIndex.bufferIndex - lastBufferIndex;
                 appendBuffers(requiredBuffers);
             }
         }
@@ -172,14 +173,14 @@ class StreamBuffer {
     bool isWriteFinished;
 };
 
-template<typename Type>
-struct IsStreamT: std::false_type {};
+template <typename Type>
+struct IsStreamT : std::false_type {};
 
-template<typename Type>
-struct IsStreamT<StreamBuffer<Type>>: std::true_type {};
+template <typename Type>
+struct IsStreamT<StreamBuffer<Type>> : std::true_type {};
 
-template<typename Type>
+template <typename Type>
 inline constexpr bool IsStreamV = IsStreamT<std::remove_cvref_t<Type>>::value;
 
-template<typename Type>
+template <typename Type>
 concept StreamBufferType = IsStreamV<Type>;

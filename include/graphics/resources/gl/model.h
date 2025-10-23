@@ -6,9 +6,9 @@
 #include "collections/slot_map.h"
 #include "collections/unique_list.h"
 #include "collections/unique_list/vector_list.h"
+#include "graphics/resources/gl/mesh.h"
 #include "graphics/storage/gl/material.h"
 #include "graphics/storage/gl/mesh.h"
-#include "graphics/resources/gl/mesh.h"
 
 template <typename PackHandle>
 struct PackItemIndex {

@@ -82,12 +82,10 @@ class StaticPack {
         for (const auto& [draw, instanceBuffer] :
              std::views::zip(meshes, instanceBuffers)) {
             VertexArray<Vertex, Instance>::getVertexArray()
-                .bindBuffer<BindingIndex::InstanceAttributes>(
-                    BindingInfo {
-                        .buffer = instanceBuffer,
-                        .offset = 0,
-                    }
-                );
+                .bindBuffer<BindingIndex::InstanceAttributes>(BindingInfo{
+                    .buffer = instanceBuffer,
+                    .offset = 0,
+                });
             if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
                 glUniform1ui(uniformLocations.materialIndex,
                              static_cast<GLuint>(draw.drawInfo.materialIndex));

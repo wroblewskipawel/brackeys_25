@@ -2,10 +2,11 @@
 
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
+
 #include <iostream>
 
-#include "graphics/resources/gl/vertex_array.h"
 #include "graphics/debug.h"
+#include "graphics/resources/gl/vertex_array.h"
 
 class OpenGlContext {
    public:
@@ -15,13 +16,13 @@ class OpenGlContext {
             std::abort();
         };
 
-        #ifndef NDEBUG
-            glEnable(GL_DEBUG_OUTPUT);
-            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-            glDebugMessageCallback(glDebugOutput, nullptr);
-            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr,
-                                GL_TRUE);
-        #endif
+#ifndef NDEBUG
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageCallback(glDebugOutput, nullptr);
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0,
+                              nullptr, GL_TRUE);
+#endif
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glEnable(GL_DEPTH_TEST);
@@ -39,7 +40,5 @@ class OpenGlContext {
 
     static void endFrame() {}
 
-    static void terminate() {
-        VertexArrayStorage::destroyVertexArrays();
-    }
+    static void terminate() { VertexArrayStorage::destroyVertexArrays(); }
 };

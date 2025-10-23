@@ -6,9 +6,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "graphics/resources/gl/draw/static.h"
-#include "graphics/resources/gl/draw/dynamic.h"
 #include "graphics/resources/gl/draw/animated.h"
+#include "graphics/resources/gl/draw/dynamic.h"
+#include "graphics/resources/gl/draw/static.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/shader.h"

@@ -11,6 +11,7 @@
 
 #include "graphics/resources/buffer/ring.h"
 #include "graphics/resources/gl/buffer/stream.h"
+#include "graphics/resources/gl/draw.h"
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/model.h"
@@ -113,7 +114,8 @@ class DynamicPack {
                 glDrawElementsInstancedBaseInstance(
                     GL_TRIANGLES, draw.drawInfo.meshOffsets.indexCount,
                     GL_UNSIGNED_INT,
-                    (void*)(draw.drawInfo.meshOffsets.indexOffset * sizeof(GLuint)),
+                    (void*)(draw.drawInfo.meshOffsets.indexOffset *
+                            sizeof(GLuint)),
                     instanceAllocation.numInstances,
                     instanceAllocation.bufferOffset);
             }
@@ -131,8 +133,7 @@ class DynamicPack {
         }
         for (const auto& instanceAllocation : std::ranges::subrange(
                  allocationsBegin, instanceAllocations.end())) {
-            drawCalls.emplace_back(
-                Draw(DrawInfo(model), instanceAllocation));
+            drawCalls.emplace_back(Draw(DrawInfo(model), instanceAllocation));
         }
     }
 

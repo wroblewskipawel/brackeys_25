@@ -212,9 +212,7 @@ class AnimationPlayer {
     AnimationPlayer(AnimationPlayer&&) = default;
     AnimationPlayer& operator=(AnimationPlayer&&) = default;
 
-    size_t numJoints() const noexcept {
-        return currentKeyframes.size();
-    }
+    size_t numJoints() const noexcept { return currentKeyframes.size(); }
 
     void update(float deltaTime) {
         const auto& animationRef = animationHandle.get().get();

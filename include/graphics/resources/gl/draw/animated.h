@@ -11,6 +11,7 @@
 #include "graphics/resources/animation.h"
 #include "graphics/resources/buffer/ring.h"
 #include "graphics/resources/gl/buffer/stream.h"
+#include "graphics/resources/gl/draw.h"
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/model.h"

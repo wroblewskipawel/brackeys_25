@@ -11,8 +11,7 @@ using StreamHandle = StaticHandle<StreamBuffer<Type>, Shared>;
 template <typename Type>
 inline StreamHandle<Type> registerStreamBuffer(
     StreamBuffer<Type>&& stream) noexcept {
-    return registerResource<StreamBuffer<Type>, Shared>(
-        std::move(stream));
+    return registerResource<StreamBuffer<Type>, Shared>(std::move(stream));
 }
 
 template <typename Key, typename Type>
