@@ -116,5 +116,5 @@ class DrawCallMap {
         return drawCallMap.find(packHandles)->second;
     };
 
-    Model::template PackUnorderedMap<std::vector<Draw>> drawCallMap{};
+    Model::template PackMap<std::vector<Draw>> drawCallMap{};
 };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
@@ -204,6 +205,10 @@ using PackUnorderedMap = std::unordered_map<PackHandles<Vertex, Material>, Item,
                                             PackHandlesHasher<Vertex, Material>,
                                             PackHandlesEqual<Vertex, Material>>;
 
+template <typename Vertex, typename Material, typename Item>
+using PackMap = std::map<PackHandles<Vertex, Material>, Item,
+                         PackHandlesLess<Vertex, Material>>;
+
 template <typename Vertex>
 using MeshHandle = PackItemIndex<MeshPackHandle<Vertex>>;
 
@@ -217,6 +222,8 @@ struct Model {
     using PackHandlesView = PackHandlesView<Vertex, Material>;
     template <typename Item>
     using PackUnorderedMap = PackUnorderedMap<Vertex, Material, Item>;
+    template <typename Item>
+    using PackMap = PackMap<Vertex, Material, Item>;
 
     MeshHandle mesh;
     MaterialHandle material;
