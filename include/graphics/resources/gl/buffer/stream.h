@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "collections/pin.h"
+#include "concepts/range.h"
 #include "graphics/resources/buffer/ring.h"
 #include "graphics/resources/gl/buffer/binding.h"
 

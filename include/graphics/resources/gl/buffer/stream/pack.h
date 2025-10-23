@@ -54,6 +54,7 @@
 #include <vector>
 
 #include "collections/unique_list.h"
+#include "concepts/range.h"
 #include "graphics/resources/animation.h"
 #include "graphics/resources/buffer/ring.h"
 #include "graphics/resources/gl/buffer/stream.h"

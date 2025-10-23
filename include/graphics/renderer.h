@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "concepts/range.h"
 #include "graphics/resources/gl/draw/animated.h"
 #include "graphics/resources/gl/draw/dynamic.h"
 #include "graphics/resources/gl/draw/static.h"

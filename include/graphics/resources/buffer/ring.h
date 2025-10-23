@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#include "concepts/range.h"
+
 struct GenerationIndices {
     size_t generation{0};
     size_t bufferIndex{0};
@@ -124,10 +126,6 @@ class PageVector {
     std::vector<Type> dataStorage;
     size_t numPages;
 };
-
-template <typename Range, typename Type>
-concept RefConstRange =
-    std::is_convertible_v<std::ranges::range_value_t<Range>, const Type&>;
 
 template <typename Vector>
 auto rangeIndices(Vector&& vector, size_t pageIndex) noexcept {

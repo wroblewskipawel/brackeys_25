@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "concepts/range.h"
 #include "graphics/resources/animation.h"
 #include "graphics/resources/buffer/ring.h"
 #include "graphics/resources/gl/buffer/stream.h"
@@ -69,51 +70,37 @@ class AnimatedPack {
                  RefConstRange<Samplers, AnimationPlayer>
     AnimatedPack& addDrawMulti(const Model& model, Instances&& instanceData,
                                Samplers&& samplers) {
-        const AnimationPlayer& samplerFront = samplers.front();
-        auto numJoints = samplerFront.numJoints();
-        auto instanceAllocations =
-            writeInstanceData(std::forward<Instances>(instanceData));
-        auto jointAllocations =
-            writeJointeData(std::forward<Samplers>(samplers));
-        pushDrawCalls(model, numJoints, instanceAllocations, jointAllocations);
+        drawCallMap.pushDrawCalls(
+            model, getDrawCalls(model, std::forward<Instances>(instanceData),
+                                std::forward<Samplers>(samplers)));
         return *this;
     }
 
-    void clear() noexcept {
-        // Same applies as for dynamic.h DyamicPack clear() comment, also remove
-        // duplicate code
-        // TODO: Resolve
-        for (auto& [_, drawCalls] : drawCallMap) {
-            drawCalls.clear();
-        }
-    }
-
-   private:
-    friend class AnimatedStage<Vertex, Material, Instance>;
+    void clear() noexcept { drawCallMap.clear(); }
 
     struct Draw {
         DrawInfo drawInfo;
         GLuint jointMatrixCount;
         BufferAllocation<Instance> instanceAllocation;
         BufferAllocation<glm::mat4> jointAllocation;
-    };
 
-    using DrawCallMap =
-        std::unordered_map<PackHandles<Vertex, Material>, std::vector<Draw>>;
-
-    auto& getDrawCallVector(const Model& model) noexcept {
-        auto packHandles = model.getPackHandles();
-        auto drawCallVectorIt = drawCallMap.find(packHandles);
-        if (drawCallVectorIt == drawCallMap.end()) {
-            drawCallMap.emplace(std::piecewise_construct,
-                                std::forward_as_tuple(packHandles.copy()),
-                                std::forward_as_tuple(std::vector<Draw>{}));
+        bool canJoin(const Draw& other) const noexcept {
+            return jointMatrixCount == other.jointMatrixCount &&
+                   instanceAllocation.canJoin(other.instanceAllocation) &&
+                   jointAllocation.canJoin(other.jointAllocation);
         }
-        return drawCallMap.find(packHandles)->second;
+
+        void join(const Draw& other) noexcept {
+            instanceAllocation.join(other.instanceAllocation);
+            jointAllocation.join(other.jointAllocation);
+        }
     };
+
+   private:
+    friend class AnimatedStage<Vertex, Material, Instance>;
 
     void draw(const UniformLocations& uniformLocations) {
-        for (auto& [packHandles, drawCalls] : drawCallMap) {
+        for (auto& [packHandles, drawCalls] : drawCallMap.getDrawCalls()) {
             if (drawCalls.empty()) continue;
             packHandles.bind();
             auto& stream = instanceStream.get().get();
@@ -165,15 +152,29 @@ class AnimatedPack {
             allocations.emplace_back(
                 joints.pushDataContiguous(player.getJointTransforms()));
         }
-        return allocations;
+        // Following assues that all AnimationPlayers in the range have
+        // the same numJoints (share the same skeleton), this is assumption is
+        // never checked
+        // TODO: Add checks for this invariable
+        const AnimationPlayer& samplerFront = samplers.front();
+        auto numJoints = samplerFront.numJoints();
+        return std::make_pair(allocations, numJoints);
     }
 
-    auto getDrawCalls(
-        const Model& model, GLuint numJoints,
-        std::vector<BufferAllocation<Instance>>& instanceAllocations,
-        std::vector<BufferAllocation<glm::mat4>>& jointAllocations) {
+    template <typename Instances, typename Samplers>
+        requires RefConstRange<Instances, Instance> &&
+                 RefConstRange<Samplers, AnimationPlayer>
+    auto getDrawCalls(const Model& model, Instances&& instanceData,
+                      Samplers&& samplers) noexcept {
+        auto instanceAllocations =
+            writeInstanceData(std::forward<Instances>(instanceData));
+        auto [jointAllocations, instanceNumJoints] =
+            writeJointeData(std::forward<Samplers>(samplers));
+
         auto drawInfo = DrawInfo(model);
-        auto draw = std::vector<Draw>();
+        auto drawCalls = std::vector<Draw>{};
+        drawCalls.reserve(instanceAllocations.size());
+
         auto joints = jointAllocations.begin();
         auto instances = instanceAllocations.begin();
         while (joints != jointAllocations.end() &&
@@ -181,52 +182,29 @@ class AnimatedPack {
             auto& joint = *joints;
             auto& instance = *instances;
 
-            auto jointInstances = joint.numInstances / numJoints;
-            auto instanceJoints = instance.numInstances * numJoints;
+            auto jointInstances = joint.numInstances / instanceNumJoints;
+            auto instanceJoints = instance.numInstances * instanceNumJoints;
             if (jointInstances < instance.numInstances) {
-                draw.emplace_back(Draw(drawInfo, numJoints,
-                                       instance.takeFirst(jointInstances),
-                                       joint));
+                drawCalls.emplace_back(Draw(drawInfo, instanceNumJoints,
+                                            instance.takeFirst(jointInstances),
+                                            joint));
                 ++joints;
             } else if (joint.numInstances > instanceJoints) {
-                draw.emplace_back(Draw(drawInfo, numJoints, instance,
-                                       joint.takeFirst(instanceJoints)));
+                drawCalls.emplace_back(Draw(drawInfo, instanceNumJoints,
+                                            instance,
+                                            joint.takeFirst(instanceJoints)));
                 ++instances;
             } else {
-                draw.emplace_back(Draw(drawInfo, numJoints, instance, joint));
+                drawCalls.emplace_back(
+                    Draw(drawInfo, instanceNumJoints, instance, joint));
                 ++instances;
                 ++joints;
             }
         }
-        return draw;
-    }
-
-    void pushDrawCalls(
-        const Model& model, GLuint numJoints,
-        std::vector<BufferAllocation<Instance>>& instanceAllocations,
-        std::vector<BufferAllocation<glm::mat4>>& jointAllocations) noexcept {
-        auto newDraw = getDrawCalls(model, numJoints, instanceAllocations,
-                                    jointAllocations);
-        auto drawBegin = newDraw.begin();
-        auto& drawCalls = getDrawCallVector(model);
-        if (!drawCalls.empty()) {
-            auto& lastDraw = drawCalls.back();
-            if (lastDraw.jointMatrixCount == drawBegin->jointMatrixCount &&
-                lastDraw.instanceAllocation.canJoin(
-                    drawBegin->instanceAllocation) &&
-                lastDraw.jointAllocation.canJoin(drawBegin->jointAllocation)) {
-                lastDraw.instanceAllocation.join(drawBegin->instanceAllocation);
-                lastDraw.jointAllocation.join(drawBegin->jointAllocation);
-                drawBegin += 1;
-            }
-        }
-        for (const auto& draw :
-             std::ranges::subrange(drawBegin, newDraw.end())) {
-            drawCalls.emplace_back(draw);
-        }
+        return drawCalls;
     }
 
     StreamHandle<glm::mat4> jointStream;
     StreamHandle<Instance> instanceStream;
-    DrawCallMap drawCallMap;
+    DrawCallMap<AnimatedPack> drawCallMap;
 };

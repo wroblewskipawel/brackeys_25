@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "concepts/range.h"
 #include "graphics/resources/buffer/ring.h"
 #include "graphics/resources/gl/buffer/stream.h"
 #include "graphics/resources/gl/draw.h"
@@ -53,48 +54,31 @@ class DynamicPack {
     template <typename Instances>
         requires RefConstRange<Instances, Instance>
     DynamicPack& addDraw(const Model& model, Instances&& instanceData) {
-        auto instanceAllocations = streamBuffer.get().get().pushData(
-            std::forward<Instances>(instanceData));
-        pushDrawCalls(model, instanceAllocations);
+        drawCallMap.pushDrawCalls(
+            model, getDrawCalls(model, std::forward<Instances>(instanceData)));
         return *this;
     }
 
-    void clear() noexcept {
-        // We never remove entries from the map, making the draw pack owner of
-        // the shared resources (MeshPack, MaterialPack) and thus extending it
-        // lifetime til the DrawPack gets destroyed,
-        // This is not desirable and may lead to situations where resources that
-        // are no longer intented to be used, aren't released when expected
-        // TODO: Resolve
-        for (auto& [_, drawCalls] : drawCallMap) {
-            drawCalls.clear();
-        }
-    }
-
-   private:
-    friend class DynamicStage<Vertex, Material, Instance>;
+    void clear() noexcept { drawCallMap.clear(); }
 
     struct Draw {
         DrawInfo drawInfo;
         BufferAllocation<Instance> instanceAllocation;
-    };
 
-    using DrawCallMap =
-        std::unordered_map<PackHandles<Vertex, Material>, std::vector<Draw>>;
-
-    auto& getDrawCallVector(const Model& model) noexcept {
-        auto packHandles = model.getPackHandles();
-        auto drawCallVectorIt = drawCallMap.find(packHandles);
-        if (drawCallVectorIt == drawCallMap.end()) {
-            drawCallMap.emplace(std::piecewise_construct,
-                                std::forward_as_tuple(packHandles.copy()),
-                                std::forward_as_tuple(std::vector<Draw>{}));
+        bool canJoin(const Draw& other) const noexcept {
+            return instanceAllocation.canJoin(other.instanceAllocation);
         }
-        return drawCallMap.find(packHandles)->second;
+
+        void join(const Draw& other) noexcept {
+            return instanceAllocation.join(other.instanceAllocation);
+        }
     };
+
+   private:
+    friend class DynamicStage<Vertex, Material, Instance>;
 
     void draw(const UniformLocations& uniformLocations) {
-        for (auto& [packHandles, drawCalls] : drawCallMap) {
+        for (auto& [packHandles, drawCalls] : drawCallMap.getDrawCalls()) {
             if (drawCalls.empty()) continue;
             packHandles.bind();
             auto& stream = streamBuffer.get().get();
@@ -122,21 +106,22 @@ class DynamicPack {
         }
     }
 
-    void pushDrawCalls(
-        const Model& model,
-        std::vector<BufferAllocation<Instance>> instanceAllocations) noexcept {
-        auto& drawCalls = getDrawCallVector(model);
-        auto allocationsBegin = instanceAllocations.begin();
-        if (!drawCalls.empty() && drawCalls.back().instanceAllocation.tryJoin(
-                                      instanceAllocations.front())) {
-            allocationsBegin += 1;
+    template <typename Instances>
+        requires RefConstRange<Instances, Instance>
+    auto getDrawCalls(const Model& model, Instances&& instanceData) noexcept {
+        auto instanceAllocations = streamBuffer.get().get().pushData(
+            std::forward<Instances>(instanceData));
+
+        auto drawInfo = DrawInfo(model);
+        auto drawCalls = std::vector<Draw>{};
+        drawCalls.reserve(instanceAllocations.size());
+
+        for (const auto& allocation : instanceAllocations) {
+            drawCalls.emplace_back(Draw(drawInfo, allocation));
         }
-        for (const auto& instanceAllocation : std::ranges::subrange(
-                 allocationsBegin, instanceAllocations.end())) {
-            drawCalls.emplace_back(Draw(DrawInfo(model), instanceAllocation));
-        }
+        return drawCalls;
     }
 
     StreamHandle<Instance> streamBuffer;
-    DrawCallMap drawCallMap;
+    DrawCallMap<DynamicPack> drawCallMap;
 };
