@@ -94,42 +94,48 @@ class AnimatedPack {
             instanceAllocation.join(other.instanceAllocation);
             jointAllocation.join(other.jointAllocation);
         }
+
+        auto getDrawCall(
+            const UniformLocations& uniformLocations,
+            const StreamBuffer<Instance>& instanceStream,
+            const StreamBuffer<glm::mat4>& jointStream) const noexcept {
+            VertexArray<Vertex, Instance>::getVertexArray()
+                .bindBuffer<BindingIndex::InstanceAttributes>(BindingInfo{
+                    .buffer =
+                        instanceStream.getBuffer(instanceAllocation).get(),
+                    .offset = 0,
+                });
+            if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
+                glUniform1ui(uniformLocations.materialIndex,
+                             static_cast<GLuint>(drawInfo.materialIndex));
+            }
+            jointStream.bindBuffer<BufferBindings::Storage>(
+                jointAllocation, jointMatrixBufferBinding);
+            glUniform1ui(uniformLocations.jointMatrixCount, jointMatrixCount);
+            glUniform1ui(uniformLocations.jointMatrixOffset,
+                         jointAllocation.bufferOffset);
+            return [this]() {
+                glDrawElementsInstancedBaseInstance(
+                    GL_TRIANGLES, drawInfo.meshOffsets.indexCount,
+                    GL_UNSIGNED_INT,
+                    (void*)(drawInfo.meshOffsets.indexOffset * sizeof(GLuint)),
+                    instanceAllocation.numInstances,
+                    instanceAllocation.bufferOffset);
+            };
+        }
     };
 
    private:
     friend class AnimatedStage<Vertex, Material, Instance>;
 
     void draw(const UniformLocations& uniformLocations) {
+        auto& instances = instanceStream.get().get();
+        auto& joints = jointStream.get().get();
         for (auto& [packHandles, drawCalls] : drawCallMap.getDrawCalls()) {
             if (drawCalls.empty()) continue;
             packHandles.bind();
-            auto& stream = instanceStream.get().get();
             for (const auto& draw : drawCalls) {
-                auto& instanceAllocation = draw.instanceAllocation;
-                auto instanceBuffer = stream.getBuffer(instanceAllocation);
-                VertexArray<Vertex, Instance>::getVertexArray()
-                    .bindBuffer<BindingIndex::InstanceAttributes>(BindingInfo{
-                        .buffer = instanceBuffer.get(),
-                        .offset = 0,
-                    });
-                if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
-                    glUniform1ui(
-                        uniformLocations.materialIndex,
-                        static_cast<GLuint>(draw.drawInfo.materialIndex));
-                }
-                jointStream.get().get().bindBuffer<BufferBindings::Storage>(
-                    draw.jointAllocation, jointMatrixBufferBinding);
-                glUniform1ui(uniformLocations.jointMatrixCount,
-                             draw.jointMatrixCount);
-                glUniform1ui(uniformLocations.jointMatrixOffset,
-                             draw.jointAllocation.bufferOffset);
-                glDrawElementsInstancedBaseInstance(
-                    GL_TRIANGLES, draw.drawInfo.meshOffsets.indexCount,
-                    GL_UNSIGNED_INT,
-                    (void*)(draw.drawInfo.meshOffsets.indexOffset *
-                            sizeof(GLuint)),
-                    instanceAllocation.numInstances,
-                    instanceAllocation.bufferOffset);
+                draw.getDrawCall(uniformLocations, instances, joints)();
             }
         }
     }

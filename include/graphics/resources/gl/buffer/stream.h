@@ -101,7 +101,7 @@ class StreamBuffer {
 
     template <auto Binding>
     void bindBuffer(const BufferAllocation<Type>& allocation,
-                    GLuint bindingIndex) noexcept {
+                    GLuint bindingIndex) const noexcept {
         static_assert(std::is_same_v<decltype(Binding), BufferBindings>);
 
         checkAccessAllowed(allocation);

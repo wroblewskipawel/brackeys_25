@@ -72,36 +72,41 @@ class DynamicPack {
         void join(const Draw& other) noexcept {
             return instanceAllocation.join(other.instanceAllocation);
         }
+
+        auto getDrawCall(
+            const UniformLocations& uniformLocations,
+            const StreamBuffer<Instance>& instanceStream) const noexcept {
+            VertexArray<Vertex, Instance>::getVertexArray()
+                .bindBuffer<BindingIndex::InstanceAttributes>(BindingInfo{
+                    .buffer =
+                        instanceStream.getBuffer(instanceAllocation).get(),
+                    .offset = 0,
+                });
+            if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
+                glUniform1ui(uniformLocations.materialIndex,
+                             static_cast<GLuint>(drawInfo.materialIndex));
+            }
+            return [this]() {
+                glDrawElementsInstancedBaseInstance(
+                    GL_TRIANGLES, drawInfo.meshOffsets.indexCount,
+                    GL_UNSIGNED_INT,
+                    (void*)(drawInfo.meshOffsets.indexOffset * sizeof(GLuint)),
+                    instanceAllocation.numInstances,
+                    instanceAllocation.bufferOffset);
+            };
+        }
     };
 
    private:
     friend class DynamicStage<Vertex, Material, Instance>;
 
     void draw(const UniformLocations& uniformLocations) {
+        auto& stream = streamBuffer.get().get();
         for (auto& [packHandles, drawCalls] : drawCallMap.getDrawCalls()) {
             if (drawCalls.empty()) continue;
             packHandles.bind();
-            auto& stream = streamBuffer.get().get();
             for (const auto& draw : drawCalls) {
-                auto& instanceAllocation = draw.instanceAllocation;
-                auto instanceBuffer = stream.getBuffer(instanceAllocation);
-                VertexArray<Vertex, Instance>::getVertexArray()
-                    .bindBuffer<BindingIndex::InstanceAttributes>(BindingInfo{
-                        .buffer = instanceBuffer.get(),
-                        .offset = 0,
-                    });
-                if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
-                    glUniform1ui(
-                        uniformLocations.materialIndex,
-                        static_cast<GLuint>(draw.drawInfo.materialIndex));
-                }
-                glDrawElementsInstancedBaseInstance(
-                    GL_TRIANGLES, draw.drawInfo.meshOffsets.indexCount,
-                    GL_UNSIGNED_INT,
-                    (void*)(draw.drawInfo.meshOffsets.indexOffset *
-                            sizeof(GLuint)),
-                    instanceAllocation.numInstances,
-                    instanceAllocation.bufferOffset);
+                draw.getDrawCall(uniformLocations, stream)();
             }
         }
     }
