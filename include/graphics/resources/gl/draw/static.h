@@ -60,14 +60,14 @@ class StaticPack {
     StaticPack(std::unordered_map<DrawInfo, std::vector<Instance>>&& drawData,
                MaterialPackHandle<Material>&& materialPack,
                MeshPackHandle<Vertex>&& meshPack) noexcept
-        : meshes(drawData.size()),
-          instanceBuffers(drawData.size()),
+        : instanceBuffers(drawData.size()),
           materialPack(std::move(materialPack)),
           meshPack(std::move(meshPack)) {
         glCreateBuffers(instanceBuffers.size(), instanceBuffers.data());
+        meshes.reserve(drawData.size());
         for (const auto& [i, meshDrawData] : std::views::enumerate(drawData)) {
             const auto& [drawInfo, instances] = meshDrawData;
-            meshes[i] = DrawInstanced(drawInfo, instances.size());
+            meshes.emplace_back(drawInfo, instances.size());
             glNamedBufferStorage(instanceBuffers[i],
                                  sizeof(Instance) * instances.size(),
                                  instances.data(), GL_NONE);
@@ -93,8 +93,9 @@ class StaticPack {
                              static_cast<GLuint>(draw.drawInfo.materialIndex));
             }
             glDrawElementsInstanced(
-                GL_TRIANGLES, draw.drawInfo.mesh.indexCount, GL_UNSIGNED_INT,
-                (void*)(draw.drawInfo.mesh.indexOffset * sizeof(GLuint)),
+                GL_TRIANGLES, draw.drawInfo.meshOffsets.indexCount,
+                GL_UNSIGNED_INT,
+                (void*)(draw.drawInfo.meshOffsets.indexOffset * sizeof(GLuint)),
                 draw.numInstances);
         }
     }
@@ -115,8 +116,7 @@ class StaticPackBuilder {
         : meshPack(meshPack.copy()), materialPack(materialPack.copy()) {}
 
     StaticPackBuilder& addDraw(const Model& model, Instance instanceData) {
-        MeshOffsets mesh = getMeshOffsets(model.mesh);
-        DrawInfo drawInfo{mesh, model.material.packItemIndex};
+        auto drawInfo = DrawInfo(model);
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
             drawDataIt->second.emplace_back(instanceData);
@@ -131,8 +131,7 @@ class StaticPackBuilder {
 
     StaticPackBuilder& addDrawMulti(const Model& model,
                                     std::vector<Instance>&& instanceData) {
-        MeshOffsets mesh = getMeshOffsets(model.mesh);
-        DrawInfo drawInfo{mesh, model.material.packItemIndex};
+        auto drawInfo = DrawInfo(model);
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
             drawDataIt->second.insert(drawDataIt->second.end(),

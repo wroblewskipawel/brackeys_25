@@ -10,6 +10,7 @@
 
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
+#include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/shader.h"
 #include "graphics/resources/gl/vertex_array.h"
 #include "graphics/storage/gl/material.h"
@@ -30,19 +31,31 @@ template <typename Vertex, typename Material, typename Instance>
 class Stage;
 
 struct DrawInfo {
-    MeshOffsets mesh;
-    size_t materialIndex;
+    template <typename Vertex, typename Material>
+    DrawInfo(const Model<Vertex, Material>& model) noexcept
+        : meshOffsets{model.getMeshOffsets()},
+          materialIndex{model.getMaterialIndex()} {}
 
-    bool operator==(const DrawInfo& other) const noexcept {
-        return mesh == other.mesh && materialIndex == other.materialIndex;
+    DrawInfo(const DrawInfo&) = default;
+    DrawInfo& operator=(const DrawInfo&) = default;
+
+    DrawInfo(DrawInfo&&) = default;
+    DrawInfo& operator=(DrawInfo&&) = default;
+
+    MeshOffsets meshOffsets;
+    uint32_t materialIndex;
+
+    friend bool operator==(const DrawInfo& lhs, const DrawInfo& rhs) noexcept {
+        return lhs.meshOffsets == rhs.meshOffsets &&
+               lhs.materialIndex == rhs.materialIndex;
     }
 };
 namespace std {
 template <>
 struct hash<DrawInfo> {
     std::size_t operator()(const DrawInfo& drawInfo) const noexcept {
-        std::size_t h1 = std::hash<MeshOffsets>{}(drawInfo.mesh);
-        std::size_t h2 = std::hash<size_t>{}(drawInfo.materialIndex);
+        std::size_t h1 = std::hash<MeshOffsets>{}(drawInfo.meshOffsets);
+        std::size_t h2 = std::hash<uint32_t>{}(drawInfo.materialIndex);
         return h1 ^ (h2 << 1);
     }
 };

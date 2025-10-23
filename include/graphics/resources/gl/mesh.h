@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "graphics/resources/gl/material.h"
-#include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/shader.h"
 #include "graphics/resources/gl/vertex_array.h"
 #include "graphics/resources/mesh.h"
@@ -68,12 +67,6 @@ class MeshPackBuilder;
 template <typename Vertex>
 class MeshPack {
    public:
-    static MeshOffsets getMeshOffsets(
-        const MeshHandle<Vertex>& meshHandle) noexcept {
-        return meshHandle.packHandle.get().get().getMeshOffsets(
-            meshHandle.packItemIndex);
-    }
-
     static void bind(const MeshPackHandle<Vertex>& packHandle) {
         auto& vertexArray = VertexArray<Vertex, glm::mat4>::getVertexArray();
         auto& meshPack = packHandle.get().get();
@@ -105,25 +98,19 @@ class MeshPack {
 
     size_t numMeshes() const noexcept { return meshes.size(); }
 
+    MeshOffsets getMeshOffsets(size_t meshIndex) const noexcept {
+        return meshes[meshIndex];
+    }
+
    private:
     friend class MeshPackBuilder<Vertex>;
 
     MeshPack(MeshBuffers&& buffers, std::vector<MeshOffsets>&& meshes)
         : buffers(std::move(buffers)), meshes(std::move(meshes)) {}
 
-    MeshOffsets getMeshOffsets(size_t meshIndex) const noexcept {
-        return meshes[meshIndex];
-    }
-
     MeshBuffers buffers;
     std::vector<MeshOffsets> meshes;
 };
-
-template <typename Vertex>
-inline MeshOffsets getMeshOffsets(
-    const MeshHandle<Vertex>& meshHandle) noexcept {
-    return MeshPack<Vertex>::getMeshOffsets(meshHandle);
-}
 
 template <typename Vertex>
 class MeshPackBuilder {

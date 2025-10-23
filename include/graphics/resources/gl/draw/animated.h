@@ -111,10 +111,6 @@ class AnimatedPack {
         return drawCallMap.find(packHandles)->second;
     };
 
-    auto getDrawInfo(const Model& model) noexcept {
-        return DrawInfo{getMeshOffsets(model.mesh), model.material.packItemIndex};
-    }
-
     void draw(const UniformLocations& uniformLocations) {
         for (auto& [packHandles, drawCalls] : drawCallMap) {
             if (drawCalls.empty()) continue;
@@ -140,9 +136,10 @@ class AnimatedPack {
                 glUniform1ui(uniformLocations.jointMatrixOffset,
                              draw.jointAllocation.bufferOffset);
                 glDrawElementsInstancedBaseInstance(
-                    GL_TRIANGLES, draw.drawInfo.mesh.indexCount,
+                    GL_TRIANGLES, draw.drawInfo.meshOffsets.indexCount,
                     GL_UNSIGNED_INT,
-                    (void*)(draw.drawInfo.mesh.indexOffset * sizeof(GLuint)),
+                    (void*)(draw.drawInfo.meshOffsets.indexOffset *
+                            sizeof(GLuint)),
                     instanceAllocation.numInstances,
                     instanceAllocation.bufferOffset);
             }
@@ -174,7 +171,7 @@ class AnimatedPack {
         const Model& model, GLuint numJoints,
         std::vector<BufferAllocation<Instance>>& instanceAllocations,
         std::vector<BufferAllocation<glm::mat4>>& jointAllocations) {
-        auto drawInfo = getDrawInfo(model);
+        auto drawInfo = DrawInfo(model);
         auto draw = std::vector<Draw>();
         auto joints = jointAllocations.begin();
         auto instances = instanceAllocations.begin();

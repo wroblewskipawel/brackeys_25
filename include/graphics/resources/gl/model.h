@@ -6,9 +6,9 @@
 #include "collections/slot_map.h"
 #include "collections/unique_list.h"
 #include "collections/unique_list/vector_list.h"
-#include "graphics/resources/gl/draw.h"
 #include "graphics/storage/gl/material.h"
 #include "graphics/storage/gl/mesh.h"
+#include "graphics/resources/gl/mesh.h"
 
 template <typename PackHandle>
 struct PackItemIndex {
@@ -138,6 +138,14 @@ struct Model {
 
     PackHandles getPackHandles() const noexcept {
         return PackHandles(mesh.packHandle, material.packHandle);
+    }
+
+    MeshOffsets getMeshOffsets() const noexcept {
+        return mesh.packHandle.get().get().getMeshOffsets(mesh.packItemIndex);
+    }
+
+    uint32_t getMaterialIndex() const noexcept {
+        return material.packItemIndex;
     }
 
     friend bool operator==(const Model& lhs, const Model& rhs) noexcept {

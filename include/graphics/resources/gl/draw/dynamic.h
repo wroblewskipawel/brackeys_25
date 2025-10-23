@@ -81,11 +81,6 @@ class DynamicPack {
     using DrawCallMap =
         std::unordered_map<PackHandles<Vertex, Material>, std::vector<Draw>>;
 
-    auto getDrawInfo(const Model& model) noexcept {
-        return DrawInfo{getMeshOffsets(model.mesh),
-                        model.material.packItemIndex};
-    }
-
     auto& getDrawCallVector(const Model& model) noexcept {
         auto packHandles = model.getPackHandles();
         auto drawCallVectorIt = drawCallMap.find(packHandles);
@@ -116,9 +111,9 @@ class DynamicPack {
                         static_cast<GLuint>(draw.drawInfo.materialIndex));
                 }
                 glDrawElementsInstancedBaseInstance(
-                    GL_TRIANGLES, draw.drawInfo.mesh.indexCount,
+                    GL_TRIANGLES, draw.drawInfo.meshOffsets.indexCount,
                     GL_UNSIGNED_INT,
-                    (void*)(draw.drawInfo.mesh.indexOffset * sizeof(GLuint)),
+                    (void*)(draw.drawInfo.meshOffsets.indexOffset * sizeof(GLuint)),
                     instanceAllocation.numInstances,
                     instanceAllocation.bufferOffset);
             }
@@ -137,7 +132,7 @@ class DynamicPack {
         for (const auto& instanceAllocation : std::ranges::subrange(
                  allocationsBegin, instanceAllocations.end())) {
             drawCalls.emplace_back(
-                Draw(getDrawInfo(model), instanceAllocation));
+                Draw(DrawInfo(model), instanceAllocation));
         }
     }
 
