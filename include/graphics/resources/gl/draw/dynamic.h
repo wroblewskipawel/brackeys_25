@@ -25,6 +25,7 @@ template <typename Vertex, typename Material, typename Instance>
 class DynamicPack {
    public:
     using Model = Model<Vertex, Material>;
+    using PackHandlesView = typename Model::PackHandlesView;
 
     DynamicPack(StreamHandle<Instance>&& streamBuffer) noexcept
         : streamBuffer(std::move(streamBuffer)) {}
@@ -55,7 +56,8 @@ class DynamicPack {
         requires RefConstRange<Instances, Instance>
     DynamicPack& addDraw(const Model& model, Instances&& instanceData) {
         drawCallMap.pushDrawCalls(
-            model, getDrawCalls(model, std::forward<Instances>(instanceData)));
+            model.getPackHandlesView(),
+            getDrawCalls(model, std::forward<Instances>(instanceData)));
         return *this;
     }
 

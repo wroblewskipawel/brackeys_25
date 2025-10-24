@@ -81,6 +81,10 @@ struct PackHandlesView {
         : meshPackHandle(meshPackHandle),
           materialPackHandle(materialPackHandle) {}
 
+    PackHandlesView(const PackHandles<Vertex, Material>& packHandles) noexcept
+        : meshPackHandle(packHandles.meshPackHandle),
+          materialPackHandle(packHandles.materialPackHandle) {}
+
     PackHandlesView(const PackHandlesView&) = delete;
     PackHandlesView& operator=(const PackHandlesView&) = delete;
 
@@ -209,6 +213,21 @@ template <typename Vertex, typename Material, typename Item>
 using PackMap = std::map<PackHandles<Vertex, Material>, Item,
                          PackHandlesLess<Vertex, Material>>;
 
+template <typename, typename>
+struct PackMapTypes;
+
+template <typename Vertex, typename Material, typename Item>
+struct PackMapTypes<PackHandlesView<Vertex, Material>, Item> {
+    using PackUnorderedMap = PackUnorderedMap<Vertex, Material, Item>;
+    using PackMap = PackMap<Vertex, Material, Item>;
+};
+
+template <typename Vertex, typename Material, typename Item>
+struct PackMapTypes<PackHandles<Vertex, Material>, Item> {
+    using PackUnorderedMap = PackUnorderedMap<Vertex, Material, Item>;
+    using PackMap = PackMap<Vertex, Material, Item>;
+};
+
 template <typename Vertex>
 using MeshHandle = PackItemIndex<MeshPackHandle<Vertex>>;
 
@@ -220,10 +239,6 @@ struct Model {
     using MeshHandle = MeshHandle<Vertex>;
     using MaterialHandle = MaterialHandle<Material>;
     using PackHandlesView = PackHandlesView<Vertex, Material>;
-    template <typename Item>
-    using PackUnorderedMap = PackUnorderedMap<Vertex, Material, Item>;
-    template <typename Item>
-    using PackMap = PackMap<Vertex, Material, Item>;
 
     MeshHandle mesh;
     MaterialHandle material;

@@ -10,6 +10,7 @@
 #include "graphics/resources/gl/draw/animated.h"
 #include "graphics/resources/gl/draw/dynamic.h"
 #include "graphics/resources/gl/draw/static.h"
+#include "graphics/resources/gl/draw/static/pack.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/shader.h"
@@ -59,11 +60,24 @@ Pipeline(Stages&&...) -> Pipeline<std::decay_t<Stages>...>;
 template <typename Vertex, typename Material, typename Instance>
 class StaticStage {
    public:
-    StaticStage(StaticPackBuilder<Vertex, Material, Instance>&& builder)
-        : staticPack(builder.build()) {}
+    using StaticPack = StaticPack<Vertex, Material, Instance>;
+    using StaticPackHandle = typename StaticPack::Handle;
+
+    StaticStage() = default;
 
     StaticStage& setShader(const Shader& shader) {
         shaderProgram = shader.program;
+        return *this;
+    }
+
+    StaticStage& clear() noexcept {
+        staticPack.clear();
+        return *this;
+    }
+
+    StaticStage& addDraw(const StaticPackHandle& packHandle,
+                         const glm::mat4& instanceOffset = glm::mat4(1.0f)) {
+        staticPack.addDraw(packHandle, instanceOffset);
         return *this;
     }
 
@@ -85,7 +99,7 @@ class StaticStage {
     }
 
     GLuint shaderProgram{0};
-    StaticPack<Vertex, Material, Instance> staticPack;
+    StaticDrawMap<Vertex, Material, Instance> staticPack;
 };
 
 template <typename Vertex, typename Material, typename Instance>

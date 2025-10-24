@@ -17,6 +17,9 @@
 #include "graphics/storage/gl/material.h"
 
 template <typename Vertex, typename Material, typename Instance>
+class StaticDrawMap;
+
+template <typename Vertex, typename Material, typename Instance>
 class StaticPackBuilder;
 
 template <typename Vertex, typename Material, typename Instance>
@@ -65,14 +68,14 @@ struct hash<DrawInfo> {
 template <typename Pack>
 concept DrawPackType = requires {
     typename Pack::Draw;
-    typename Pack::Model;
+    typename Pack::PackHandlesView;
 };
 
 template <DrawPackType Pack>
 class DrawCallMap {
    public:
     using Draw = typename Pack::Draw;
-    using Model = typename Pack::Model;
+    using PackHandlesView = typename Pack::PackHandlesView;
 
     DrawCallMap() = default;
 
@@ -86,11 +89,25 @@ class DrawCallMap {
 
     const auto& getDrawCalls() const noexcept { return drawCallMap; }
 
+    void pushDrawCall(const PackHandlesView& handlesView,
+                      Draw&& drawCall) noexcept {
+        auto& drawCallsVector = getDrawCallVector(handlesView);
+        if (!drawCallsVector.empty()) {
+            auto& lastDraw = drawCallsVector.back();
+            if (lastDraw.canJoin(drawCall)) {
+                lastDraw.join(drawCall);
+                return;
+            }
+        }
+        drawCallsVector.emplace_back(std::move(drawCall));
+    }
+
     template <typename Range>
         requires RefConstRange<Range, Draw>
-    void pushDrawCalls(const Model& model, Range&& drawCalls) noexcept {
+    void pushDrawCalls(const PackHandlesView& handlesView,
+                       Range&& drawCalls) noexcept {
         auto drawCallsBegin = drawCalls.begin();
-        auto& drawCallsVector = getDrawCallVector(model);
+        auto& drawCallsVector = getDrawCallVector(handlesView);
         if (!drawCallsVector.empty()) {
             auto& lastDraw = drawCallsVector.back();
             if (lastDraw.canJoin(*drawCallsBegin)) {
@@ -105,16 +122,16 @@ class DrawCallMap {
     }
 
    private:
-    auto& getDrawCallVector(const Model& model) noexcept {
-        auto packHandles = model.getPackHandlesView();
-        auto drawCallVectorIt = drawCallMap.find(packHandles);
+    auto& getDrawCallVector(const PackHandlesView& handlesView) noexcept {
+        auto drawCallVectorIt = drawCallMap.find(handlesView);
         if (drawCallVectorIt == drawCallMap.end()) {
             drawCallMap.emplace(std::piecewise_construct,
-                                std::forward_as_tuple(packHandles.getOwned()),
+                                std::forward_as_tuple(handlesView.getOwned()),
                                 std::forward_as_tuple(std::vector<Draw>{}));
         }
-        return drawCallMap.find(packHandles)->second;
+        return drawCallMap.find(handlesView)->second;
     };
 
-    Model::template PackMap<std::vector<Draw>> drawCallMap{};
+    typename PackMapTypes<PackHandlesView, std::vector<Draw>>::PackMap
+        drawCallMap{};
 };

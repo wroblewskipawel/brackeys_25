@@ -27,6 +27,7 @@ template <typename Vertex, typename Material, typename Instance>
 class AnimatedPack {
    public:
     using Model = Model<Vertex, Material>;
+    using PackHandlesView = typename Model::PackHandlesView;
 
     AnimatedPack(const StreamHandle<Instance>& instanceStream,
                  const StreamHandle<glm::mat4>& jointStream) noexcept
@@ -71,8 +72,9 @@ class AnimatedPack {
     AnimatedPack& addDrawMulti(const Model& model, Instances&& instanceData,
                                Samplers&& samplers) {
         drawCallMap.pushDrawCalls(
-            model, getDrawCalls(model, std::forward<Instances>(instanceData),
-                                std::forward<Samplers>(samplers)));
+            model.getPackHandlesView(),
+            getDrawCalls(model, std::forward<Instances>(instanceData),
+                         std::forward<Samplers>(samplers)));
         return *this;
     }
 
