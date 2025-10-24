@@ -17,47 +17,8 @@
 #include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/shader.h"
 
-template <typename... Stages>
+template <typename...>
 class Pipeline;
-
-template <typename Stage, typename... Stages>
-class Pipeline<Stage, Stages...> {
-   public:
-    Pipeline(Stage&& stage, Stages&&... stages)
-        : stage(std::forward<Stage>(stage)),
-          stages(std::forward<Stages>(stages)...) {}
-
-    void execute(const CameraMatrices& cameraMatrices) {
-        stage.execute(cameraMatrices);
-        stages.execute(cameraMatrices);
-    }
-
-    template <typename Search>
-    Search& getStage() {
-        if constexpr (std::is_same_v<Search, Stage>) {
-            return stage;
-        } else {
-            if constexpr (sizeof...(Stages) == 0) {
-                static_assert(false, "Stage not present in Pipeline!");
-            } else {
-                return stages.getStage<Search>();
-            }
-        }
-    }
-
-   private:
-    Stage stage;
-    Pipeline<Stages...> stages;
-};
-
-template <>
-class Pipeline<> {
-   public:
-    void execute(const CameraMatrices& cameraMatrices) {}
-};
-
-template <typename... Stages>
-Pipeline(Stages&&...) -> Pipeline<std::decay_t<Stages>...>;
 
 template <typename Vertex, typename Material, typename Instance>
 class StaticStage {
@@ -66,6 +27,11 @@ class StaticStage {
     using StaticBatchHandle = typename StaticBatch::Handle;
 
     StaticStage() = default;
+
+    template <typename... InstanceTypes, typename... StorageTypes>
+    StaticStage(const StreamList<InstanceTypes...>& instanceStreams,
+                const StreamList<StorageTypes...>& storageStreams)
+        : StaticStage() {}
 
     StaticStage& setShader(const Shader& shader) {
         shaderProgram = shader.program;
@@ -84,7 +50,7 @@ class StaticStage {
     }
 
    private:
-    template <typename... Stages>
+    template <typename...>
     friend class Pipeline;
 
     void execute(const CameraMatrices& cameraMatrices) {
@@ -112,8 +78,9 @@ class DynamicStage {
     DynamicStage(const StreamHandle<Instance>& streamBuffer)
         : dynamicDrawMap(streamBuffer.copy()) {}
 
-    template <typename... InstanceTypes>
-    DynamicStage(const StreamList<InstanceTypes...>& instanceStreams)
+    template <typename... InstanceTypes, typename... StorageTypes>
+    DynamicStage(const StreamList<InstanceTypes...>& instanceStreams,
+                 const StreamList<StorageTypes...>& storageStreams)
         : DynamicStage(instanceStreams.getStreamHandle<Instance>()) {}
 
     DynamicStage& setShader(const Shader& shader) {
@@ -139,7 +106,7 @@ class DynamicStage {
     }
 
    private:
-    template <typename... Stages>
+    template <typename...>
     friend class Pipeline;
 
     void execute(const CameraMatrices& cameraMatrices) {
@@ -201,7 +168,7 @@ class AnimatedStage {
     }
 
    private:
-    template <typename... Stages>
+    template <typename...>
     friend class Pipeline;
 
     void execute(const CameraMatrices& cameraMatrices) {
@@ -219,6 +186,44 @@ class AnimatedStage {
 
     GLuint shaderProgram{0};
     AnimatedDrawMap<Vertex, Material, Instance> animatedDrawMap;
+};
+
+template <typename... Stages>
+class Pipeline {
+   public:
+    template <typename... Args>
+    Pipeline(Args&&... args) noexcept : stages(std::forward<Args>(args)...){};
+
+    void execute(const CameraMatrices& cameraMatrices) noexcept {
+        (execute<Stages>(cameraMatrices), ...);
+    }
+
+    void clear() noexcept { (clear<Stages>(), ...); }
+
+    template <typename Stage>
+    auto& getStage() const noexcept {
+        return stages.get<Stage>();
+    }
+
+    template <typename Stage>
+    auto& getStage() noexcept {
+        return stages.get<Stage>();
+    }
+
+   private:
+    using StageList = UniqueTypeList<Stages...>;
+
+    template <typename Stage>
+    void execute(const CameraMatrices& cameraMatrices) noexcept {
+        stages.get<Stage>().execute(cameraMatrices);
+    }
+
+    template <typename Stage>
+    void clear() noexcept {
+        stages.get<Stage>().clear();
+    }
+
+    StageList stages;
 };
 
 template <typename, typename>
@@ -264,7 +269,16 @@ struct StageListBuilder<ModelStage, TypeList<Vertices...>,
     using Builder = typename Unwrap<ModelStageList>::Type;
 
    public:
-    using StageList = typename Builder::UniqueTypeList;
+    using StageList = typename Builder::TypeList;
+};
+
+template <typename, typename, typename>
+struct PipelineBuilder;
+
+template <typename... Static, typename... Dynamic, typename... Animated>
+struct PipelineBuilder<TypeList<Static...>, TypeList<Dynamic...>,
+                       TypeList<Animated...>> {
+    using Type = Pipeline<Static..., Dynamic..., Animated...>;
 };
 
 template <typename... Vertices>
@@ -289,12 +303,56 @@ class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
     using InstanceStreams = StreamList<Instances...>;
     using StorageStreams = StreamList<Storage...>;
 
-    Renderer(InstanceStreams&& instanceStreams,
-             StorageStreams&& storageStreams) noexcept
-        : instanceStreams{std::move(instanceStreams)},
-          storageStreams{std::move(storageStreams)},
-          animatedStages{instanceStreams, storageStreams},
-          dynamicStages{instanceStreams} {}
+    Renderer(InstanceStreams&& instanceStreamsList,
+             StorageStreams&& storageStreamsList) noexcept
+        : instanceStreams{std::move(instanceStreamsList)},
+          storageStreams{std::move(storageStreamsList)},
+          pipeline{instanceStreams, storageStreams} {}
+
+    void beginFrame() noexcept {
+        instanceStreams.beginGeneration();
+        storageStreams.beginGeneration();
+
+        pipeline.clear();
+    }
+
+    void endFrame(const CameraMatrices& cameraMatrices) noexcept {
+        instanceStreams.endGeneration();
+        storageStreams.endGeneration();
+
+        pipeline.execute(cameraMatrices);
+    }
+
+    template <typename Stage>
+    auto& setShader(const Shader& shader) noexcept {
+        pipeline.getStage<Stage>().setShader(shader);
+        return *this;
+    };
+
+    template <typename Vertex, typename Material, typename Instance>
+    auto& addDraw(
+        const StaticBatchHandle<Vertex, Material, Instance>& packHandle,
+        const glm::mat4& instanceOffset = glm::mat4(1.0f)) {
+        pipeline.getStage<StaticStage<Vertex, Material, Instance>>().addDraw(
+            packHandle, instanceOffset);
+        return *this;
+    }
+
+    template <typename Vertex, typename Material, typename Instance>
+    auto& addDraw(const Model<Vertex, Material>& model,
+                  const Instance& instance) {
+        pipeline.getStage<DynamicStage<Vertex, Material, Instance>>().addDraw(
+            model, instance);
+        return *this;
+    }
+
+    template <typename Vertex, typename Material, typename Instance>
+    auto& addDraw(const Model<Vertex, Material>& model,
+                  const Instance& instance, const AnimationPlayer& sampler) {
+        pipeline.getStage<AnimatedStage<Vertex, Material, Instance>>().addDraw(
+            model, instance, sampler);
+        return *this;
+    }
 
    private:
     using AnimatedList = typename AnimatedList<Vertices...>::Type;
@@ -312,10 +370,10 @@ class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
         typename StageListBuilder<AnimatedModelStage, AnimatedList,
                                   MaterialsList, InstancesList>::StageList;
 
+    using Pipeline = typename PipelineBuilder<StaticStages, DynamicStages,
+                                              AnimatedStages>::Type;
+
     InstanceStreams instanceStreams;
     StorageStreams storageStreams;
-
-    AnimatedStages animatedStages;
-    DynamicStages dynamicStages;
-    StaticStages staticStages;
+    Pipeline pipeline;
 };
