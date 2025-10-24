@@ -21,7 +21,7 @@
 #include "graphics/resources/gl/buffer/binding.h"
 #include "graphics/resources/gl/buffer/std140.h"
 #include "graphics/resources/gl/buffer/stream.h"
-#include "graphics/resources/gl/buffer/stream/pack.h"
+#include "graphics/resources/gl/buffer/stream/list.h"
 #include "graphics/resources/gl/bundle.h"
 #include "graphics/resources/gl/draw.h"
 #include "graphics/resources/gl/draw/dynamic.h"
@@ -38,11 +38,35 @@
 
 using MaterialList = TypeList<EmptyMaterial, UnlitMaterial>;
 using MeshesList = TypeList<ColoredVertex, UnlitVertex, UnlitAnimatedVertex>;
+using InstancesList = TypeList<glm::vec3, glm::vec4, glm::mat4>;
+using StorageList = TypeList<glm::mat4>;
 
 int main(void) {
     Window window{};
 
     auto widgets = WidgetListBuilder<>{}.append(FpsDisplay(0.98f)).build();
+
+    auto instanceStreamList = StreamListBuilder<>{}
+                                  .append(StreamBufferConfig<glm::mat4>{
+                                      .pageSize = 512,
+                                  })
+                                  .append(StreamBufferConfig<glm::vec4>{
+                                      .pageSize = 512,
+                                  })
+                                  .append(StreamBufferConfig<glm::vec3>{
+                                      .pageSize = 512,
+                                  })
+                                  .build();
+
+    auto storageStreamList = StreamListBuilder<>{}
+                                 .append(StreamBufferConfig<glm::mat4>{
+                                     .pageSize = 512,
+                                 })
+                                 .build();
+
+    auto renderer =
+        Renderer<MeshesList, MaterialList, InstancesList, StorageList>(
+            std::move(instanceStreamList), std::move(storageStreamList));
 
     auto instanceStreamHandle =
         registerStreamBuffer(StreamBuffer<glm::mat4>(256));

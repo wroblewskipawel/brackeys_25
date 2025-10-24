@@ -20,6 +20,14 @@ struct Wrap<WrapType, UniqueTypeListBuilder<TypeList...>> {
     using Type = UniqueTypeListBuilder<WrapType<TypeList>...>;
 };
 
+template <typename>
+struct Unwrap;
+
+template <typename... TypeList>
+struct Unwrap<UniqueTypeListBuilder<TypeList...>> {
+    using Type = UniqueTypeListBuilder<typename TypeList::Type...>;
+};
+
 template <template <typename, typename> typename, typename, typename>
 struct Zip;
 
@@ -74,6 +82,28 @@ struct Product<ProductType, UniqueTypeListBuilder<First, FirstList...>,
     using Type = typename Concatenate<Head, Tail>::Type;
 };
 
+template <template <typename> typename, typename>
+struct Filter;
+
+template <template <typename> typename FilterType>
+struct Filter<FilterType, UniqueTypeListBuilder<>> {
+    using Type = UniqueTypeListBuilder<>;
+};
+
+template <template <typename> typename FilterType, typename Head,
+          typename... Tail>
+struct Filter<FilterType, UniqueTypeListBuilder<Head, Tail...>> {
+   private:
+    using FilteredTail =
+        Filter<FilterType, UniqueTypeListBuilder<Tail...>>::Type;
+
+   public:
+    using Type = std::conditional_t<
+        FilterType<Head>::value,
+        typename Concatenate<UniqueTypeListBuilder<Head>, FilteredTail>::Type,
+        FilteredTail>;
+};
+
 template <typename Search, typename... Types>
 struct ContainsType;
 
@@ -89,7 +119,12 @@ struct ContainsType<Search, Type, Types...> {
 };
 
 template <>
-struct UniqueTypeList<> {};
+struct UniqueTypeList<> {
+    UniqueTypeList() = default;
+
+    template <typename... Args>
+    UniqueTypeList(Args&&... args) {}
+};
 
 template <typename Type, typename... Types>
 class UniqueTypeList<Type, Types...> {
@@ -101,6 +136,11 @@ class UniqueTypeList<Type, Types...> {
 
     UniqueTypeList(UniqueTypeList&&) = default;
     UniqueTypeList& operator=(UniqueTypeList&&) = default;
+
+    template <typename... Args>
+    UniqueTypeList(Args&&... args)
+        : value(std::forward<Args>(args)...),
+          next(std::forward<Args>(args)...) {}
 
     UniqueTypeList(Type&& type, Types&&... types)
         : value(std::forward<Type>(type)),
@@ -160,6 +200,7 @@ template <typename Type, typename... Types>
 class UniqueTypeListBuilder<Type, Types...> {
    public:
     using UniqueTypeList = UniqueTypeList<Type, Types...>;
+    using TypeList = TypeList<Type, Types...>;
 
     template <typename Next>
     constexpr UniqueTypeListBuilder<Next, Type, Types...> withType() {
@@ -177,6 +218,16 @@ class UniqueTypeListBuilder<Type, Types...> {
     constexpr auto wrap() {
         return typename Wrap<WrapType,
                              UniqueTypeListBuilder<Type, Types...>>::Type{};
+    }
+
+    constexpr auto unwrap() {
+        return typename Unwrap<UniqueTypeListBuilder<Type, Types...>>::Type{};
+    }
+
+    template <template <typename> class FilterType>
+    constexpr auto filter() {
+        return typename Filter<FilterType,
+                               UniqueTypeListBuilder<Type, Types...>>::Type{};
     }
 
     template <template <typename, typename> class ZipType, typename Other,

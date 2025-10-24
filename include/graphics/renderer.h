@@ -6,7 +6,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "collections/unique_list.h"
 #include "concepts/range.h"
+#include "graphics/resources/gl/buffer/stream/list.h"
 #include "graphics/resources/gl/draw/animated.h"
 #include "graphics/resources/gl/draw/dynamic.h"
 #include "graphics/resources/gl/draw/static.h"
@@ -110,6 +112,10 @@ class DynamicStage {
     DynamicStage(const StreamHandle<Instance>& streamBuffer)
         : dynamicDrawMap(streamBuffer.copy()) {}
 
+    template <typename... InstanceTypes>
+    DynamicStage(const StreamList<InstanceTypes...>& instanceStreams)
+        : DynamicStage(instanceStreams.getStreamHandle<Instance>()) {}
+
     DynamicStage& setShader(const Shader& shader) {
         shaderProgram = shader.program;
         return *this;
@@ -162,6 +168,12 @@ class AnimatedStage {
                   const StreamHandle<glm::mat4>& jointStreamBuffer)
         : animatedDrawMap(instanceStreamBuffer, jointStreamBuffer) {}
 
+    template <typename... InstanceTypes, typename... StorageTypes>
+    AnimatedStage(const StreamList<InstanceTypes...>& instanceStreams,
+                  const StreamList<StorageTypes...>& storageStreams)
+        : AnimatedStage(instanceStreams.getStreamHandle<Instance>(),
+                        storageStreams.getStreamHandle<glm::mat4>()) {}
+
     AnimatedStage& setShader(const Shader& shader) {
         shaderProgram = shader.program;
         return *this;
@@ -207,4 +219,103 @@ class AnimatedStage {
 
     GLuint shaderProgram{0};
     AnimatedDrawMap<Vertex, Material, Instance> animatedDrawMap;
+};
+
+template <typename, typename>
+struct AnimatedModelStage;
+
+template <typename Vertex, typename Material, typename Instance>
+struct AnimatedModelStage<Model<Vertex, Material>, Instance> {
+    using Type = AnimatedStage<Vertex, Material, Instance>;
+};
+
+template <typename, typename>
+struct DynamicModelStage;
+
+template <typename Vertex, typename Material, typename Instance>
+struct DynamicModelStage<Model<Vertex, Material>, Instance> {
+    using Type = DynamicStage<Vertex, Material, Instance>;
+};
+
+template <typename, typename>
+struct StaticModelStage;
+
+template <typename Vertex, typename Material, typename Instance>
+struct StaticModelStage<Model<Vertex, Material>, Instance> {
+    using Type = StaticStage<Vertex, Material, Instance>;
+};
+
+template <template <typename, typename> typename, typename, typename, typename>
+struct StageListBuilder;
+
+template <template <typename, typename> typename ModelStage,
+          typename... Vertices, typename... Materials, typename... Instances>
+struct StageListBuilder<ModelStage, TypeList<Vertices...>,
+                        TypeList<Materials...>, TypeList<Instances...>> {
+   private:
+    using ModelTypeList =
+        typename Product<Model, UniqueTypeListBuilder<Materials...>,
+                         UniqueTypeListBuilder<Vertices...>>::Type;
+
+    using ModelStageList =
+        typename Product<ModelStage, UniqueTypeListBuilder<Instances...>,
+                         ModelTypeList>::Type;
+
+    using Builder = typename Unwrap<ModelStageList>::Type;
+
+   public:
+    using StageList = typename Builder::UniqueTypeList;
+};
+
+template <typename... Vertices>
+struct AnimatedList {
+   private:
+    using AnimatedVertices =
+        typename Filter<IsAnimatedVertex,
+                        UniqueTypeListBuilder<Vertices...>>::Type;
+
+   public:
+    using Type = typename AnimatedVertices::TypeList;
+};
+
+template <typename, typename, typename, typename>
+class Renderer;
+
+template <typename... Vertices, typename... Materials, typename... Instances,
+          typename... Storage>
+class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
+               TypeList<Instances...>, TypeList<Storage...>> {
+   public:
+    using InstanceStreams = StreamList<Instances...>;
+    using StorageStreams = StreamList<Storage...>;
+
+    Renderer(InstanceStreams&& instanceStreams,
+             StorageStreams&& storageStreams) noexcept
+        : instanceStreams{std::move(instanceStreams)},
+          storageStreams{std::move(storageStreams)},
+          animatedStages{instanceStreams, storageStreams},
+          dynamicStages{instanceStreams} {}
+
+   private:
+    using AnimatedList = typename AnimatedList<Vertices...>::Type;
+    using VerticesList = TypeList<Vertices...>;
+    using MaterialsList = TypeList<Materials...>;
+    using InstancesList = TypeList<Instances...>;
+
+    using StaticStages =
+        typename StageListBuilder<StaticModelStage, VerticesList, MaterialsList,
+                                  InstancesList>::StageList;
+    using DynamicStages =
+        typename StageListBuilder<DynamicModelStage, VerticesList,
+                                  MaterialsList, InstancesList>::StageList;
+    using AnimatedStages =
+        typename StageListBuilder<AnimatedModelStage, AnimatedList,
+                                  MaterialsList, InstancesList>::StageList;
+
+    InstanceStreams instanceStreams;
+    StorageStreams storageStreams;
+
+    AnimatedStages animatedStages;
+    DynamicStages dynamicStages;
+    StaticStages staticStages;
 };

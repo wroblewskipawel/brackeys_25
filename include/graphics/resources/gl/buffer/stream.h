@@ -185,3 +185,16 @@ inline constexpr bool IsStreamV = IsStreamT<std::remove_cvref_t<Type>>::value;
 
 template <typename Type>
 concept StreamBufferType = IsStreamV<Type>;
+
+template <typename Type>
+struct StreamBufferConfig {
+    using StreamBuffer = StreamBuffer<Type>;
+
+    size_t pageSize;
+    size_t reserveNumPages = 0;
+    size_t initialRingSize = 3;
+
+    auto build() const noexcept {
+        return StreamBuffer(pageSize, reserveNumPages, initialRingSize);
+    }
+};
