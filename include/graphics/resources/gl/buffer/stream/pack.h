@@ -24,8 +24,8 @@
 // that could be used with UniqueTypeList.
 //
 // As currently only AnimatedMesh types are using this kind of pattern for
-// binding data for its draw calls (see. AnimatedPack implementation), pursuing
-// this implementation idea is not worthwhile for the moment.
+// binding data for its draw calls (see. AnimatedDrawMap implementation),
+// pursuing this implementation idea is not worthwhile for the moment.
 //
 // Following implementation in unused and kept here for the reference
 //

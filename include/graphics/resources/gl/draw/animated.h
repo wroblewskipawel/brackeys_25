@@ -24,24 +24,24 @@
 constexpr size_t jointMatrixBufferBinding = 1;
 
 template <typename Vertex, typename Material, typename Instance>
-class AnimatedPack {
+class AnimatedDrawMap {
    public:
     using Model = Model<Vertex, Material>;
     using PackHandlesView = typename Model::PackHandlesView;
 
-    AnimatedPack(const StreamHandle<Instance>& instanceStream,
-                 const StreamHandle<glm::mat4>& jointStream) noexcept
+    AnimatedDrawMap(const StreamHandle<Instance>& instanceStream,
+                    const StreamHandle<glm::mat4>& jointStream) noexcept
         : instanceStream(instanceStream.copy()),
           jointStream(jointStream.copy()) {
         static_assert(
             isAnimatedVertex<Vertex>(),
-            "AnimatedPack Vertex type argument is not AnimatedVertex");
+            "AnimatedDrawMap Vertex type argument is not AnimatedVertex");
     }
 
-    AnimatedPack(const AnimatedPack&) = delete;
-    AnimatedPack& operator=(const AnimatedPack&) = delete;
+    AnimatedDrawMap(const AnimatedDrawMap&) = delete;
+    AnimatedDrawMap& operator=(const AnimatedDrawMap&) = delete;
 
-    AnimatedPack(AnimatedPack&& other) noexcept
+    AnimatedDrawMap(AnimatedDrawMap&& other) noexcept
         : jointStream(std::move(other.jointStream)),
           instanceStream(std::move(other.instanceStream)),
           drawCallMap(std::move(other.drawCallMap)) {
@@ -49,7 +49,7 @@ class AnimatedPack {
         other.jointStream = StreamHandle<glm::mat4>::getInvalid();
     }
 
-    AnimatedPack& operator=(AnimatedPack&& other) noexcept {
+    AnimatedDrawMap& operator=(AnimatedDrawMap&& other) noexcept {
         if (this != &other) {
             drawCallMap = std::move(other.drawCallMap);
             instanceStream = other.instanceStream;
@@ -60,8 +60,8 @@ class AnimatedPack {
         return *this;
     }
 
-    AnimatedPack& addDraw(const Model& model, const Instance& instanceData,
-                          const AnimationPlayer& sampler) {
+    AnimatedDrawMap& addDraw(const Model& model, const Instance& instanceData,
+                             const AnimationPlayer& sampler) {
         return addDrawMulti(model, std::views::single(instanceData),
                             std::views::single(std::cref(sampler)));
     }
@@ -69,8 +69,8 @@ class AnimatedPack {
     template <typename Instances, typename Samplers>
         requires RefConstRange<Instances, Instance> &&
                  RefConstRange<Samplers, AnimationPlayer>
-    AnimatedPack& addDrawMulti(const Model& model, Instances&& instanceData,
-                               Samplers&& samplers) {
+    AnimatedDrawMap& addDrawMulti(const Model& model, Instances&& instanceData,
+                                  Samplers&& samplers) {
         drawCallMap.pushDrawCalls(
             model.getPackHandlesView(),
             getDrawCalls(model, std::forward<Instances>(instanceData),
@@ -97,7 +97,7 @@ class AnimatedPack {
             jointAllocation.join(other.jointAllocation);
         }
 
-        auto getDrawCall(
+        void execute(
             const UniformLocations& uniformLocations,
             const StreamBuffer<Instance>& instanceStream,
             const StreamBuffer<glm::mat4>& jointStream) const noexcept {
@@ -116,14 +116,11 @@ class AnimatedPack {
             glUniform1ui(uniformLocations.jointMatrixCount, jointMatrixCount);
             glUniform1ui(uniformLocations.jointMatrixOffset,
                          jointAllocation.bufferOffset);
-            return [this]() {
-                glDrawElementsInstancedBaseInstance(
-                    GL_TRIANGLES, drawInfo.meshOffsets.indexCount,
-                    GL_UNSIGNED_INT,
-                    (void*)(drawInfo.meshOffsets.indexOffset * sizeof(GLuint)),
-                    instanceAllocation.numInstances,
-                    instanceAllocation.bufferOffset);
-            };
+            glDrawElementsInstancedBaseInstance(
+                GL_TRIANGLES, drawInfo.meshOffsets.indexCount, GL_UNSIGNED_INT,
+                (void*)(drawInfo.meshOffsets.indexOffset * sizeof(GLuint)),
+                instanceAllocation.numInstances,
+                instanceAllocation.bufferOffset);
         }
     };
 
@@ -137,7 +134,7 @@ class AnimatedPack {
             if (drawCalls.empty()) continue;
             packHandles.bind();
             for (const auto& draw : drawCalls) {
-                draw.getDrawCall(uniformLocations, instances, joints)();
+                draw.execute(uniformLocations, instances, joints);
             }
         }
     }
@@ -214,5 +211,5 @@ class AnimatedPack {
 
     StreamHandle<glm::mat4> jointStream;
     StreamHandle<Instance> instanceStream;
-    DrawCallMap<AnimatedPack> drawCallMap;
+    DrawCallMap<AnimatedDrawMap> drawCallMap;
 };

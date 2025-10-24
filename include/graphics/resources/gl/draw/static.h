@@ -15,15 +15,15 @@
 #include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/shader.h"
 #include "graphics/resources/gl/vertex_array.h"
-#include "graphics/storage/gl/draw/static/pack.h"
+#include "graphics/storage/gl/draw/static/batch.h"
 #include "graphics/storage/gl/material.h"
 
 template <typename Vertex, typename Material, typename Instance>
 class StaticDrawMap {
    public:
-    using StaticPack = StaticPack<Vertex, Material, Instance>;
-    using StaticPackHandle = typename StaticPack::Handle;
-    using PackHandlesView = typename StaticPack::PackHandlesView;
+    using StaticBatch = StaticBatch<Vertex, Material, Instance>;
+    using StaticBatchHandle = typename StaticBatch::Handle;
+    using PackHandlesView = typename StaticBatch::PackHandlesView;
 
     StaticDrawMap() = default;
 
@@ -34,12 +34,12 @@ class StaticDrawMap {
     StaticDrawMap& operator=(StaticDrawMap&& other) = default;
 
     struct Draw {
-        StaticPackHandle staticPack;
+        StaticBatchHandle StaticBatch;
         glm::mat4 instanceOffset;
 
-        Draw(StaticPackHandle&& packHandle,
+        Draw(StaticBatchHandle&& packHandle,
              const glm::mat4& instanceOffset) noexcept
-            : staticPack(std::move(packHandle)),
+            : StaticBatch(std::move(packHandle)),
               instanceOffset(instanceOffset) {};
 
         Draw(const Draw&) = delete;
@@ -55,11 +55,11 @@ class StaticDrawMap {
         void execute(const UniformLocations& uniformLocations) const noexcept {
             glUniformMatrix4fv(uniformLocations.instanceOffset, 1, GL_FALSE,
                                glm::value_ptr(instanceOffset));
-            staticPack.get().get().draw(uniformLocations);
+            StaticBatch.get().get().draw(uniformLocations);
         }
     };
 
-    StaticDrawMap& addDraw(const StaticPackHandle& packHandle,
+    StaticDrawMap& addDraw(const StaticBatchHandle& packHandle,
                            const glm::mat4& instanceOffset) {
         const auto& handlesView = packHandle.get().get().getPackHandlesView();
         drawCallMap.pushDrawCall(handlesView,

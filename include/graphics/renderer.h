@@ -10,7 +10,7 @@
 #include "graphics/resources/gl/draw/animated.h"
 #include "graphics/resources/gl/draw/dynamic.h"
 #include "graphics/resources/gl/draw/static.h"
-#include "graphics/resources/gl/draw/static/pack.h"
+#include "graphics/resources/gl/draw/static/batch.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/shader.h"
@@ -60,8 +60,8 @@ Pipeline(Stages&&...) -> Pipeline<std::decay_t<Stages>...>;
 template <typename Vertex, typename Material, typename Instance>
 class StaticStage {
    public:
-    using StaticPack = StaticPack<Vertex, Material, Instance>;
-    using StaticPackHandle = typename StaticPack::Handle;
+    using StaticBatch = StaticBatch<Vertex, Material, Instance>;
+    using StaticBatchHandle = typename StaticBatch::Handle;
 
     StaticStage() = default;
 
@@ -71,13 +71,13 @@ class StaticStage {
     }
 
     StaticStage& clear() noexcept {
-        staticPack.clear();
+        staticDrawMap.clear();
         return *this;
     }
 
-    StaticStage& addDraw(const StaticPackHandle& packHandle,
+    StaticStage& addDraw(const StaticBatchHandle& packHandle,
                          const glm::mat4& instanceOffset = glm::mat4(1.0f)) {
-        staticPack.addDraw(packHandle, instanceOffset);
+        staticDrawMap.addDraw(packHandle, instanceOffset);
         return *this;
     }
 
@@ -94,12 +94,12 @@ class StaticStage {
                                glm::value_ptr(cameraMatrices.view));
             glUniformMatrix4fv(locations.projectionMatrix, 1, GL_FALSE,
                                glm::value_ptr(cameraMatrices.projection));
-            staticPack.draw(locations);
+            staticDrawMap.draw(locations);
         }
     }
 
     GLuint shaderProgram{0};
-    StaticDrawMap<Vertex, Material, Instance> staticPack;
+    StaticDrawMap<Vertex, Material, Instance> staticDrawMap;
 };
 
 template <typename Vertex, typename Material, typename Instance>
@@ -108,7 +108,7 @@ class DynamicStage {
     using Model = Model<Vertex, Material>;
 
     DynamicStage(const StreamHandle<Instance>& streamBuffer)
-        : dynamicPack(streamBuffer.copy()) {}
+        : dynamicDrawMap(streamBuffer.copy()) {}
 
     DynamicStage& setShader(const Shader& shader) {
         shaderProgram = shader.program;
@@ -116,19 +116,19 @@ class DynamicStage {
     }
 
     DynamicStage& clear() noexcept {
-        dynamicPack.clear();
+        dynamicDrawMap.clear();
         return *this;
     }
 
     DynamicStage& addDraw(const Model& model, const Instance& instance) {
-        dynamicPack.addDraw(model, instance);
+        dynamicDrawMap.addDraw(model, instance);
         return *this;
     }
 
     template <typename Instances>
         requires RefConstRange<Instances, Instance>
     DynamicStage& addDraw(const Model& model, Instances&& range) {
-        dynamicPack.addDraw(model, std::forward<Instances>(range));
+        dynamicDrawMap.addDraw(model, std::forward<Instances>(range));
         return *this;
     }
 
@@ -145,12 +145,12 @@ class DynamicStage {
                                glm::value_ptr(cameraMatrices.view));
             glUniformMatrix4fv(locations.projectionMatrix, 1, GL_FALSE,
                                glm::value_ptr(cameraMatrices.projection));
-            dynamicPack.draw(locations);
+            dynamicDrawMap.draw(locations);
         }
     }
 
     GLuint shaderProgram{0};
-    DynamicPack<Vertex, Material, Instance> dynamicPack;
+    DynamicDrawMap<Vertex, Material, Instance> dynamicDrawMap;
 };
 
 template <typename Vertex, typename Material, typename Instance>
@@ -160,7 +160,7 @@ class AnimatedStage {
 
     AnimatedStage(const StreamHandle<Instance>& instanceStreamBuffer,
                   const StreamHandle<glm::mat4>& jointStreamBuffer)
-        : animatedPack(instanceStreamBuffer, jointStreamBuffer) {}
+        : animatedDrawMap(instanceStreamBuffer, jointStreamBuffer) {}
 
     AnimatedStage& setShader(const Shader& shader) {
         shaderProgram = shader.program;
@@ -168,13 +168,13 @@ class AnimatedStage {
     }
 
     AnimatedStage& clear() noexcept {
-        animatedPack.clear();
+        animatedDrawMap.clear();
         return *this;
     }
 
     AnimatedStage& addDraw(const Model& model, const Instance& instance,
                            const AnimationPlayer& sampler) {
-        animatedPack.addDraw(model, instance, sampler);
+        animatedDrawMap.addDraw(model, instance, sampler);
         return *this;
     }
 
@@ -183,8 +183,8 @@ class AnimatedStage {
                  RefConstRange<Samplers, AnimationPlayer>
     AnimatedStage& addDraw(const Model& model, Instances&& instances,
                            Samplers&& samplers) {
-        animatedPack.addDraw(model, std::forward<Instances>(instances),
-                             std::forward<Samplers>(samplers));
+        animatedDrawMap.addDraw(model, std::forward<Instances>(instances),
+                                std::forward<Samplers>(samplers));
         return *this;
     }
 
@@ -201,10 +201,10 @@ class AnimatedStage {
                                glm::value_ptr(cameraMatrices.view));
             glUniformMatrix4fv(locations.projectionMatrix, 1, GL_FALSE,
                                glm::value_ptr(cameraMatrices.projection));
-            animatedPack.draw(locations);
+            animatedDrawMap.draw(locations);
         }
     }
 
     GLuint shaderProgram{0};
-    AnimatedPack<Vertex, Material, Instance> animatedPack;
+    AnimatedDrawMap<Vertex, Material, Instance> animatedDrawMap;
 };

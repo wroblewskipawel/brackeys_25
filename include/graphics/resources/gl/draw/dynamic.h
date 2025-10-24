@@ -22,24 +22,24 @@
 #include "graphics/storage/gl/stream.h"
 
 template <typename Vertex, typename Material, typename Instance>
-class DynamicPack {
+class DynamicDrawMap {
    public:
     using Model = Model<Vertex, Material>;
     using PackHandlesView = typename Model::PackHandlesView;
 
-    DynamicPack(StreamHandle<Instance>&& streamBuffer) noexcept
+    DynamicDrawMap(StreamHandle<Instance>&& streamBuffer) noexcept
         : streamBuffer(std::move(streamBuffer)) {}
 
-    DynamicPack(const DynamicPack&) = delete;
-    DynamicPack& operator=(const DynamicPack&) = delete;
+    DynamicDrawMap(const DynamicDrawMap&) = delete;
+    DynamicDrawMap& operator=(const DynamicDrawMap&) = delete;
 
-    DynamicPack(DynamicPack&& other) noexcept
+    DynamicDrawMap(DynamicDrawMap&& other) noexcept
         : streamBuffer(std::move(other.streamBuffer)),
           drawCallMap(std::move(other.drawCallMap)) {
         other.streamBuffer = StreamHandle<Instance>::getInvalid();
     };
 
-    DynamicPack& operator=(DynamicPack&& other) noexcept {
+    DynamicDrawMap& operator=(DynamicDrawMap&& other) noexcept {
         if (this != &other) {
             drawCallMap = std::move(other.drawCallMap);
             streamBuffer = other.streamBuffer;
@@ -48,13 +48,13 @@ class DynamicPack {
         return *this;
     };
 
-    DynamicPack& addDraw(const Model& model, const Instance& instanceData) {
+    DynamicDrawMap& addDraw(const Model& model, const Instance& instanceData) {
         return addDraw(model, std::views::single(instanceData));
     }
 
     template <typename Instances>
         requires RefConstRange<Instances, Instance>
-    DynamicPack& addDraw(const Model& model, Instances&& instanceData) {
+    DynamicDrawMap& addDraw(const Model& model, Instances&& instanceData) {
         drawCallMap.pushDrawCalls(
             model.getPackHandlesView(),
             getDrawCalls(model, std::forward<Instances>(instanceData)));
@@ -75,7 +75,7 @@ class DynamicPack {
             return instanceAllocation.join(other.instanceAllocation);
         }
 
-        auto getDrawCall(
+        void execute(
             const UniformLocations& uniformLocations,
             const StreamBuffer<Instance>& instanceStream) const noexcept {
             VertexArray<Vertex, Instance>::getVertexArray()
@@ -88,14 +88,11 @@ class DynamicPack {
                 glUniform1ui(uniformLocations.materialIndex,
                              static_cast<GLuint>(drawInfo.materialIndex));
             }
-            return [this]() {
-                glDrawElementsInstancedBaseInstance(
-                    GL_TRIANGLES, drawInfo.meshOffsets.indexCount,
-                    GL_UNSIGNED_INT,
-                    (void*)(drawInfo.meshOffsets.indexOffset * sizeof(GLuint)),
-                    instanceAllocation.numInstances,
-                    instanceAllocation.bufferOffset);
-            };
+            glDrawElementsInstancedBaseInstance(
+                GL_TRIANGLES, drawInfo.meshOffsets.indexCount, GL_UNSIGNED_INT,
+                (void*)(drawInfo.meshOffsets.indexOffset * sizeof(GLuint)),
+                instanceAllocation.numInstances,
+                instanceAllocation.bufferOffset);
         }
     };
 
@@ -108,7 +105,7 @@ class DynamicPack {
             if (drawCalls.empty()) continue;
             packHandles.bind();
             for (const auto& draw : drawCalls) {
-                draw.getDrawCall(uniformLocations, stream)();
+                draw.execute(uniformLocations, stream);
             }
         }
     }
@@ -130,5 +127,5 @@ class DynamicPack {
     }
 
     StreamHandle<Instance> streamBuffer;
-    DrawCallMap<DynamicPack> drawCallMap;
+    DrawCallMap<DynamicDrawMap> drawCallMap;
 };

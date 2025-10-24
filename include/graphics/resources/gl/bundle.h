@@ -169,8 +169,8 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
     }
 
     template <typename Vertex, typename Material, typename Instance>
-    auto getStaticPackBuilder() const noexcept {
-        return StaticPackBuilder<Vertex, Material, Instance>(
+    auto getStaticBatchBuilder() const noexcept {
+        return StaticBatchBuilder<Vertex, Material, Instance>(
             getPackHandlesView<Vertex, Material>().getOwned());
     }
 

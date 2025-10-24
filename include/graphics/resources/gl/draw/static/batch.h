@@ -21,21 +21,21 @@ template <typename Instance>
 using InstanceDataMap = std::unordered_map<DrawInfo, std::vector<Instance>>;
 
 template <typename Vertex, typename Material, typename Instance>
-class StaticPack {
+class StaticBatch {
    public:
-    using Handle = StaticPackHandle<Vertex, Material, Instance>;
+    using Handle = StaticBatchHandle<Vertex, Material, Instance>;
     using PackHandles = PackHandles<Vertex, Material>;
     using PackHandlesView = PackHandlesView<Vertex, Material>;
     using InstanceDataMap = InstanceDataMap<Instance>;
 
-    StaticPack(const StaticPack&) = delete;
-    StaticPack& operator=(const StaticPack&) = delete;
+    StaticBatch(const StaticBatch&) = delete;
+    StaticBatch& operator=(const StaticBatch&) = delete;
 
-    StaticPack(StaticPack&&) = default;
-    StaticPack& operator=(StaticPack&& other) = default;
+    StaticBatch(StaticBatch&&) = default;
+    StaticBatch& operator=(StaticBatch&& other) = default;
 
    private:
-    friend class StaticPackBuilder<Vertex, Material, Instance>;
+    friend class StaticBatchBuilder<Vertex, Material, Instance>;
     friend class StaticDrawMap<Vertex, Material, Instance>;
 
     struct Draw {
@@ -60,7 +60,7 @@ class StaticPack {
         }
     };
 
-    StaticPack(InstanceDataMap&& drawData, PackHandles&& packHandles) noexcept
+    StaticBatch(InstanceDataMap&& drawData, PackHandles&& packHandles) noexcept
         : packHandles(std::move(packHandles)) {
         drawCalls.reserve(drawData.size());
         for (const auto& [drawInfo, instances] : drawData) {
@@ -84,16 +84,16 @@ class StaticPack {
 };
 
 template <typename Vertex, typename Material, typename Instance>
-class StaticPackBuilder {
+class StaticBatchBuilder {
    public:
     using Model = Model<Vertex, Material>;
     using PackHandles = PackHandles<Vertex, Material>;
     using InstanceDataMap = InstanceDataMap<Instance>;
 
-    StaticPackBuilder(PackHandles&& packHandles) noexcept
+    StaticBatchBuilder(PackHandles&& packHandles) noexcept
         : packHandles(std::move(packHandles)) {}
 
-    StaticPackBuilder& addDraw(const Model& model, Instance instanceData) {
+    StaticBatchBuilder& addDraw(const Model& model, Instance instanceData) {
         auto drawInfo = DrawInfo(model);
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
@@ -107,8 +107,8 @@ class StaticPackBuilder {
         return *this;
     }
 
-    StaticPackBuilder& addDrawMulti(const Model& model,
-                                    std::vector<Instance>&& instanceData) {
+    StaticBatchBuilder& addDrawMulti(const Model& model,
+                                     std::vector<Instance>&& instanceData) {
         auto drawInfo = DrawInfo(model);
         auto drawDataIt = drawData.find(drawInfo);
         if (drawDataIt != drawData.end()) {
@@ -123,7 +123,7 @@ class StaticPackBuilder {
     }
 
     auto build() {
-        return registerStaticPack(StaticPack<Vertex, Material, Instance>{
+        return registerStaticBatch(StaticBatch<Vertex, Material, Instance>{
             std::move(drawData), std::move(packHandles)});
     }
 

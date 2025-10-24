@@ -13,7 +13,7 @@ template <typename Vertex>
 class MeshPack;
 
 template <typename Vertex, typename Material, typename Instance>
-class StaticPack;
+class StaticBatch;
 
 template <typename Instance, size_t InstanceCount>
 class InstanceBuffer;
@@ -74,11 +74,11 @@ class VertexArray {
    private:
     friend class MeshPack<Vertex>;
     template <typename, typename, typename>
-    friend class StaticPack;
+    friend class StaticBatch;
     template <typename, typename, typename>
-    friend class DynamicPack;
+    friend class DynamicDrawMap;
     template <typename, typename, typename>
-    friend class AnimatedPack;
+    friend class AnimatedDrawMap;
 
     static VertexArray& getVertexArray() noexcept {
         static auto vertexArray = VertexArray<Vertex, Instance>();

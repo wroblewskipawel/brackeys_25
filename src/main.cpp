@@ -164,18 +164,18 @@ int main(void) {
     auto animationPlayer_3 = AnimationPlayer(animations[0]);
     animationPlayer_3.loopAnimation(true);
 
-    auto unlitStaticPack =
+    auto unlitStaticBatch =
         resourceBundle
-            .getStaticPackBuilder<UnlitVertex, UnlitMaterial, glm::mat4>()
+            .getStaticBatchBuilder<UnlitVertex, UnlitMaterial, glm::mat4>()
             .addDraw(unlitCube_1, glm::translate(glm::mat4(1.0f),
                                                  glm::vec3(2.0f, 0.0f, 2.0f)))
             .addDraw(unlitCube_2, glm::translate(glm::mat4(1.0f),
                                                  glm::vec3(0.0f, 0.0f, -2.0f)))
             .build();
 
-    auto coloredStaticPack =
+    auto coloredStaticBatch =
         resourceBundle
-            .getStaticPackBuilder<ColoredVertex, EmptyMaterial, glm::mat4>()
+            .getStaticBatchBuilder<ColoredVertex, EmptyMaterial, glm::mat4>()
             .addDraw(coloredCube, glm::translate(glm::mat4(1.0f),
                                                  glm::vec3(2.0f, 0.0f, -2.0f)))
             .addDraw(coloredCube, glm::translate(glm::mat4(1.0f),
@@ -212,8 +212,8 @@ int main(void) {
         auto& animatedStage = pipeline.getStage<
             AnimatedStage<UnlitAnimatedVertex, UnlitMaterial, glm::mat4>>();
 
-        unlitColoredStage.addDraw(coloredStaticPack);
-        unlitStaticStage.addDraw(unlitStaticPack);
+        unlitColoredStage.addDraw(coloredStaticBatch);
+        unlitStaticStage.addDraw(unlitStaticBatch);
 
         animationPlayer_1.update(deltaTime);
         animationPlayer_2.update(deltaTime / 2.0f);

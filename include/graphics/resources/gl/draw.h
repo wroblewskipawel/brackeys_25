@@ -20,19 +20,16 @@ template <typename Vertex, typename Material, typename Instance>
 class StaticDrawMap;
 
 template <typename Vertex, typename Material, typename Instance>
-class StaticPackBuilder;
+class StaticBatchBuilder;
 
 template <typename Vertex, typename Material, typename Instance>
-class StaticPack;
+class StaticBatch;
 
 template <typename Vertex, typename Material, typename Instance>
-class DynamicPack;
+class DynamicDrawMap;
 
 template <typename Vertex, typename Material, typename Instance>
-class AnimatedPack;
-
-template <typename Vertex, typename Material, typename Instance>
-class Stage;
+class AnimatedDrawMap;
 
 struct DrawInfo {
     template <typename Vertex, typename Material>
