@@ -21,6 +21,9 @@
 #include "graphics/storage/gl/material.h"
 #include "graphics/storage/gl/stream.h"
 
+template <typename, typename, typename>
+class DynamicStage;
+
 template <typename Vertex, typename Material, typename Instance>
 class DynamicDrawMap {
    public:
@@ -79,11 +82,12 @@ class DynamicDrawMap {
             const UniformLocations& uniformLocations,
             const StreamBuffer<Instance>& instanceStream) const noexcept {
             VertexArray<Vertex, Instance>::getVertexArray()
-                .bindBuffer<BindingIndex::InstanceAttributes>(BindingInfo{
-                    .buffer =
-                        instanceStream.getBuffer(instanceAllocation).get(),
-                    .offset = 0,
-                });
+                .template bindBuffer<BindingIndex::InstanceAttributes>(
+                    BindingInfo{
+                        .buffer =
+                            instanceStream.getBuffer(instanceAllocation).get(),
+                        .offset = 0,
+                    });
             if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
                 glUniform1ui(uniformLocations.materialIndex,
                              static_cast<GLuint>(drawInfo.materialIndex));

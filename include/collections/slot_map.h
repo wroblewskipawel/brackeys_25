@@ -37,7 +37,7 @@ struct CopyHandle {
 
 template <>
 struct OwnershipData<Unique> {
-    bool pop(uint32_t storageIndex) noexcept {}
+    bool pop(uint32_t storageIndex) noexcept { return true; }
 
     void pushNew(uint32_t storageIndex) noexcept {}
 
@@ -117,7 +117,7 @@ class HandleId {
     }
 
    private:
-    friend class Handle;
+    friend Handle;
     friend class SlotMap<Item, Ownership>;
     friend class CopyHandle<Item, Ownership>;
 
@@ -288,7 +288,7 @@ class SlotMap {
 
     auto&& take() noexcept {
         freeCells = std::vector(storageCells.size());
-        for (auto& [i, generation] : std::views::enumerate(cellGenerations)) {
+        for (auto [i, generation] : std::views::enumerate(cellGenerations)) {
             freeCells[i] = i;
             generation += 1;
         }

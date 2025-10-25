@@ -44,7 +44,7 @@ struct AssetsIndicesStorage<TypeList<Vertices...>, TypeList<Materials...>> {
     template <typename Vertex, typename Material>
     auto& getNamespaceIndices(const std::string& indicesNamespace) noexcept {
         auto& indicesMap =
-            indicesMapStorage.get<IndicesMap<Vertex, Material>>();
+            indicesMapStorage.template get<IndicesMap<Vertex, Material>>();
         if (!indicesMap.contains(indicesNamespace)) {
             indicesMap.emplace(std::string(indicesNamespace),
                                Indices<Vertex, Material>{});
@@ -56,7 +56,7 @@ struct AssetsIndicesStorage<TypeList<Vertices...>, TypeList<Materials...>> {
     const auto& getNamespaceIndices(
         const std::string& indicesNamespace) const noexcept {
         const auto& indicesMap =
-            indicesMapStorage.get<IndicesMap<Vertex, Material>>();
+            indicesMapStorage.template get<IndicesMap<Vertex, Material>>();
         return indicesMap.at(indicesNamespace);
     }
 
@@ -133,7 +133,7 @@ class AssetsBundle<TypeList<Vertices...>, TypeList<Materials...>> {
         };
 
         auto& namespaceIndices =
-            documenIndexMap.getNamespaceIndices<Vertex, Material>(
+            documenIndexMap.template getNamespaceIndices<Vertex, Material>(
                 modelNamepace);
         const auto& modelName = modelData.getName();
         if (modelName.empty()) {
@@ -166,9 +166,9 @@ class AssetsBundle<TypeList<Vertices...>, TypeList<Materials...>> {
     auto appendMaterials(
         std::vector<MaterialBuilderHandle<Material>>&& materials) noexcept {
         auto firstIndex =
-            materialStorage.size<MaterialBuilderHandle<Material>>();
+            materialStorage.template size<MaterialBuilderHandle<Material>>();
         for (auto&& material : std::move(materials)) {
-            materialStorage.insert<MaterialBuilderHandle<Material>>(
+            materialStorage.template insert<MaterialBuilderHandle<Material>>(
                 std::move(material));
         }
         return firstIndex;
@@ -176,9 +176,10 @@ class AssetsBundle<TypeList<Vertices...>, TypeList<Materials...>> {
 
     template <typename Vertex>
     auto appendMeshes(std::vector<MeshDataHandle<Vertex>>&& meshes) noexcept {
-        auto firstIndex = meshStorage.size<MeshDataHandle<Vertex>>();
+        auto firstIndex = meshStorage.template size<MeshDataHandle<Vertex>>();
         for (auto&& mesh : std::move(meshes)) {
-            meshStorage.insert<MeshDataHandle<Vertex>>(std::move(mesh));
+            meshStorage.template insert<MeshDataHandle<Vertex>>(
+                std::move(mesh));
         }
         return firstIndex;
     }
@@ -196,7 +197,7 @@ class AssetsBundle<TypeList<Vertices...>, TypeList<Materials...>> {
         }
 
         auto& namespaceIndices =
-            documenIndexMap.getNamespaceIndices<Vertex, Material>(
+            documenIndexMap.template getNamespaceIndices<Vertex, Material>(
                 indicesNamespace);
         namespaceIndices.extend(std::move(indices));
     }
@@ -204,9 +205,9 @@ class AssetsBundle<TypeList<Vertices...>, TypeList<Materials...>> {
     template <typename Vertex>
     auto tryPushMesh(const MeshDataHandle<Vertex>& mesh) noexcept {
         using MeshHandle = MeshDataHandle<Vertex>;
-        auto meshIndex = meshStorage.find<MeshHandle>(mesh);
-        if (meshIndex == meshStorage.size<MeshHandle>()) {
-            meshStorage.insert<MeshHandle>(mesh.copy());
+        auto meshIndex = meshStorage.template find<MeshHandle>(mesh);
+        if (meshIndex == meshStorage.template size<MeshHandle>()) {
+            meshStorage.template insert<MeshHandle>(mesh.copy());
         }
         return meshIndex;
     }
@@ -215,9 +216,10 @@ class AssetsBundle<TypeList<Vertices...>, TypeList<Materials...>> {
     auto tryPushMaterial(
         const MaterialBuilderHandle<Material>& material) noexcept {
         using MaterialHandle = MaterialBuilderHandle<Material>;
-        auto materialIndex = materialStorage.find<MaterialHandle>(material);
-        if (materialIndex == materialStorage.size<MaterialHandle>()) {
-            materialStorage.insert<MaterialHandle>(material.copy());
+        auto materialIndex =
+            materialStorage.template find<MaterialHandle>(material);
+        if (materialIndex == materialStorage.template size<MaterialHandle>()) {
+            materialStorage.template insert<MaterialHandle>(material.copy());
         }
         return materialIndex;
     }

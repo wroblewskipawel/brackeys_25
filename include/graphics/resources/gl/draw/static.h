@@ -18,6 +18,9 @@
 #include "graphics/storage/gl/draw/static/batch.h"
 #include "graphics/storage/gl/material.h"
 
+template <typename, typename, typename>
+class StaticStage;
+
 template <typename Vertex, typename Material, typename Instance>
 class StaticDrawMap {
    public:

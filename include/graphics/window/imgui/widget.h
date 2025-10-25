@@ -31,12 +31,12 @@ class WidgetList {
 
     template <typename Widget>
     void drawWidget() noexcept {
-        widgets.get<Widget>().draw();
+        widgets.template get<Widget>().draw();
     }
 
     template <typename Widget>
     void updateWidget(float dTime) noexcept {
-        widgets.get<Widget>().update(dTime);
+        widgets.template get<Widget>().update(dTime);
     }
 
     UniqueTypeList<Widgets...> widgets;

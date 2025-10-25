@@ -38,8 +38,9 @@ void loadMeshPacks(TypeList<Vertex, Vertices...> remaining,
                    MeshPackHandleList<PackVertices...>& handleList,
                    const MeshDataList<DataVertices...>& dataList) noexcept {
     auto packBuilder = MeshPackBuilder<Vertex>();
-    packBuilder.addMeshMulti(dataList.getStorage<MeshDataHandle<Vertex>>());
-    auto& packHandle = handleList.get<MeshPackHandle<Vertex>>();
+    packBuilder.addMeshMulti(
+        dataList.template getStorage<MeshDataHandle<Vertex>>());
+    auto& packHandle = handleList.template get<MeshPackHandle<Vertex>>();
     packHandle = packBuilder.build();
 
     loadMeshPacks(TypeList<Vertices...>{}, handleList, dataList);
@@ -55,7 +56,7 @@ class MeshPackList {
 
     template <typename Vertex>
     auto& getPackHandleRef() const noexcept {
-        return packList.get<MeshPackHandle<Vertex>>();
+        return packList.template get<MeshPackHandle<Vertex>>();
     }
 
    private:
@@ -86,8 +87,8 @@ void loadMaterialPacks(
     const MaterialBuilderHandleList<DataMaterials...>& dataList) noexcept {
     auto packBuilder = MaterialPackBuilder<Material>();
     packBuilder.addMaterialMulti(
-        dataList.getStorage<MaterialBuilderHandle<Material>>());
-    auto& packHandle = handleList.get<MaterialPackHandle<Material>>();
+        dataList.template getStorage<MaterialBuilderHandle<Material>>());
+    auto& packHandle = handleList.template get<MaterialPackHandle<Material>>();
     packHandle = packBuilder.build();
 
     loadMaterialPacks(TypeList<Materials...>{}, handleList, dataList);
@@ -104,7 +105,7 @@ class MaterialPackList {
 
     template <typename Material>
     auto& getPackHandleRef() const noexcept {
-        return packList.get<MaterialPackHandle<Material>>();
+        return packList.template get<MaterialPackHandle<Material>>();
     }
 
    private:
@@ -135,8 +136,8 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
     auto getModel(const std::string& modelNamespace,
                   const std::string& modelName) const noexcept {
         const auto modelIndices =
-            documenIndexMap.getModelIndices<Vertex, Material>(modelNamespace,
-                                                              modelName);
+            documenIndexMap.template getModelIndices<Vertex, Material>(
+                modelNamespace, modelName);
         return tryGetModel(modelIndices);
     }
 
@@ -144,8 +145,8 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
     auto getModel(const std::string& modelNamespace,
                   size_t modelIndex) const noexcept {
         const auto modelIndices =
-            documenIndexMap.getModelIndices<Vertex, Material>(modelNamespace,
-                                                              modelIndex);
+            documenIndexMap.template getModelIndices<Vertex, Material>(
+                modelNamespace, modelIndex);
         return tryGetModel(modelIndices);
     }
 
@@ -154,8 +155,8 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
     auto getModelAnimations(const std::string& modelNamespace,
                             const std::string& modelName) const noexcept {
         const auto modelIndices =
-            documenIndexMap.getModelIndices<Vertex, Material>(modelNamespace,
-                                                              modelName);
+            documenIndexMap.template getModelIndices<Vertex, Material>(
+                modelNamespace, modelName);
         return tryGetAnimations(modelIndices);
     }
 
@@ -163,8 +164,8 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
     auto getModelAnimations(const std::string& modelNamespace,
                             size_t modelIndex) const noexcept {
         const auto modelIndices =
-            documenIndexMap.getModelIndices<Vertex, Material>(modelNamespace,
-                                                              modelIndex);
+            documenIndexMap.template getModelIndices<Vertex, Material>(
+                modelNamespace, modelIndex);
         return tryGetAnimations(modelIndices);
     }
 
@@ -180,10 +181,11 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
         auto model = Model<Vertex, Material>::getInvalid();
         if (modelRef.isValid()) {
             model.mesh.packItemIndex = modelRef.get().meshIndex;
-            model.mesh.packHandle = meshPacks.getPackHandleRef<Vertex>().copy();
+            model.mesh.packHandle =
+                meshPacks.template getPackHandleRef<Vertex>().copy();
             model.material.packItemIndex = modelRef.get().materialIndex;
             model.material.packHandle =
-                materialPacks.getPackHandleRef<Material>().copy();
+                materialPacks.template getPackHandleRef<Material>().copy();
         }
         return std::move(model);
     }
@@ -203,8 +205,8 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
     template <typename Vertex, typename Material>
     auto getPackHandlesView() const noexcept {
         return PackHandlesView<Vertex, Material>(
-            meshPacks.getPackHandleRef<Vertex>(),
-            materialPacks.getPackHandleRef<Material>());
+            meshPacks.template getPackHandleRef<Vertex>(),
+            materialPacks.template getPackHandleRef<Material>());
     }
 
     std::vector<AnimationHandle> animations;

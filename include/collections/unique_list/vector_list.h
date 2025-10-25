@@ -31,7 +31,7 @@ class VectorList {
 
     template <typename Type>
     Index<Type> insert(Type&& handle) noexcept {
-        auto& typeStorage = vectorStorage.get<std::vector<Type>>();
+        auto& typeStorage = vectorStorage.template get<std::vector<Type>>();
         auto handleIndex = typeStorage.size();
         typeStorage.emplace_back(std::move(handle));
         return Index<Type>{
@@ -44,7 +44,8 @@ class VectorList {
     const Type& get(Index<Type> index) const noexcept {
         auto handle = Type::getInvalid();
         if (isIndexValid(index)) {
-            const auto& typeStorage = vectorStorage.get<std::vector<Type>>();
+            const auto& typeStorage =
+                vectorStorage.template get<std::vector<Type>>();
             handle = typeStorage[index.itemIndex].copy();
         }
         return handle;
@@ -54,7 +55,8 @@ class VectorList {
     Type& get(Index<Type> index) noexcept {
         auto handle = Type::getInvalid();
         if (isIndexValid(index)) {
-            const auto& typeStorage = vectorStorage.get<std::vector<Type>>();
+            const auto& typeStorage =
+                vectorStorage.template get<std::vector<Type>>();
             handle = typeStorage[index.itemIndex].copy();
         }
         return handle;
@@ -63,31 +65,32 @@ class VectorList {
     template <typename Type>
     void pop(Index<Type> index) noexcept {
         if (isIndexValid(index)) {
-            const auto& typeStorage = vectorStorage.get<std::vector<Type>>();
+            const auto& typeStorage =
+                vectorStorage.template get<std::vector<Type>>();
             typeStorage[index.itemIndex] = Type::getInvalid();
         }
     }
 
     template <typename Type>
     size_t size() const noexcept {
-        return vectorStorage.get<std::vector<Type>>().size();
+        return vectorStorage.template get<std::vector<Type>>().size();
     }
 
     template <typename Type>
     size_t find(const Type& item) const noexcept {
-        auto& typeStorage = vectorStorage.get<std::vector<Type>>();
+        auto& typeStorage = vectorStorage.template get<std::vector<Type>>();
         auto result = std::find(typeStorage.begin(), typeStorage.end(), item);
         return std::distance(typeStorage.begin(), result);
     }
 
     template <typename Type>
     std::vector<Type>& getStorage() noexcept {
-        return vectorStorage.get<std::vector<Type>>();
+        return vectorStorage.template get<std::vector<Type>>();
     }
 
     template <typename Type>
     const std::vector<Type>& getStorage() const noexcept {
-        return vectorStorage.get<std::vector<Type>>();
+        return vectorStorage.template get<std::vector<Type>>();
     }
 
    private:
@@ -101,7 +104,8 @@ class VectorList {
 
     template <typename Type>
     bool isIndexValid(Index<Type> index) const noexcept {
-        const auto& typeStorage = vectorStorage.get<std::vector<Type>>();
+        const auto& typeStorage =
+            vectorStorage.template get<std::vector<Type>>();
         return index.listIndex == listIndex &&
                index.itemIndex < typeStorage.size();
     }

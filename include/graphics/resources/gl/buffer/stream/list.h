@@ -11,7 +11,7 @@ template <typename... Types>
 struct ConfigListHelper {
     template <typename Type>
     auto& getConfig() const noexcept {
-        return configList.get<StreamBufferConfig<Type>>();
+        return configList.template get<StreamBufferConfig<Type>>();
     }
 
     const ConfigList<Types...>& configList;
@@ -32,12 +32,12 @@ class StreamList {
 
     template <typename Type>
     auto& getStreamHandle() const noexcept {
-        return buffers.get<StreamHandle<Type>>();
+        return buffers.template get<StreamHandle<Type>>();
     }
 
     template <typename Type>
     auto& getStreamHandle() noexcept {
-        return buffers.get<StreamHandle<Type>>();
+        return buffers.template get<StreamHandle<Type>>();
     }
 
    private:
@@ -45,7 +45,7 @@ class StreamList {
 
     StreamList(const ConfigListHelper<Types...>& configList) noexcept
         : buffers{registerStreamBuffer(
-              configList.getConfig<Types>().build())...} {};
+              configList.template getConfig<Types>().build())...} {};
 
     template <typename Type>
     void beginStreamGeneration() noexcept {

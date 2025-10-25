@@ -95,6 +95,7 @@
         "typeindex": "cpp",
         "*.rh": "cpp",
         "*.def": "cpp",
-        "print": "cpp"
+        "print": "cpp",
+        "string_view": "cpp"
     }
 }

@@ -68,16 +68,16 @@ class BindingState {
     }
 
    private:
+    static auto& getBindingState() noexcept {
+        static BindingState bindingState{};
+        return bindingState;
+    }
+
     template <auto Binding>
     static auto& getBindingTargetState() noexcept {
         static_assert(std::is_same_v<decltype(Binding), BufferBindings>);
         auto& bindingState = getBindingState();
         return bindingState.bindings[magic_enum::enum_integer(Binding)];
-    }
-
-    static auto& getBindingState() noexcept {
-        static BindingState bindingState{};
-        return bindingState;
     }
 
     BindingState() noexcept {

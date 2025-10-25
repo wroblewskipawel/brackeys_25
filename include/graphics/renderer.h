@@ -81,7 +81,7 @@ class DynamicStage {
     template <typename... InstanceTypes, typename... StorageTypes>
     DynamicStage(const StreamList<InstanceTypes...>& instanceStreams,
                  const StreamList<StorageTypes...>& storageStreams)
-        : DynamicStage(instanceStreams.getStreamHandle<Instance>()) {}
+        : DynamicStage(instanceStreams.template getStreamHandle<Instance>()) {}
 
     DynamicStage& setShader(const Shader& shader) {
         shaderProgram = shader.program;
@@ -138,8 +138,8 @@ class AnimatedStage {
     template <typename... InstanceTypes, typename... StorageTypes>
     AnimatedStage(const StreamList<InstanceTypes...>& instanceStreams,
                   const StreamList<StorageTypes...>& storageStreams)
-        : AnimatedStage(instanceStreams.getStreamHandle<Instance>(),
-                        storageStreams.getStreamHandle<glm::mat4>()) {}
+        : AnimatedStage(instanceStreams.template getStreamHandle<Instance>(),
+                        storageStreams.template getStreamHandle<glm::mat4>()) {}
 
     AnimatedStage& setShader(const Shader& shader) {
         shaderProgram = shader.program;
@@ -202,12 +202,12 @@ class Pipeline {
 
     template <typename Stage>
     auto& getStage() const noexcept {
-        return stages.get<Stage>();
+        return stages.template get<Stage>();
     }
 
     template <typename Stage>
     auto& getStage() noexcept {
-        return stages.get<Stage>();
+        return stages.template get<Stage>();
     }
 
    private:
@@ -215,12 +215,12 @@ class Pipeline {
 
     template <typename Stage>
     void execute(const CameraMatrices& cameraMatrices) noexcept {
-        stages.get<Stage>().execute(cameraMatrices);
+        stages.template get<Stage>().execute(cameraMatrices);
     }
 
     template <typename Stage>
     void clear() noexcept {
-        stages.get<Stage>().clear();
+        stages.template get<Stage>().clear();
     }
 
     StageList stages;
@@ -325,7 +325,7 @@ class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
 
     template <typename Stage>
     auto& setShader(const Shader& shader) noexcept {
-        pipeline.getStage<Stage>().setShader(shader);
+        pipeline.template getStage<Stage>().setShader(shader);
         return *this;
     };
 
@@ -333,24 +333,24 @@ class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
     auto& addDraw(
         const StaticBatchHandle<Vertex, Material, Instance>& packHandle,
         const glm::mat4& instanceOffset = glm::mat4(1.0f)) {
-        pipeline.getStage<StaticStage<Vertex, Material, Instance>>().addDraw(
-            packHandle, instanceOffset);
+        pipeline.template getStage<StaticStage<Vertex, Material, Instance>>()
+            .addDraw(packHandle, instanceOffset);
         return *this;
     }
 
     template <typename Vertex, typename Material, typename Instance>
     auto& addDraw(const Model<Vertex, Material>& model,
                   const Instance& instance) {
-        pipeline.getStage<DynamicStage<Vertex, Material, Instance>>().addDraw(
-            model, instance);
+        pipeline.template getStage<DynamicStage<Vertex, Material, Instance>>()
+            .addDraw(model, instance);
         return *this;
     }
 
     template <typename Vertex, typename Material, typename Instance>
     auto& addDraw(const Model<Vertex, Material>& model,
                   const Instance& instance, const AnimationPlayer& sampler) {
-        pipeline.getStage<AnimatedStage<Vertex, Material, Instance>>().addDraw(
-            model, instance, sampler);
+        pipeline.template getStage<AnimatedStage<Vertex, Material, Instance>>()
+            .addDraw(model, instance, sampler);
         return *this;
     }
 

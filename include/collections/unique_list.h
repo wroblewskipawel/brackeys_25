@@ -157,7 +157,7 @@ class UniqueTypeList<Type, Types...> {
             if constexpr (sizeof...(Types) == 0) {
                 static_assert(false, "Search not found in UniqueTypeList::get");
             } else {
-                return next.get<Search>();
+                return next.template get<Search>();
             }
         }
     }
@@ -170,7 +170,7 @@ class UniqueTypeList<Type, Types...> {
             if constexpr (sizeof...(Types) == 0) {
                 static_assert(false, "Search not found in UniqueTypeList::get");
             } else {
-                return next.get<Search>();
+                return next.template get<Search>();
             }
         }
     }

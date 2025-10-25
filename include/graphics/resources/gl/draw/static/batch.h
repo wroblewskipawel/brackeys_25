@@ -45,10 +45,11 @@ class StaticBatch {
         void execute(const UniformLocations& uniformLocations) const noexcept {
             auto bufferInfo = instanceBuffer.getBufferInfo();
             VertexArray<Vertex, Instance>::getVertexArray()
-                .bindBuffer<BindingIndex::InstanceAttributes>(BindingInfo{
-                    .buffer = bufferInfo.buffer,
-                    .offset = 0,
-                });
+                .template bindBuffer<BindingIndex::InstanceAttributes>(
+                    BindingInfo{
+                        .buffer = bufferInfo.buffer,
+                        .offset = 0,
+                    });
             if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
                 glUniform1ui(uniformLocations.materialIndex,
                              static_cast<GLuint>(drawInfo.materialIndex));

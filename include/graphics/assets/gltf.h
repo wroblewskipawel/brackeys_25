@@ -396,12 +396,12 @@ TextureDataHandle getTextureDataHandle(
 };
 
 template <typename Material>
-typename MaterialBuilderHandle<Material> readMaterialData(
+MaterialBuilderHandle<Material> readMaterialData(
     const std::filesystem::path& documentPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material);
 
 template <>
-typename MaterialBuilderHandle<UnlitMaterial> readMaterialData<UnlitMaterial>(
+MaterialBuilderHandle<UnlitMaterial> readMaterialData<UnlitMaterial>(
     const std::filesystem::path& documentPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material) {
     // baseColorTexture could be empty, add support for handling such missing
@@ -420,7 +420,7 @@ typename MaterialBuilderHandle<UnlitMaterial> readMaterialData<UnlitMaterial>(
 // constexpr conditional compilation For now leave this as it is to keep the
 // same DocumentReader behavior for any material type
 template <>
-typename MaterialBuilderHandle<EmptyMaterial> readMaterialData<EmptyMaterial>(
+MaterialBuilderHandle<EmptyMaterial> readMaterialData<EmptyMaterial>(
     const std::filesystem::path& documentPath,
     const fx::gltf::Document& document, const fx::gltf::Material& material) {
     MaterialBuilder<EmptyMaterial> builder{};
@@ -721,7 +721,7 @@ class DocumentReader {
     }
 
     const std::vector<AnimationHandle>& getAnimations() const noexcept {
-        return animations.dataStorage;
+        return animations.getItems();
     }
 
     std::vector<AnimationHandle> takeAnimations() noexcept {

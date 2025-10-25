@@ -34,6 +34,7 @@ struct MeshBuffers {
             other.vbo = 0;
             other.ebo = 0;
         }
+        return *this;
     };
 };
 
@@ -70,9 +71,9 @@ class MeshPack {
     static void bind(const MeshPackHandle<Vertex>& packHandle) {
         auto& vertexArray = VertexArray<Vertex, glm::mat4>::getVertexArray();
         auto& meshPack = packHandle.get().get();
-        vertexArray.bindBuffer<BindingIndex::VertexAttributes>(
+        vertexArray.template bindBuffer<BindingIndex::VertexAttributes>(
             BindingInfo{.buffer = meshPack.buffers.vbo, .offset = 0});
-        vertexArray.bindBuffer<BindingIndex::ElementBuffer>(
+        vertexArray.template bindBuffer<BindingIndex::ElementBuffer>(
             BindingInfo{.buffer = meshPack.buffers.ebo, .offset = 0});
         vertexArray.bind();
     }
@@ -93,8 +94,6 @@ class MeshPack {
         }
         return *this;
     }
-
-    MeshBuffers getBuffers() const noexcept { return buffers; }
 
     size_t numMeshes() const noexcept { return meshes.size(); }
 

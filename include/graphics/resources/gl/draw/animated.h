@@ -23,6 +23,9 @@
 
 constexpr size_t jointMatrixBufferBinding = 1;
 
+template <typename, typename, typename>
+class AnimatedStage;
+
 template <typename Vertex, typename Material, typename Instance>
 class AnimatedDrawMap {
    public:
@@ -102,11 +105,12 @@ class AnimatedDrawMap {
             const StreamBuffer<Instance>& instanceStream,
             const StreamBuffer<glm::mat4>& jointStream) const noexcept {
             VertexArray<Vertex, Instance>::getVertexArray()
-                .bindBuffer<BindingIndex::InstanceAttributes>(BindingInfo{
-                    .buffer =
-                        instanceStream.getBuffer(instanceAllocation).get(),
-                    .offset = 0,
-                });
+                .template bindBuffer<BindingIndex::InstanceAttributes>(
+                    BindingInfo{
+                        .buffer =
+                            instanceStream.getBuffer(instanceAllocation).get(),
+                        .offset = 0,
+                    });
             if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
                 glUniform1ui(uniformLocations.materialIndex,
                              static_cast<GLuint>(drawInfo.materialIndex));
