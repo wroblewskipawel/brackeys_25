@@ -9,6 +9,7 @@
 #include "graphics/resources/gl/buffer/std140.h"
 #include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/texture.h"
+#include "graphics/resources/gl/texture/bindless.h"
 #include "graphics/resources/material.h"
 #include "graphics/storage/gl/material.h"
 
@@ -26,7 +27,7 @@ class UnlitMaterial {
     using BuilderHandleType = MaterialBuilderHandle<UnlitMaterial>;
 
     UnlitMaterial(const BuilderHandleType& builderHandle)
-        : albedoTexture(tryLoadFromDataHandle(
+        : albedoTexture(tryLoadFromDataHandle<TextureBindless>(
               builderHandle.get().get().albedoTexture, SamplerConfig{})) {}
 
     UnlitMaterial(const UnlitMaterial&) = delete;
@@ -50,7 +51,7 @@ class UnlitMaterial {
 
     void setNotResident() const { albedoTexture.setNotResident(); }
 
-    Texture albedoTexture;
+    TextureBindless albedoTexture;
 };
 
 class EmptyMaterial {

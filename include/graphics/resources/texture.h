@@ -33,7 +33,7 @@ struct TextureInfo {
     TextureFormat format;
 };
 
-class Texture;
+class TextureBindless;
 
 class TextureData {
    public:
@@ -97,7 +97,7 @@ class TextureData {
     }
 
    private:
-    friend class Texture;
+    friend class TextureBindless;
 
     TextureData(uint8_t* textureData, TextureInfo textureInfo)
         : imageData(textureData,
