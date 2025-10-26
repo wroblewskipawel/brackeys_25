@@ -43,7 +43,10 @@ add_executable(
     ${IMGUI_BACKEND_SOURCE} ${IMGUI_BACKEND_HEADERS}
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC ${EXTERNAL_LIBS})
-# target_compile_options(${PROJECT_NAME} PRIVATE /bigobj)
+
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /bigobj)
+endif()
 
 target_include_directories(
     ${PROJECT_NAME}
