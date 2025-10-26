@@ -52,20 +52,13 @@ class TextureBindless {
     TextureBindless(const uint8_t* textureData, const TextureInfo& info,
                     const SamplerConfig& samplerConfig) {
         glCreateTextures(GL_TEXTURE_2D, 1, &texture);
-        glTextureStorage2D(texture, 1, getDataFormat(info.format),
+        glTextureStorage2D(texture, getMipLevels(info), getDataFormat(info),
                            static_cast<GLsizei>(info.width),
                            static_cast<GLsizei>(info.height));
         glTextureSubImage2D(texture, 0, 0, 0, static_cast<GLsizei>(info.width),
-                            static_cast<GLsizei>(info.height),
-                            getFormat(info.format), GL_UNSIGNED_BYTE,
-                            textureData);
-
-        glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER,
-                            samplerConfig.minFilter);
-        glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER,
-                            samplerConfig.magFilter);
-        glTextureParameteri(texture, GL_TEXTURE_WRAP_S, samplerConfig.wrapS);
-        glTextureParameteri(texture, GL_TEXTURE_WRAP_T, samplerConfig.wrapT);
+                            static_cast<GLsizei>(info.height), getFormat(info),
+                            GL_UNSIGNED_BYTE, textureData);
+        applySamplerConfig(texture, samplerConfig);
         bindlessHandle = glGetTextureHandleARB(texture);
     }
 

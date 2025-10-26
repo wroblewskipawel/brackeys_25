@@ -17,8 +17,16 @@ struct SamplerConfig {
     GLint magFilter = GL_LINEAR;
 };
 
-GLenum getFormat(TextureFormat format) {
-    switch (format) {
+inline void applySamplerConfig(GLuint texture,
+                               const SamplerConfig& config) noexcept {
+    glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, config.minFilter);
+    glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, config.magFilter);
+    glTextureParameteri(texture, GL_TEXTURE_WRAP_S, config.wrapS);
+    glTextureParameteri(texture, GL_TEXTURE_WRAP_T, config.wrapT);
+}
+
+inline GLenum getFormat(const TextureInfo& info) noexcept {
+    switch (info.format) {
         case TextureFormat::Grey:
             return GL_RED;
         case TextureFormat::GreyAlpha:
@@ -32,8 +40,8 @@ GLenum getFormat(TextureFormat format) {
     }
 }
 
-GLenum getDataFormat(TextureFormat format) {
-    switch (format) {
+inline GLenum getDataFormat(const TextureInfo& info) noexcept {
+    switch (info.format) {
         case TextureFormat::Grey:
             return GL_R8;
         case TextureFormat::GreyAlpha:
@@ -46,6 +54,8 @@ GLenum getDataFormat(TextureFormat format) {
             return GL_NONE;
     }
 }
+
+inline GLsizei getMipLevels(const TextureInfo& info) noexcept { return 1; }
 
 template <typename Texture>
 Texture tryLoadFromDataHandle(const TextureDataHandle& textureDataHandle,
