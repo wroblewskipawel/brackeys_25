@@ -7,6 +7,8 @@
 #include <iostream>
 #include <type_traits>
 
+#include "concepts/range.h"
+
 namespace std140 {
 
 template <typename Element>
@@ -224,8 +226,10 @@ class UniformArrayBuilder {
         return *this;
     }
 
-    UniformArrayBuilder& pushMulti(const std::vector<Item>& items) {
-        buffer.insert(buffer.end(), items.begin(), items.end());
+    template <typename Range>
+        requires RefConstRange<Range, Item>
+    UniformArrayBuilder& pushMulti(Range&& range) {
+        buffer.insert(buffer.end(), range.begin(), range.end());
         return *this;
     }
 

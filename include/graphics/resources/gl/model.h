@@ -8,6 +8,8 @@
 #include "collections/slot_map.h"
 #include "collections/unique_list.h"
 #include "collections/unique_list/vector_list.h"
+#include "graphics/resources/gl/material.h"
+#include "graphics/resources/gl/material/bindless.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/storage/gl/material.h"
 #include "graphics/storage/gl/mesh.h"
@@ -47,8 +49,9 @@ struct PackItemIndex {
 
 template <typename Vertex, typename Material>
 struct PackHandles {
-    PackHandles(MeshPackHandle<Vertex>&& meshPackHandle,
-                MaterialPackHandle<Material>&& materialPackHandle) noexcept
+    PackHandles(
+        MeshPackHandle<Vertex>&& meshPackHandle,
+        MaterialPackHandle<Bindless<Material>>&& materialPackHandle) noexcept
         : meshPackHandle(std::move(meshPackHandle)),
           materialPackHandle(std::move(materialPackHandle)) {}
 
@@ -61,7 +64,7 @@ struct PackHandles {
     void bind() const noexcept {
         MeshPack<Vertex>::bind(meshPackHandle);
         if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
-            MaterialPack<Material>::bind(materialPackHandle);
+            MaterialPack<Bindless<Material>>::bind(materialPackHandle);
         }
     };
 
@@ -70,14 +73,14 @@ struct PackHandles {
     }
 
     MeshPackHandle<Vertex> meshPackHandle;
-    MaterialPackHandle<Material> materialPackHandle;
+    MaterialPackHandle<Bindless<Material>> materialPackHandle;
 };
 
 template <typename Vertex, typename Material>
 struct PackHandlesView {
-    PackHandlesView(
-        const MeshPackHandle<Vertex>& meshPackHandle,
-        const MaterialPackHandle<Material>& materialPackHandle) noexcept
+    PackHandlesView(const MeshPackHandle<Vertex>& meshPackHandle,
+                    const MaterialPackHandle<Bindless<Material>>&
+                        materialPackHandle) noexcept
         : meshPackHandle(meshPackHandle),
           materialPackHandle(materialPackHandle) {}
 
@@ -105,12 +108,12 @@ struct PackHandlesView {
     void bind() const noexcept {
         MeshPack<Vertex>::bind(meshPackHandle);
         if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
-            MaterialPack<Material>::bind(materialPackHandle);
+            MaterialPack<Bindless<Material>>::bind(materialPackHandle);
         }
     };
 
     const MeshPackHandle<Vertex>& meshPackHandle;
-    const MaterialPackHandle<Material>& materialPackHandle;
+    const MaterialPackHandle<Bindless<Material>>& materialPackHandle;
 };
 
 template <typename Pack>
@@ -232,7 +235,7 @@ template <typename Vertex>
 using MeshHandle = PackItemIndex<MeshPackHandle<Vertex>>;
 
 template <typename Material>
-using MaterialHandle = PackItemIndex<MaterialPackHandle<Material>>;
+using MaterialHandle = PackItemIndex<MaterialPackHandle<Bindless<Material>>>;
 
 template <typename Vertex, typename Material>
 struct Model {

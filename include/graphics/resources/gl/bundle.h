@@ -64,7 +64,8 @@ class MeshPackList {
 };
 
 template <typename... Materials>
-using MaterialPackHandleList = HandleList<MaterialPackHandle, Materials...>;
+using MaterialPackHandleList =
+    HandleList<MaterialPackHandle, Bindless<Materials>...>;
 
 template <typename... Materials>
 using MaterialBuilderHandleList =
@@ -88,8 +89,9 @@ void loadMaterialPacks(
     auto packBuilder = MaterialPackBuilder<Material>();
     packBuilder.addMaterialMulti(
         dataList.template getStorage<MaterialBuilderHandle<Material>>());
-    auto& packHandle = handleList.template get<MaterialPackHandle<Material>>();
-    packHandle = packBuilder.build();
+    auto& packHandle =
+        handleList.template get<MaterialPackHandle<Bindless<Material>>>();
+    packHandle = packBuilder.build<Bindless>();
 
     loadMaterialPacks(TypeList<Materials...>{}, handleList, dataList);
 }
@@ -105,7 +107,7 @@ class MaterialPackList {
 
     template <typename Material>
     auto& getPackHandleRef() const noexcept {
-        return packList.template get<MaterialPackHandle<Material>>();
+        return packList.template get<MaterialPackHandle<Bindless<Material>>>();
     }
 
    private:

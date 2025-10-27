@@ -40,9 +40,9 @@ class MaterialBuilder<UnlitMaterial> {
         return *this;
     }
 
-   private:
-    friend class UnlitMaterial;
+    auto& getAlbedoTexture() const noexcept { return albedoTexture; }
 
+   private:
     TextureDataHandle albedoTexture;
 };
 
