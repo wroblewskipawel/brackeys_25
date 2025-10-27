@@ -15,12 +15,6 @@
 
 constexpr size_t materialPackBufferBinding = 0;
 
-template <typename Material>
-class MaterialPack;
-
-template <typename Material>
-class MaterialData;
-
 class UnlitMaterial {
    public:
     using BufferType = std140::Block<GLuint64>;
@@ -43,14 +37,11 @@ class UnlitMaterial {
         return buffer;
     }
 
-   private:
-    friend class MaterialPack<UnlitMaterial>;
-    friend class MaterialData<UnlitMaterial>;
-
     void setResident() const { albedoTexture.setResident(); }
 
     void setNotResident() const { albedoTexture.setNotResident(); }
 
+   private:
     TextureBindless albedoTexture;
 };
 
@@ -74,16 +65,9 @@ class EmptyMaterial {
         return buffer;
     }
 
-   private:
-    friend class MaterialPack<EmptyMaterial>;
-    friend class MaterialData<EmptyMaterial>;
-
     void setResident() const {}
     void setNotResident() const {}
 };
-
-template <typename Material>
-class MaterialPackBuilder;
 
 template <typename Material>
 class MaterialData {
@@ -119,6 +103,9 @@ class MaterialData {
     std::vector<Material> materialData;
     mutable bool isResident;
 };
+
+template <typename Material>
+class MaterialPackBuilder;
 
 template <typename Material>
 class MaterialPack {
@@ -158,15 +145,13 @@ class MaterialPack {
     MaterialPack(std140::UniformArrayBuilder<BufferType>&& materialUniforms,
                  std::vector<Material>&& materialData)
         : materialUniforms(materialUniforms.build()),
-          materialData(std::move(materialData)),
-          isResident{false} {}
+          materialData(std::move(materialData)) {}
 
     inline static auto currentPackIndex =
         MaterialPackHandle<Material>::getInvalid();
 
     std140::UniformArray<BufferType> materialUniforms;
     MaterialData<Material> materialData;
-    bool isResident;
 };
 
 template <typename Material>
