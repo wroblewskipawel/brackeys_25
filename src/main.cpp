@@ -58,9 +58,9 @@ int main(void) {
                                  })
                                  .build();
 
-    auto renderer =
-        Renderer<MeshesList, MaterialList, InstancesList, StorageList>(
-            std::move(instanceStreamList), std::move(storageStreamList));
+    auto renderer = Renderer<MeshesList, MaterialList, InstancesList,
+                             StorageList, Bindless>(
+        std::move(instanceStreamList), std::move(storageStreamList));
 
     ShaderBuilder coloredShaderBuilder{};
     coloredShaderBuilder.addStage(ShaderStage::Vertex,
@@ -84,15 +84,14 @@ int main(void) {
     auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
 
     renderer
-        .setShader<StaticStage<UnlitVertex, UnlitMaterial, glm::mat4>>(
+        .setShader<StaticStage, UnlitVertex, UnlitMaterial, glm::mat4>(
             unlitShader)
-        .setShader<StaticStage<ColoredVertex, EmptyMaterial, glm::mat4>>(
+        .setShader<StaticStage, ColoredVertex, EmptyMaterial, glm::mat4>(
             coloredShader)
-        .setShader<DynamicStage<UnlitVertex, UnlitMaterial, glm::mat4>>(
+        .setShader<DynamicStage, UnlitVertex, UnlitMaterial, glm::mat4>(
             unlitShader)
-        .setShader<
-            AnimatedStage<UnlitAnimatedVertex, UnlitMaterial, glm::mat4>>(
-            unlitAnimatedShader);
+        .setShader<AnimatedStage, UnlitAnimatedVertex, UnlitMaterial,
+                   glm::mat4>(unlitAnimatedShader);
 
     MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
     unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(

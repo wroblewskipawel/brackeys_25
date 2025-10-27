@@ -173,14 +173,14 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
 
     template <typename Vertex, typename Material, typename Instance>
     auto getStaticBatchBuilder() const noexcept {
-        return StaticBatchBuilder<Vertex, Material, Instance>(
+        return StaticBatchBuilder<Vertex, Bindless<Material>, Instance>(
             getPackHandlesView<Vertex, Material>().getOwned());
     }
 
    private:
     template <typename Vertex, typename Material>
     auto tryGetModel(const Ref<Vertex, Material>& modelRef) const noexcept {
-        auto model = Model<Vertex, Material>::getInvalid();
+        auto model = Model<Vertex, Bindless<Material>>::getInvalid();
         if (modelRef.isValid()) {
             model.mesh.packItemIndex = modelRef.get().meshIndex;
             model.mesh.packHandle =
@@ -206,7 +206,7 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
 
     template <typename Vertex, typename Material>
     auto getPackHandlesView() const noexcept {
-        return PackHandlesView<Vertex, Material>(
+        return PackHandlesView<Vertex, Bindless<Material>>(
             meshPacks.template getPackHandleRef<Vertex>(),
             materialPacks.template getPackHandleRef<Material>());
     }

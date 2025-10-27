@@ -292,13 +292,13 @@ struct AnimatedList {
     using Type = typename AnimatedVertices::TypeList;
 };
 
-template <typename, typename, typename, typename>
+template <typename, typename, typename, typename, template <typename> typename>
 class Renderer;
 
 template <typename... Vertices, typename... Materials, typename... Instances,
-          typename... Storage>
+          typename... Storage, template <typename> typename MaterialData>
 class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
-               TypeList<Instances...>, TypeList<Storage...>> {
+               TypeList<Instances...>, TypeList<Storage...>, MaterialData> {
    public:
     using InstanceStreams = StreamList<Instances...>;
     using StorageStreams = StreamList<Storage...>;
@@ -323,9 +323,13 @@ class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
         pipeline.execute(cameraMatrices);
     }
 
-    template <typename Stage>
+    template <template <typename, typename, typename> typename Stage,
+              typename Vertex, typename Material, typename Instance>
     auto& setShader(const Shader& shader) noexcept {
-        pipeline.template getStage<Stage>().setShader(shader);
+        pipeline
+            .template getStage<
+                Stage<Vertex, MaterialData<Material>, Instance>>()
+            .setShader(shader);
         return *this;
     };
 
@@ -357,7 +361,7 @@ class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
    private:
     using AnimatedList = typename AnimatedList<Vertices...>::Type;
     using VerticesList = TypeList<Vertices...>;
-    using MaterialsList = TypeList<Materials...>;
+    using MaterialsList = TypeList<MaterialData<Materials>...>;
     using InstancesList = TypeList<Instances...>;
 
     using StaticStages =

@@ -70,6 +70,9 @@ class Bindless<EmptyMaterial> {
     void setNotResident() const {}
 };
 
+template <>
+struct IsEmptyMaterialT<Bindless<EmptyMaterial>> : std::true_type {};
+
 template <typename Material>
 class MaterialPack<Bindless<Material>> {
    public:

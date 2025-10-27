@@ -56,3 +56,12 @@ class MaterialPackBuilder {
    private:
     std::vector<MaterialBuilderHandle> materialHandles;
 };
+
+template <typename Material>
+struct IsEmptyMaterialT : std::false_type {};
+
+template <typename Material>
+inline constexpr bool IsEmptyMaterialV = IsEmptyMaterialT<Material>::value;
+
+template <typename Material>
+concept EmptyMaterialType = IsEmptyMaterialV<Material>;

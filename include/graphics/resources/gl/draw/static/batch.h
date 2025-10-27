@@ -50,7 +50,7 @@ class StaticBatch {
                         .buffer = bufferInfo.buffer,
                         .offset = 0,
                     });
-            if constexpr (!std::is_same_v<Material, EmptyMaterial>) {
+            if constexpr (!EmptyMaterialType<Material>) {
                 glUniform1ui(uniformLocations.materialIndex,
                              static_cast<GLuint>(drawInfo.materialIndex));
             }
