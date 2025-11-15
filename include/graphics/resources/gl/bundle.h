@@ -5,6 +5,8 @@
 #include "graphics/resources/gl/draw/animated.h"
 #include "graphics/resources/gl/draw/dynamic.h"
 #include "graphics/resources/gl/draw/static.h"
+// #include "graphics/resources/gl/material/bindless.h"
+#include "graphics/resources/gl/material/array.h"
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/model.h"
@@ -65,7 +67,7 @@ class MeshPackList {
 
 template <typename... Materials>
 using MaterialPackHandleList =
-    HandleList<MaterialPackHandle, Bindless<Materials>...>;
+    HandleList<MaterialPackHandle, Array<Materials>...>;
 
 template <typename... Materials>
 using MaterialBuilderHandleList =
@@ -90,8 +92,8 @@ void loadMaterialPacks(
     packBuilder.addMaterialMulti(
         dataList.template getStorage<MaterialBuilderHandle<Material>>());
     auto& packHandle =
-        handleList.template get<MaterialPackHandle<Bindless<Material>>>();
-    packHandle = packBuilder.build<Bindless>();
+        handleList.template get<MaterialPackHandle<Array<Material>>>();
+    packHandle = packBuilder.build<Array>();
 
     loadMaterialPacks(TypeList<Materials...>{}, handleList, dataList);
 }
@@ -107,7 +109,7 @@ class MaterialPackList {
 
     template <typename Material>
     auto& getPackHandleRef() const noexcept {
-        return packList.template get<MaterialPackHandle<Bindless<Material>>>();
+        return packList.template get<MaterialPackHandle<Array<Material>>>();
     }
 
    private:
@@ -173,14 +175,14 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
 
     template <typename Vertex, typename Material, typename Instance>
     auto getStaticBatchBuilder() const noexcept {
-        return StaticBatchBuilder<Vertex, Bindless<Material>, Instance>(
+        return StaticBatchBuilder<Vertex, Array<Material>, Instance>(
             getPackHandlesView<Vertex, Material>().getOwned());
     }
 
    private:
     template <typename Vertex, typename Material>
     auto tryGetModel(const Ref<Vertex, Material>& modelRef) const noexcept {
-        auto model = Model<Vertex, Bindless<Material>>::getInvalid();
+        auto model = Model<Vertex, Array<Material>>::getInvalid();
         if (modelRef.isValid()) {
             model.mesh.packItemIndex = modelRef.get().meshIndex;
             model.mesh.packHandle =
@@ -206,7 +208,7 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
 
     template <typename Vertex, typename Material>
     auto getPackHandlesView() const noexcept {
-        return PackHandlesView<Vertex, Bindless<Material>>(
+        return PackHandlesView<Vertex, Array<Material>>(
             meshPacks.template getPackHandleRef<Vertex>(),
             materialPacks.template getPackHandleRef<Material>());
     }

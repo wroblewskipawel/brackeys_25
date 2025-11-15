@@ -4,6 +4,7 @@
 
 #include "concepts/range.h"
 #include "graphics/resources/gl/texture.h"
+#include "graphics/resources/gl/texture/binding.h"
 #include "graphics/resources/texture.h"
 
 class TextureArrayBuilder;
@@ -14,21 +15,24 @@ class TextureArray {
     TextureArray& operator=(const TextureArray&) = delete;
 
     TextureArray(TextureArray&& other) noexcept
-        : texture(other.texture), numLayers(other.numLayers) {
+        : texture(other.texture), textureInfos(std::move(other.textureInfos)) {
         other.texture = 0;
-        other.numLayers = 0;
     };
     TextureArray& operator=(TextureArray&& other) noexcept {
         if (this != &other) {
             texture = other.texture;
-            numLayers = other.numLayers;
+            textureInfos = std::move(other.textureInfos);
             other.texture = 0;
-            other.numLayers = 0;
         }
         return *this;
     };
 
     ~TextureArray() { glDeleteTextures(1, &texture); };
+
+    void bind(GLuint unitIndex) const noexcept {
+        TextureUnitState::bindTexture<TextureBinding::Array>(texture,
+                                                             unitIndex);
+    }
 
    private:
     friend class TextureArrayBuilder;
@@ -36,28 +40,76 @@ class TextureArray {
     template <typename Layers>
         requires RefConstRange<Layers, TextureData>
     TextureArray(Layers&& layers, const TextureInfo& info,
-                 const SamplerConfig& SamplerConfig)
-        : numLayers{std::static_cast<uint32_t>(std::ranges::distance(layers))} {
+                 const SamplerConfig& samplerConfig) {
+        auto numLayers = std::ranges::distance(layers);
         glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &texture);
         glTextureStorage3D(texture, getMipLevels(info), getDataFormat(info),
                            static_cast<GLsizei>(info.width),
                            static_cast<GLsizei>(info.height),
                            static_cast<GLsizei>(numLayers));
+        textureInfos.reserve(numLayers);
         for (auto [i, layer] : std::views::enumerate(layers)) {
-            glTextureSubImage3D(texture, 0, 0, 0, 0,
+            glTextureSubImage3D(texture, 0, 0, 0, static_cast<GLint>(i),
                                 static_cast<GLsizei>(layer.info.width),
-                                static_cast<GLsizei>(layer.info.height),
-                                static_cast<GLsizei>(i), getFormat(layer),
-                                GL_UNSIGNED_BYTE, layer.data.data());
+                                static_cast<GLsizei>(layer.info.height), 1,
+                                getFormat(layer.info), GL_UNSIGNED_BYTE,
+                                layer.imageData.data());
+            textureInfos.emplace_back(layer.info);
         }
         applySamplerConfig(texture, samplerConfig);
     };
 
     GLuint texture;
-    uint32_t numLayers;
+    std::vector<TextureInfo> textureInfos;
 };
 
 class TextureArrayBuilder {
    public:
+    TextureArrayBuilder() = default;
+
+    TextureArrayBuilder(const TextureArrayBuilder&) = delete;
+    TextureArrayBuilder& operator=(const TextureArrayBuilder&) = delete;
+
+    TextureArrayBuilder(TextureArrayBuilder&&) = delete;
+    TextureArrayBuilder& operator=(TextureArrayBuilder&&) = delete;
+
+    auto& withTexture(const TextureDataHandle& dataHandle) {
+        auto& textureData = dataHandle.get().get();
+        if (arrayInfo.isValid()) {
+            arrayInfo = join(textureData.info, arrayInfo);
+        } else {
+            arrayInfo = textureData.info;
+        }
+        textureHandles.emplace_back(dataHandle.copy());
+        return *this;
+    }
+
+    template <typename Range>
+        requires RefConstRange<Range, TextureDataHandle>
+    auto& withTexture(Range&& range) {
+        for (const auto& textureHandle : range) {
+            withTexture(textureHandle);
+        }
+        return *this;
+    }
+
+    auto& withSamplerConfig(const SamplerConfig& samplerConfig) {
+        arraySamplerConfig = samplerConfig;
+        return *this;
+    }
+
+    auto build() {
+        return TextureArray(
+            std::views::transform(textureHandles,
+                                  [](const auto& textureHandle) {
+                                      return textureHandle.get().get();
+                                  }),
+            arrayInfo, arraySamplerConfig);
+    }
+
    private:
+    TextureInfo arrayInfo;
+    SamplerConfig arraySamplerConfig;
+
+    std::vector<TextureDataHandle> textureHandles;
 };

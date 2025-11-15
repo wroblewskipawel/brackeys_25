@@ -7,6 +7,8 @@
 
 #include "graphics/resources/gl/buffer/binding.h"
 #include "graphics/resources/gl/buffer/std140.h"
+#include "graphics/resources/gl/material.h"
+#include "graphics/resources/gl/shader/uniform.h"
 #include "graphics/resources/gl/texture.h"
 #include "graphics/resources/gl/texture/bindless.h"
 #include "graphics/resources/material.h"
@@ -82,8 +84,8 @@ class MaterialPack<Bindless<Material>> {
     MaterialPack(MaterialPack&&) = default;
     MaterialPack& operator=(MaterialPack&&) = default;
 
-    static void bind(
-        const MaterialPackHandle<Bindless<Material>>& materialPack) {
+    static void bind(const MaterialPackHandle<Bindless<Material>>& materialPack,
+                     const UniformLocations& uniformLocations) {
         if (currentPackIndex != materialPack) {
             if (!currentPackIndex.isInvalid()) {
                 auto& currentPack = currentPackIndex.get().get();

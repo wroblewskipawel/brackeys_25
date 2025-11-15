@@ -9,11 +9,12 @@
 #include "collections/unique_list.h"
 #include "collections/unique_list/vector_list.h"
 #include "graphics/resources/gl/material.h"
-#include "graphics/resources/gl/material/bindless.h"
 #include "graphics/resources/gl/mesh.h"
+#include "graphics/resources/gl/shader/uniform.h"
 #include "graphics/storage/gl/material.h"
 #include "graphics/storage/gl/mesh.h"
 #include "utility/hash.h"
+
 
 template <typename PackHandle>
 struct PackItemIndex {
@@ -60,10 +61,10 @@ struct PackHandles {
     PackHandles(PackHandles&&) = default;
     PackHandles& operator=(PackHandles&&) = default;
 
-    void bind() const noexcept {
+    void bind(const UniformLocations& uniformLocations) const noexcept {
         MeshPack<Vertex>::bind(meshPackHandle);
         if constexpr (!EmptyMaterialType<Material>) {
-            MaterialPack<Material>::bind(materialPackHandle);
+            MaterialPack<Material>::bind(materialPackHandle, uniformLocations);
         }
     };
 
@@ -104,10 +105,10 @@ struct PackHandlesView {
                                              materialPackHandle.copy());
     }
 
-    void bind() const noexcept {
+    void bind(const UniformLocations& uniformLocations) const noexcept {
         MeshPack<Vertex>::bind(meshPackHandle);
         if constexpr (!EmptyMaterialType<Material>) {
-            MaterialPack<Material>::bind(materialPackHandle);
+            MaterialPack<Material>::bind(materialPackHandle, uniformLocations);
         }
     };
 

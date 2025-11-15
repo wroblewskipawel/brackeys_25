@@ -8,6 +8,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "graphics/resources/gl/shader/uniform.h"
+
 enum class ShaderStage : GLenum {
     Vertex = GL_VERTEX_SHADER,
     Fragment = GL_FRAGMENT_SHADER
@@ -16,17 +18,6 @@ enum class ShaderStage : GLenum {
 struct CameraMatrices {
     glm::mat4 view;
     glm::mat4 projection;
-};
-
-struct UniformLocations {
-    GLint materialIndex{-1};
-    GLint materialPack{-1};
-    GLint modelMatrix{-1};
-    GLint instanceOffset{-1};
-    GLint viewMatrix{-1};
-    GLint projectionMatrix{-1};
-    GLint jointMatrixCount{-1};
-    GLint jointMatrixOffset{-1};
 };
 
 class ShaderBuilder;
@@ -75,19 +66,7 @@ class Shader {
     }
 
     Shader(GLuint program) noexcept : program(program) {
-        UniformLocations locations;
-        locations.modelMatrix = glGetUniformLocation(program, "model");
-        locations.instanceOffset = glGetUniformLocation(program, "offset");
-        locations.viewMatrix = glGetUniformLocation(program, "view");
-        locations.projectionMatrix =
-            glGetUniformLocation(program, "projection");
-        locations.materialIndex = glGetUniformLocation(program, "material");
-        locations.materialPack = glGetUniformLocation(program, "materialPack");
-        locations.jointMatrixCount =
-            glGetUniformLocation(program, "jointMatrixCount");
-        locations.jointMatrixOffset =
-            glGetUniformLocation(program, "jointMatrixOffset");
-        uniformLocations[program] = locations;
+        uniformLocations[program] = UniformLocations(program);
     }
 
     GLuint program;

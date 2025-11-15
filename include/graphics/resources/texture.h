@@ -28,9 +28,30 @@ inline TextureFormat getMinFormat(TextureFormat first, TextureFormat second) {
 }
 
 struct TextureInfo {
-    size_t width;
-    size_t height;
-    TextureFormat format;
+    size_t width = 0;
+    size_t height = 0;
+    TextureFormat format = TextureFormat::Grey;
+
+    friend bool operator==(const TextureInfo& lhs,
+                           const TextureInfo& rhs) noexcept {
+        return lhs.width == rhs.width && lhs.height == rhs.height &&
+               lhs.format == rhs.format;
+    }
+
+    bool isValid() const noexcept { return width != 0 && height != 0; }
+
+    friend auto join(const TextureInfo& lhs, const TextureInfo& rhs) noexcept {
+        if (lhs.format != rhs.format) {
+            std::println(std::cerr,
+                         "TextureInfo::join: texture format mismatch");
+            std::abort();
+        }
+        return TextureInfo{
+            .width = std::max(lhs.width, rhs.width),
+            .height = std::max(lhs.height, rhs.height),
+            .format = lhs.format
+        };
+    }
 };
 
 class TextureBindless;
@@ -98,6 +119,8 @@ class TextureData {
 
    private:
     friend class TextureBindless;
+    friend class TextureArray;
+    friend class TextureArrayBuilder;
 
     TextureData(uint8_t* textureData, TextureInfo textureInfo)
         : imageData(textureData,

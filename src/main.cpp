@@ -58,9 +58,9 @@ int main(void) {
                                  })
                                  .build();
 
-    auto renderer = Renderer<MeshesList, MaterialList, InstancesList,
-                             StorageList, Bindless>(
-        std::move(instanceStreamList), std::move(storageStreamList));
+    auto renderer =
+        Renderer<MeshesList, MaterialList, InstancesList, StorageList, Array>(
+            std::move(instanceStreamList), std::move(storageStreamList));
 
     ShaderBuilder coloredShaderBuilder{};
     coloredShaderBuilder.addStage(ShaderStage::Vertex,
@@ -73,14 +73,14 @@ int main(void) {
     unlitShaderBuilder.addStage(ShaderStage::Vertex,
                                 "shaders/unlit/shader.vert");
     unlitShaderBuilder.addStage(ShaderStage::Fragment,
-                                "shaders/unlit/shader.frag");
+                                "shaders/unlit/array/shader.frag");
     auto unlitShader = unlitShaderBuilder.build();
 
     ShaderBuilder unlitAnimatedShaderBuilder{};
     unlitAnimatedShaderBuilder.addStage(ShaderStage::Vertex,
                                         "shaders/unlit_animated/shader.vert");
-    unlitAnimatedShaderBuilder.addStage(ShaderStage::Fragment,
-                                        "shaders/unlit_animated/shader.frag");
+    unlitAnimatedShaderBuilder.addStage(
+        ShaderStage::Fragment, "shaders/unlit_animated/array/shader.frag");
     auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
 
     renderer

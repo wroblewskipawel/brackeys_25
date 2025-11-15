@@ -32,7 +32,7 @@ class TextureUnitState {
     template <TextureBinding Binding>
     static void bindTexture(GLuint texture, GLuint unitIndex) noexcept {
         auto& targetState = getUnitTargetState<Binding>();
-        if (bindingIndex >= targetState.size()) {
+        if (unitIndex >= targetState.size()) {
             std::println(std::cerr,
                          "TextureUnitState::bindTexture: Invalid unitIndex");
             std::abort();
@@ -61,7 +61,7 @@ class TextureUnitState {
 
     template <TextureBinding Binding>
     void initializeBindingArray() noexcept {
-        auto& bindingUnits = bindings[magic_enum::enum_integer(Bindig)];
+        auto& bindingUnits = bindings[magic_enum::enum_integer(Binding)];
         bindingUnits.resize(getMaxTextureUnits(), 0);
     }
 

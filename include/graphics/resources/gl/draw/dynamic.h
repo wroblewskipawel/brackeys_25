@@ -107,7 +107,7 @@ class DynamicDrawMap {
         auto& stream = streamBuffer.get().get();
         for (auto& [packHandles, drawCalls] : drawCallMap.getDrawCalls()) {
             if (drawCalls.empty()) continue;
-            packHandles.bind();
+            packHandles.bind(uniformLocations);
             for (const auto& draw : drawCalls) {
                 draw.execute(uniformLocations, stream);
             }
