@@ -147,13 +147,13 @@ class UniformArray {
     UniformArray(const UniformArray&) = delete;
     UniformArray& operator=(const UniformArray&) = delete;
 
-    UniformArray(UniformArray&& other)
+    UniformArray(UniformArray&& other) noexcept
         : uniformBlockBuffer(other.uniformBlockBuffer),
           numElements(other.numElements) {
         other.uniformBlockBuffer = 0;
         other.numElements = 0;
     };
-    UniformArray& operator=(UniformArray&& other) {
+    UniformArray& operator=(UniformArray&& other) noexcept {
         if (this != &other) {
             glDeleteBuffers(1, &uniformBlockBuffer);
             uniformBlockBuffer = other.uniformBlockBuffer;

@@ -29,7 +29,13 @@ class PinRef {
         return *itemRef;
     }
 
-    bool isValid() const noexcept { return itemRef != nullptr; }
+    [[nodiscard]] bool isValid() const noexcept { return itemRef != nullptr; }
+
+    PinRef(const PinRef&) = delete;
+    PinRef& operator=(const PinRef&) = delete;
+ 
+    PinRef(PinRef&&) = delete;
+    PinRef& operator=(PinRef&&) = delete;
 
    private:
     template <typename, typename>
@@ -39,11 +45,6 @@ class PinRef {
 
     PinRef(Item* itemRef) : itemRef(itemRef) {};
 
-    PinRef(const PinRef&) = delete;
-    PinRef& operator=(const PinRef&) = delete;
-
-    PinRef(PinRef&&) = delete;
-    PinRef& operator=(PinRef&&) = delete;
 
     Item* itemRef;
 };

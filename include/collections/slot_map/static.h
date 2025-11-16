@@ -69,8 +69,10 @@ template <typename Item, typename Ownership>
 class StaticHandle {
    public:
     StaticHandle& operator=(const StaticHandle& other) noexcept {
-        getStorage().pop(std::move(handle));
-        handle = other.handle.copyHandle(getStorage());
+        if (this != &other) {
+            getStorage().pop(std::move(handle));
+            handle = other.handle.copyHandle(getStorage());
+        }
         return *this;
     };
 

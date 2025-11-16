@@ -1,6 +1,5 @@
 #pragma once
 
-#include <filesystem>
 #include <optional>
 
 #include "graphics/resources/texture.h"
@@ -23,7 +22,7 @@ class MaterialBuilder<UnlitMaterial> {
     MaterialBuilder& operator=(const MaterialBuilder&) = delete;
 
     MaterialBuilder(MaterialBuilder&&) = default;
-    MaterialBuilder& operator=(MaterialBuilder&&) = default;
+    MaterialBuilder& operator=(MaterialBuilder&&) noexcept = default;
 
     MaterialBuilder& setAlbedoTextureData(TextureDataHandle&& textureHandle) {
         albedoTexture = std::move(textureHandle);

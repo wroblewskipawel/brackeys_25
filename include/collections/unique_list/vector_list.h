@@ -1,6 +1,8 @@
 #pragma once
 
 #include <algorithm>
+#include <vector>
+#include "collections/unique_list.h"
 
 template <typename... Types>
 class VectorListBuilder;
@@ -33,7 +35,7 @@ class VectorList {
     Index<Type> insert(Type&& handle) noexcept {
         auto& typeStorage = vectorStorage.template get<std::vector<Type>>();
         auto handleIndex = typeStorage.size();
-        typeStorage.emplace_back(std::move(handle));
+        typeStorage.emplace_back(std::forward<Type>(handle));
         return Index<Type>{
             .itemIndex = static_cast<uint32_t>(handleIndex),
             .listIndex = listIndex,

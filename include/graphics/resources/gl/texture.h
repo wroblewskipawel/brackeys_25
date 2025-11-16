@@ -2,7 +2,6 @@
 
 #include <glad/glad.h>
 
-#include <array>
 #include <filesystem>
 #include <iostream>
 #include <optional>

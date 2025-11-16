@@ -7,6 +7,8 @@
 #include "graphics/resources/material.h"
 #include "graphics/storage/gl/material.h"
 #include "graphics/storage/material.h"
+#include "graphics/resources/gl/shader/uniform.h"
+#include "graphics/resources/gl/buffer/std140.h"
 
 template <typename Material>
 class Array;
@@ -32,7 +34,7 @@ class Array<UnlitMaterial> {
     Array& operator=(const Array&) = delete;
 
     Array(Array&&) = default;
-    Array& operator=(Array&&) = default;
+    Array& operator=(Array&&) noexcept = default;
 
     ~Array() = default;
 
@@ -44,7 +46,7 @@ class Array<UnlitMaterial> {
     };
 
    private:
-    const GLuint albedoTextureUnit = 0;
+    inline static constexpr GLuint albedoTextureUnit = 0;
 
     TextureArray albedoTextures;
 };

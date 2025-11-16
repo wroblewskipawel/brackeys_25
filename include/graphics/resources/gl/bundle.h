@@ -2,17 +2,12 @@
 
 #include "collections/unique_list.h"
 #include "graphics/assets/bundle.h"
-#include "graphics/resources/gl/draw/animated.h"
-#include "graphics/resources/gl/draw/dynamic.h"
-#include "graphics/resources/gl/draw/static.h"
-// #include "graphics/resources/gl/material/bindless.h"
 #include "graphics/resources/gl/material/array.h"
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/model.h"
 #include "graphics/storage/gl/material.h"
 #include "graphics/storage/gl/mesh.h"
-#include "graphics/storage/gl/stream.h"
 #include "graphics/storage/material.h"
 #include "graphics/storage/mesh.h"
 
@@ -93,7 +88,7 @@ void loadMaterialPacks(
         dataList.template getStorage<MaterialBuilderHandle<Material>>());
     auto& packHandle =
         handleList.template get<MaterialPackHandle<Array<Material>>>();
-    packHandle = packBuilder.build<Array>();
+    packHandle = packBuilder.template build<Array>();
 
     loadMaterialPacks(TypeList<Materials...>{}, handleList, dataList);
 }

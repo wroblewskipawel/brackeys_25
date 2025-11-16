@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <optional>
+#include <vector>
+#include <unordered_map>
 
 #include "collections/pin.h"
 

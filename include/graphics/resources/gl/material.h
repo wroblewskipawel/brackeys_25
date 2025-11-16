@@ -2,14 +2,9 @@
 
 #include <glad/glad.h>
 
-#include <filesystem>
 #include <glm/glm.hpp>
 
-#include "graphics/resources/gl/buffer/binding.h"
-#include "graphics/resources/gl/buffer/std140.h"
-#include "graphics/resources/gl/texture.h"
-#include "graphics/resources/gl/texture/bindless.h"
-#include "graphics/resources/material.h"
+#include "graphics/storage/material.h"
 #include "graphics/storage/gl/material.h"
 
 constexpr size_t materialPackBufferBinding = 0;
@@ -43,7 +38,7 @@ class MaterialPackBuilder {
         return *this;
     }
 
-    template <template <typename> typename MaterialData>
+    template <template <typename> class MaterialData>
     auto build() {
         if (materialHandles.size() == 0) {
             return MaterialPackHandle<MaterialData<Material>>::getInvalid();
@@ -61,7 +56,7 @@ template <typename Material>
 struct IsEmptyMaterialT : std::false_type {};
 
 template <typename Material>
-inline constexpr bool IsEmptyMaterialV = IsEmptyMaterialT<Material>::value;
+constexpr bool IsEmptyMaterialV = IsEmptyMaterialT<Material>::value;
 
 template <typename Material>
 concept EmptyMaterialType = IsEmptyMaterialV<Material>;

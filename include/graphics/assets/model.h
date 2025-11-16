@@ -6,6 +6,7 @@
 #include "graphics/resources/material.h"
 #include "graphics/resources/mesh.h"
 #include "graphics/storage/material.h"
+#include "graphics/storage/animation.h"
 #include "graphics/storage/mesh.h"
 
 template <typename Vertex, typename Material>
@@ -28,11 +29,11 @@ class ModelData {
     ModelData(const MeshDataHandle<Vertex>& meshData,
               const MaterialBuilderHandle<Material>& materialBuilder,
               const std::vector<AnimationHandle>& animations,
-              const std::string& modelName) noexcept
+              std::string modelName) noexcept
         : meshData(meshData.copy()),
           materialBuilder(materialBuilder.copy()),
           animations(copyVector(animations)),
-          modelName(modelName) {}
+          modelName(std::move(modelName)) {}
 
     MeshDataHandle<Vertex> meshData;
     MaterialBuilderHandle<Material> materialBuilder;

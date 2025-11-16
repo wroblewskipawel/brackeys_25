@@ -9,12 +9,8 @@
 #include <vector>
 
 #include "concepts/range.h"
-#include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/model.h"
-#include "graphics/resources/gl/shader.h"
-#include "graphics/resources/gl/vertex_array.h"
-#include "graphics/storage/gl/material.h"
 
 template <typename Vertex, typename Material, typename Instance>
 class StaticDrawMap;
