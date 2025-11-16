@@ -1,12 +1,14 @@
 #pragma once
 
 #include <glad/glad.h>
+#include <glm/glm.hpp>
 
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <iostream>
 
 #include "graphics/resources/gl/shader/uniform.h"
 
@@ -56,7 +58,7 @@ class Shader {
 
     inline static std::unordered_map<GLuint, UniformLocations> uniformLocations;
 
-    const UniformLocations& getUniformLocations() const noexcept {
+    [[nodiscard]] const UniformLocations& getUniformLocations() const noexcept {
         return uniformLocations.at(program);
     }
 
@@ -79,8 +81,8 @@ class ShaderBuilder {
     ShaderBuilder(const ShaderBuilder&) = delete;
     ShaderBuilder& operator=(const ShaderBuilder&) = delete;
 
-    ShaderBuilder(ShaderBuilder&&) = default;
-    ShaderBuilder& operator=(ShaderBuilder&&) = default;
+    ShaderBuilder(ShaderBuilder&&) noexcept = default;
+    ShaderBuilder& operator=(ShaderBuilder&&) noexcept = default;
 
     ~ShaderBuilder() noexcept {
         for (const auto& [stage, shader] : stages) {

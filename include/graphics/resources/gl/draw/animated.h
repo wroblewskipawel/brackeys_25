@@ -5,7 +5,6 @@
 #include <functional>
 #include <glm/glm.hpp>
 #include <ranges>
-#include <type_traits>
 #include <vector>
 
 #include "concepts/range.h"
@@ -18,7 +17,6 @@
 #include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/shader.h"
 #include "graphics/resources/gl/vertex_array.h"
-#include "graphics/storage/gl/material.h"
 #include "graphics/storage/gl/stream.h"
 
 constexpr size_t jointMatrixBufferBinding = 1;

@@ -1,14 +1,18 @@
 #pragma once
 
+#include <glm/glm.hpp>
+#include <ranges>
 #include <vector>
 
+#include "graphics/resources/gl/buffer/binding.h"
+#include "graphics/resources/gl/buffer/std140.h"
 #include "graphics/resources/gl/material.h"
+#include "graphics/resources/gl/shader/uniform.h"
 #include "graphics/resources/gl/texture/array.h"
 #include "graphics/resources/material.h"
+#include "graphics/resources/texture.h"
 #include "graphics/storage/gl/material.h"
 #include "graphics/storage/material.h"
-#include "graphics/resources/gl/shader/uniform.h"
-#include "graphics/resources/gl/buffer/std140.h"
 
 template <typename Material>
 class Array;
@@ -16,17 +20,29 @@ class Array;
 template <>
 class Array<UnlitMaterial> {
    public:
-    using BufferType = std140::Block<>;
-
     Array(
         const std::vector<MaterialBuilderHandle<UnlitMaterial>>& builderHandles)
-        : albedoTextures{
-              TextureArrayBuilder{}
-                  .withTexture(std::views::transform(
-                      builderHandles,
-                      [](const auto& builderHandle)
-                          -> const TextureDataHandle& {
-                          return builderHandle.get().get().getAlbedoTexture();
+        : albedoTextures{TextureArrayBuilder{}
+                             .withTexture(std::views::transform(
+                                 builderHandles,
+                                 [](const auto& builderHandle)
+                                     -> const TextureDataHandle& {
+                                     return builderHandle.get()
+                                         .get()
+                                         .getAlbedoTexture();
+                                 }))
+                             .build()},
+          materialUniforms{
+              std140::UniformArrayBuilder<BufferType>{}
+                  .pushMulti(std::views::transform(
+                      albedoTextures.getLayerInfos(),
+                      [arrayInfo = albedoTextures.getTextureInfo()](
+                          const auto& layerInfo) {
+                          return BufferType{
+                              static_cast<float>(layerInfo.width) /
+                                  static_cast<float>(arrayInfo.width),
+                              static_cast<float>(layerInfo.height) /
+                                  static_cast<float>(arrayInfo.height)};
                       }))
                   .build()} {}
 
@@ -40,15 +56,19 @@ class Array<UnlitMaterial> {
 
     void bind(const UniformLocations& uniformLocations) const noexcept {
         albedoTextures.bind(albedoTextureUnit);
-        glUniform1i(
-            uniformLocations.arrayMaterials.unlitMaterial.albedoSampler,
-            albedoTextureUnit);
+        glUniform1i(uniformLocations.arrayMaterials.unlitMaterial.albedoSampler,
+                    albedoTextureUnit);
+        BindingState::bindBuffer<BufferBindings::Storage>(
+            materialUniforms.getBuffer(),
+            materialPackBufferBinding);
     };
 
    private:
     inline static constexpr GLuint albedoTextureUnit = 0;
+    using BufferType = std140::Block<GLfloat, GLfloat>;
 
     TextureArray albedoTextures;
+    std140::UniformArray<BufferType> materialUniforms;
 };
 
 template <>
@@ -65,8 +85,6 @@ class Array<EmptyMaterial> {
     ~Array() = default;
 
     void bind(const UniformLocations& uniformLocations) const noexcept {};
-
-    using BufferType = std140::Block<>;
 };
 
 template <>
@@ -90,7 +108,6 @@ class MaterialPack<Array<Material>> {
     }
 
    private:
-    using BufferType = typename Array<Material>::BufferType;
     friend class MaterialPackBuilder<Material>;
 
     MaterialPack(

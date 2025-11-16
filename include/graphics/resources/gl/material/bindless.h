@@ -2,7 +2,6 @@
 
 #include <glad/glad.h>
 
-#include <filesystem>
 #include <glm/glm.hpp>
 
 #include "graphics/resources/gl/buffer/binding.h"
@@ -35,7 +34,7 @@ class Bindless<UnlitMaterial> {
 
     ~Bindless() = default;
 
-    BufferType getUniformBuffer() const {
+    [[nodiscard]] BufferType getUniformBuffer() const {
         BufferType buffer{albedoTexture.getBindlessHandle()};
         return buffer;
     }
@@ -63,7 +62,7 @@ class Bindless<EmptyMaterial> {
 
     ~Bindless() = default;
 
-    BufferType getUniformBuffer() const {
+    [[nodiscard]] BufferType getUniformBuffer() const {
         BufferType buffer{};
         return buffer;
     }

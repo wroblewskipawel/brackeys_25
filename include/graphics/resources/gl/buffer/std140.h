@@ -56,8 +56,7 @@ constexpr size_t alignment() {
             return 8;
         }
     } else {
-        static_assert(!std::is_same_v<Item, Item>,
-                      "Unsupported type for std140::alignment");
+        static_assert(false, "Unsupported type for std140::alignment");
     }
 }
 
