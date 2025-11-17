@@ -3,8 +3,6 @@
 #include <glad/glad.h>
 
 #include <glm/gtc/type_ptr.hpp>
-#include <unordered_map>
-#include <vector>
 
 #include "collections/unique_list.h"
 #include "concepts/range.h"
@@ -292,13 +290,13 @@ struct AnimatedList {
     using Type = typename AnimatedVertices::TypeList;
 };
 
-template <typename, typename, typename, typename, template <typename> typename>
+template <typename, typename, typename, typename>
 class Renderer;
 
 template <typename... Vertices, typename... Materials, typename... Instances,
-          typename... Storage, template <typename> typename MaterialData>
+          typename... Storage>
 class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
-               TypeList<Instances...>, TypeList<Storage...>, MaterialData> {
+               TypeList<Instances...>, TypeList<Storage...>> {
    public:
     using InstanceStreams = StreamList<Instances...>;
     using StorageStreams = StreamList<Storage...>;
@@ -326,9 +324,7 @@ class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
     template <template <typename, typename, typename> typename Stage,
               typename Vertex, typename Material, typename Instance>
     auto& setShader(const Shader& shader) noexcept {
-        pipeline
-            .template getStage<
-                Stage<Vertex, MaterialData<Material>, Instance>>()
+        pipeline.template getStage<Stage<Vertex, Material, Instance>>()
             .setShader(shader);
         return *this;
     };
@@ -361,7 +357,7 @@ class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
    private:
     using AnimatedList = typename AnimatedList<Vertices...>::Type;
     using VerticesList = TypeList<Vertices...>;
-    using MaterialsList = TypeList<MaterialData<Materials>...>;
+    using MaterialsList = TypeList<Materials...>;
     using InstancesList = TypeList<Instances...>;
 
     using StaticStages =

@@ -3,11 +3,12 @@
 #include <glad/glad.h>
 
 #include <array>
+#include <cstdint>
 #include <iostream>
 #include <magic_enum.hpp>
 #include <vector>
 
-enum class BufferBindings {
+enum class BufferBindings: uint8_t {
     Storage,
     Uniform,
 };

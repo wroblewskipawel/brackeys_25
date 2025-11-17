@@ -1,16 +1,16 @@
 #pragma once
 
+#include <cstdint>
 #define STB_IMAGE_IMPLEMENTATION
 
 #include <stb_image.h>
 
-#include <array>
 #include <filesystem>
 #include <iostream>
 #include <magic_enum.hpp>
 #include <optional>
 
-enum class TextureFormat : int {
+enum class TextureFormat : uint8_t {
     Grey = 1,
     GreyAlpha = 2,
     RGB = 3,
@@ -54,8 +54,6 @@ struct TextureInfo {
     }
 };
 
-class TextureBindless;
-
 class TextureData {
    public:
     static TextureInfo getFileInfo(const std::filesystem::path& filePath) {
@@ -70,7 +68,7 @@ class TextureData {
 
     static TextureInfo getBufferInfo(const uint8_t* bytes, size_t byteLength) {
         int width{0}, height{0}, components{0};
-        stbi_info_from_memory(bytes, byteLength, &width, &height, &components);
+        stbi_info_from_memory(bytes, static_cast<int>(byteLength), &width, &height, &components);
         return TextureInfo{
             .width = static_cast<size_t>(width),
             .height = static_cast<size_t>(height),
@@ -104,7 +102,7 @@ class TextureData {
         auto imageInfo = getBufferInfo(bytes, byteLength);
         imageInfo.format = getMinFormat(imageInfo.format, desiredFormat);
         stbi_uc* imageData =
-            stbi_load_from_memory(bytes, byteLength, &width, &height,
+            stbi_load_from_memory(bytes, static_cast<int>(byteLength), &width, &height,
                                   &components, numComponents(imageInfo.format));
         if (imageData) {
             auto texture = TextureData(imageData, imageInfo);
@@ -118,7 +116,6 @@ class TextureData {
     }
 
    private:
-    friend class TextureBindless;
     friend class TextureArray;
     friend class TextureArrayBuilder;
 

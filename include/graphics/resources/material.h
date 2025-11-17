@@ -39,7 +39,7 @@ class MaterialBuilder<UnlitMaterial> {
         return *this;
     }
 
-    auto& getAlbedoTexture() const noexcept { return albedoTexture; }
+    [[nodiscard]] auto& getAlbedoTexture() const noexcept { return albedoTexture; }
 
    private:
     TextureDataHandle albedoTexture;

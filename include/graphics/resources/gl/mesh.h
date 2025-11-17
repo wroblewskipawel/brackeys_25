@@ -4,15 +4,12 @@
 
 #include <functional>
 #include <glm/glm.hpp>
-#include <ranges>
 #include <type_traits>
 #include <vector>
 
-#include "graphics/resources/gl/material.h"
-#include "graphics/resources/gl/shader.h"
 #include "graphics/resources/gl/vertex_array.h"
-#include "graphics/resources/mesh.h"
 #include "graphics/storage/gl/mesh.h"
+#include "graphics/storage/mesh.h"
 
 struct MeshBuffers {
     GLuint vbo{0};
@@ -68,13 +65,12 @@ class MeshPackBuilder;
 template <typename Vertex>
 class MeshPack {
    public:
-    static void bind(const MeshPackHandle<Vertex>& packHandle) {
+    void bind() const noexcept {
         auto& vertexArray = VertexArray<Vertex, glm::mat4>::getVertexArray();
-        auto& meshPack = packHandle.get().get();
         vertexArray.template bindBuffer<BindingIndex::VertexAttributes>(
-            BindingInfo{.buffer = meshPack.buffers.vbo, .offset = 0});
+            BindingInfo{.buffer = buffers.vbo, .offset = 0});
         vertexArray.template bindBuffer<BindingIndex::ElementBuffer>(
-            BindingInfo{.buffer = meshPack.buffers.ebo, .offset = 0});
+            BindingInfo{.buffer = buffers.ebo, .offset = 0});
         vertexArray.bind();
     }
 
@@ -95,9 +91,9 @@ class MeshPack {
         return *this;
     }
 
-    size_t numMeshes() const noexcept { return meshes.size(); }
+    [[nodiscard]] auto numMeshes() const noexcept { return meshes.size(); }
 
-    MeshOffsets getMeshOffsets(size_t meshIndex) const noexcept {
+    [[nodiscard]] auto getMeshOffsets(size_t meshIndex) const noexcept {
         return meshes[meshIndex];
     }
 
@@ -180,8 +176,10 @@ class MeshPackBuilder {
         glCreateBuffers(2, &buffers.vbo);
         glNamedBufferStorage(buffers.vbo, vertices.size() * sizeof(Vertex),
                              vertices.data(), GL_DYNAMIC_STORAGE_BIT);
-        glNamedBufferStorage(buffers.ebo, indices.size() * sizeof(GLuint),
-                             indices.data(), GL_DYNAMIC_STORAGE_BIT);
+        glNamedBufferStorage(
+            buffers.ebo,
+            static_cast<GLsizeiptr>(indices.size() * sizeof(GLuint)),
+            indices.data(), GL_DYNAMIC_STORAGE_BIT);
 
         return registerMeshPack(
             MeshPack<Vertex>(std::move(buffers), std::move(meshes)));
@@ -190,3 +188,8 @@ class MeshPackBuilder {
    private:
     std::vector<MeshDataHandle<Vertex>> meshDatas;
 };
+
+template <typename Vertex>
+inline void bindMeshPack(const MeshPackHandle<Vertex>& packHandle) {
+    packHandle.get().get().bind();
+}

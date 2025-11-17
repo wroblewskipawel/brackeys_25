@@ -3,12 +3,14 @@
 #include <glad/glad.h>
 
 #include <array>
-#include <limits>
+#include <cstdint>
 #include <magic_enum.hpp>
 #include <vector>
+#include <iostream>
 
-enum class TextureBinding {
+enum class TextureBinding: uint8_t {
     Array,
+    Texture2D,
 };
 
 inline size_t getMaxTextureUnits() {
@@ -57,6 +59,7 @@ class TextureUnitState {
 
     TextureUnitState() noexcept {
         initializeBindingArray<TextureBinding::Array>();
+        initializeBindingArray<TextureBinding::Texture2D>();
     }
 
     template <TextureBinding Binding>

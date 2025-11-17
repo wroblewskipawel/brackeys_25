@@ -1,13 +1,9 @@
 #pragma once
 
 #include <map>
-#include <type_traits>
 #include <unordered_map>
-#include <variant>
 
 #include "collections/slot_map.h"
-#include "collections/unique_list.h"
-#include "collections/unique_list/vector_list.h"
 #include "graphics/resources/gl/material.h"
 #include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/shader/uniform.h"
@@ -62,9 +58,9 @@ struct PackHandles {
     PackHandles& operator=(PackHandles&&) = default;
 
     void bind(const UniformLocations& uniformLocations) const noexcept {
-        MeshPack<Vertex>::bind(meshPackHandle);
+        bindMeshPack(meshPackHandle);
         if constexpr (!EmptyMaterialType<Material>) {
-            MaterialPack<Material>::bind(materialPackHandle, uniformLocations);
+            bindMaterialPack(materialPackHandle, uniformLocations);
         }
     };
 
@@ -254,7 +250,7 @@ struct Model {
     }
 
     bool isValid() const noexcept {
-        if constexpr (std::is_same_v<Material, EmptyMaterial>) {
+        if constexpr (EmptyMaterialType<Material>) {
             return mesh.isValid();
         } else {
             return mesh.isValid() && material.isValid();
