@@ -9,30 +9,20 @@
 #include <chrono>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <stdexcept>
 
 #include "collections/unique_list.h"
 #include "graphics/assets/bundle.h"
-#include "graphics/assets/gltf.h"
 #include "graphics/assets/model.h"
-#include "graphics/debug.h"
 #include "graphics/renderer.h"
 #include "graphics/resources/animation.h"
-#include "graphics/resources/gl/buffer/binding.h"
-#include "graphics/resources/gl/buffer/std140.h"
 #include "graphics/resources/gl/buffer/stream.h"
 #include "graphics/resources/gl/buffer/stream/list.h"
 #include "graphics/resources/gl/bundle.h"
-#include "graphics/resources/gl/draw.h"
 #include "graphics/resources/gl/draw/dynamic.h"
 #include "graphics/resources/gl/draw/static.h"
-#include "graphics/resources/gl/material.h"
-#include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/shader.h"
-#include "graphics/resources/gl/vertex_array.h"
 #include "graphics/resources/material.h"
 #include "graphics/resources/mesh.h"
-#include "graphics/storage/gl/stream.h"
 #include "graphics/window.h"
 #include "graphics/window/imgui/widget.h"
 
