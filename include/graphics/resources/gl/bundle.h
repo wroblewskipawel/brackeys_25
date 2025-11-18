@@ -1,5 +1,8 @@
 #pragma once
 
+#include <unordered_map>
+#include <unordered_set>
+
 #include "collections/unique_list.h"
 #include "graphics/assets/bundle.h"
 #include "graphics/resources/gl/material.h"
@@ -10,11 +13,8 @@
 #include "graphics/storage/material.h"
 #include "graphics/storage/mesh.h"
 
-template <template <typename> typename HandleType, typename... Types>
-using HandleList = UniqueTypeList<HandleType<Types>...>;
-
 template <typename... Vertices>
-using MeshPackHandleList = HandleList<MeshPackHandle, Vertices...>;
+using MeshPackHandleList = UniqueTypeList<MeshPackHandle<Vertices>...>;
 
 template <typename... Vertices>
 using MeshDataList = VectorList<MeshDataHandle<Vertices>...>;
@@ -60,20 +60,60 @@ class MeshPackList {
 };
 
 template <typename... Materials>
-using MaterialPackHandleList =
-    HandleList<MaterialPackHandle, Materials...>;
+using MaterialPackHandleList = VectorList<MaterialPackHandle<Materials>...>;
+
+template <typename Material, typename... Materials>
+using MaterialPackIndex = typename MaterialPackHandleList<
+    Materials...>::template Index<MaterialPackHandle<Material>>;
+
+template <typename Material, typename... Materials>
+using MaterialPackIndexMap = std::unordered_map<
+    size_t, std::pair<size_t, MaterialPackIndex<Material, Materials...>>>;
+
+template <typename... Materials>
+using MaterialPackMaterialMap =
+    UniqueTypeList<MaterialPackIndexMap<Materials, Materials...>...>;
 
 template <typename... Materials>
 using MaterialBuilderHandleList =
     VectorList<MaterialBuilderHandle<Materials>...>;
 
-template <typename Materials, typename PackHandleList, typename PackDataList>
+template <typename Material>
+auto partitionMaterials(
+    const std::vector<MaterialBuilderHandle<Material>>& materials) {
+    auto materialMap = std::unordered_map<
+        TextureDims, std::pair<std::unordered_map<size_t, size_t>,
+                               std::vector<MaterialBuilderHandle<Material>>>>{};
+    for (auto [materialIndex, materialHandle] :
+         std::views::enumerate(materials)) {
+        auto textureDims = materialHandle.get().get().getTextureDimensions();
+        auto materialIt = materialMap.find(textureDims);
+        if (materialIt == materialMap.end()) {
+            materialMap.emplace(
+                std::piecewise_construct, std::forward_as_tuple(textureDims),
+                std::forward_as_tuple(
+                    std::unordered_map<size_t, size_t>{},
+                    std::vector<MaterialBuilderHandle<Material>>{}));
+        }
+        auto& materialMapEntry = materialMap.find(textureDims)->second;
+        materialMapEntry.first.emplace(
+            std::piecewise_construct, std::forward_as_tuple(materialIndex),
+            std::forward_as_tuple(materialMapEntry.second.size()));
+        materialMapEntry.second.emplace_back(materialHandle.copy());
+    }
+    return materialMap;
+}
+
+template <typename Materials, typename PackHandleList, typename PackHandleMap,
+          typename PackDataList>
 void loadMaterialPacks(Materials remaining, PackHandleList& packHandles,
+                       PackHandleMap& packMap,
                        const PackDataList& packData) noexcept;
 
 template <typename... PackMaterials, typename... DataMaterials>
 void loadMaterialPacks(
     TypeList<> remaining, MaterialPackHandleList<PackMaterials...>& handleList,
+    MaterialPackMaterialMap<PackMaterials...>& handleMap,
     const MaterialBuilderHandleList<DataMaterials...>& dataList) noexcept {}
 
 template <typename Material, typename... Materials, typename... PackMaterials,
@@ -81,15 +121,39 @@ template <typename Material, typename... Materials, typename... PackMaterials,
 void loadMaterialPacks(
     TypeList<Material, Materials...> remaining,
     MaterialPackHandleList<PackMaterials...>& handleList,
+    MaterialPackMaterialMap<PackMaterials...>& handleMap,
     const MaterialBuilderHandleList<DataMaterials...>& dataList) noexcept {
-    auto packBuilder = MaterialPackBuilder<Material>();
-    packBuilder.addMaterialMulti(
-        dataList.template getStorage<MaterialBuilderHandle<Material>>());
-    auto& packHandle =
-        handleList.template get<MaterialPackHandle<Material>>();
-    packHandle = packBuilder.build();
-
-    loadMaterialPacks(TypeList<Materials...>{}, handleList, dataList);
+    if constexpr (!EmptyMaterialType<Material>) {
+        for (const auto& [_, materialsMapEntry] : partitionMaterials(
+                 dataList
+                     .template getStorage<MaterialBuilderHandle<Material>>())) {
+            auto packIndex = handleList.insert(
+                MaterialPackBuilder<Material>()
+                    .addMaterialMulti(materialsMapEntry.second)
+                    .build());
+            auto& packIndexMap = handleMap.template get<
+                MaterialPackIndexMap<Material, PackMaterials...>>();
+            for (auto [materialIndex, packMaterialIndex] :
+                 materialsMapEntry.first) {
+                packIndexMap.emplace(
+                    std::piecewise_construct,
+                    std::forward_as_tuple(materialIndex),
+                    std::forward_as_tuple(packMaterialIndex, packIndex));
+            }
+        }
+    } else {
+        auto packIndex =
+            handleList.insert(MaterialPackHandle<Material>::getInvalid());
+        auto& packIndexMap = handleMap.template get<
+            MaterialPackIndexMap<Material, PackMaterials...>>();
+        packIndexMap.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(std::numeric_limits<uint32_t>::max()),
+            std::forward_as_tuple(std::numeric_limits<uint32_t>::max(),
+                                  packIndex));
+    }
+    loadMaterialPacks(TypeList<Materials...>{}, handleList, handleMap,
+                      dataList);
 }
 
 template <typename... Materials>
@@ -98,16 +162,30 @@ class MaterialPackList {
     template <typename... Data>
     MaterialPackList(
         const MaterialBuilderHandleList<Data...>& packData) noexcept {
-        loadMaterialPacks(TypeList<Materials...>{}, packList, packData);
+        loadMaterialPacks(TypeList<Materials...>{}, packList, packMap,
+                          packData);
     };
 
     template <typename Material>
-    auto& getPackHandleRef() const noexcept {
-        return packList.template get<MaterialPackHandle<Material>>();
+    auto& getPackHandleRef(size_t materialIndex,
+                           size_t& packMaterialIndex) const noexcept {
+        auto& packIndexMap =
+            packMap
+                .template get<MaterialPackIndexMap<Material, Materials...>>();
+        auto packListIndex = packIndexMap.find(materialIndex);
+        if (packListIndex == packIndexMap.end()) {
+            std::println(std::cerr,
+                         "MaterialPackList::getPackHandleRef: Invalid "
+                         "materialIndex");
+            std::abort();
+        }
+        packMaterialIndex = packListIndex->second.first;
+        return packList.get(packListIndex->second.second);
     }
 
    private:
     MaterialPackHandleList<Materials...> packList;
+    MaterialPackMaterialMap<Materials...> packMap;
 };
 
 template <typename, typename>
@@ -167,23 +245,28 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
         return tryGetAnimations(modelIndices);
     }
 
-    template <typename Vertex, typename Material, typename Instance>
-    auto getStaticBatchBuilder() const noexcept {
-        return StaticBatchBuilder<Vertex, Material, Instance>(
-            getPackHandlesView<Vertex, Material>().getOwned());
-    }
+    // template <typename Vertex, typename Material, typename Instance>
+    // auto getStaticBatchBuilder() const noexcept {
+    //     return StaticBatchBuilder<Vertex, Material, Instance>(
+    //         getPackHandlesView<Vertex, Material>().getOwned());
+    // }
 
    private:
     template <typename Vertex, typename Material>
     auto tryGetModel(const Ref<Vertex, Material>& modelRef) const noexcept {
+        size_t packMaterialIndex = 0;
+        auto meshIndex = modelRef.get().meshIndex;
+        auto materialIndex = modelRef.get().materialIndex;
+        auto& materialPackRef =
+            materialPacks.template getPackHandleRef<Material>(
+                materialIndex, packMaterialIndex);
         auto model = Model<Vertex, Material>::getInvalid();
         if (modelRef.isValid()) {
-            model.mesh.packItemIndex = modelRef.get().meshIndex;
+            model.mesh.packItemIndex = meshIndex;
             model.mesh.packHandle =
                 meshPacks.template getPackHandleRef<Vertex>().copy();
-            model.material.packItemIndex = modelRef.get().materialIndex;
-            model.material.packHandle =
-                materialPacks.template getPackHandleRef<Material>().copy();
+            model.material.packItemIndex = packMaterialIndex;
+            model.material.packHandle = materialPackRef.copy();
         }
         return std::move(model);
     }
@@ -200,12 +283,12 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
         return std::move(modelAnimations);
     }
 
-    template <typename Vertex, typename Material>
-    auto getPackHandlesView() const noexcept {
-        return PackHandlesView<Vertex, Material>(
-            meshPacks.template getPackHandleRef<Vertex>(),
-            materialPacks.template getPackHandleRef<Material>());
-    }
+    // template <typename Vertex, typename Material>
+    // auto getPackHandlesView() const noexcept {
+    //     return PackHandlesView<Vertex, Material>(
+    //         meshPacks.template getPackHandleRef<Vertex>(),
+    //         materialPacks.template getPackHandleRef<Material>());
+    // }
 
     std::vector<AnimationHandle> animations;
     MeshPackList<Vertices...> meshPacks;

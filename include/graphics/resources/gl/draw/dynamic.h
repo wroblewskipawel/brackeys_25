@@ -71,7 +71,7 @@ class DynamicDrawMap {
         BufferAllocation<Instance> instanceAllocation;
 
         bool canJoin(const Draw& other) const noexcept {
-            return instanceAllocation.canJoin(other.instanceAllocation);
+            return drawInfo == other.drawInfo && instanceAllocation.canJoin(other.instanceAllocation);
         }
 
         void join(const Draw& other) noexcept {

@@ -69,8 +69,8 @@ int main(void) {
     ShaderBuilder unlitAnimatedShaderBuilder{};
     unlitAnimatedShaderBuilder.addStage(ShaderStage::Vertex,
                                         "shaders/unlit_animated/shader.vert");
-    unlitAnimatedShaderBuilder.addStage(
-        ShaderStage::Fragment, "shaders/unlit_animated/shader.frag");
+    unlitAnimatedShaderBuilder.addStage(ShaderStage::Fragment,
+                                        "shaders/unlit_animated/shader.frag");
     auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
 
     renderer
@@ -80,6 +80,8 @@ int main(void) {
             coloredShader)
         .setShader<DynamicStage, UnlitVertex, UnlitMaterial, glm::mat4>(
             unlitShader)
+        .setShader<DynamicStage, ColoredVertex, EmptyMaterial, glm::mat4>(
+            coloredShader)
         .setShader<AnimatedStage, UnlitAnimatedVertex, UnlitMaterial,
                    glm::mat4>(unlitAnimatedShader);
 
@@ -156,25 +158,30 @@ int main(void) {
     auto animationPlayer_3 = AnimationPlayer(animations[0]);
     animationPlayer_3.loopAnimation(true);
 
-    auto unlitStaticBatch =
-        resourceBundle
-            .getStaticBatchBuilder<UnlitVertex, UnlitMaterial, glm::mat4>()
-            .addDraw(unlitCube_1, glm::translate(glm::mat4(1.0f),
-                                                 glm::vec3(2.0f, 0.0f, 2.0f)))
-            .addDraw(unlitCube_2, glm::translate(glm::mat4(1.0f),
-                                                 glm::vec3(0.0f, 0.0f, -2.0f)))
-            .build();
+    // auto unlitStaticBatch =
+    //     resourceBundle
+    //         .getStaticBatchBuilder<UnlitVertex, UnlitMaterial, glm::mat4>()
+    //         .addDraw(unlitCube_1, glm::translate(glm::mat4(1.0f),
+    //                                              glm::vec3(2.0f,
+    //                                              0.0f, 2.0f)))
+    //         .addDraw(unlitCube_2, glm::translate(glm::mat4(1.0f),
+    //                                              glm::vec3(0.0f, 0.0f,
+    //                                              -2.0f)))
+    //         .build();
 
-    auto coloredStaticBatch =
-        resourceBundle
-            .getStaticBatchBuilder<ColoredVertex, EmptyMaterial, glm::mat4>()
-            .addDraw(coloredCube, glm::translate(glm::mat4(1.0f),
-                                                 glm::vec3(2.0f, 0.0f, -2.0f)))
-            .addDraw(coloredCube, glm::translate(glm::mat4(1.0f),
-                                                 glm::vec3(-2.0f, 0.0f, 2.0f)))
-            .addDraw(coloredCube, glm::translate(glm::mat4(1.0f),
-                                                 glm::vec3(-2.0f, 0.0f, -2.0f)))
-            .build();
+    // auto coloredStaticBatch =
+    //     resourceBundle
+    //         .getStaticBatchBuilder<ColoredVertex, EmptyMaterial, glm::mat4>()
+    //         .addDraw(coloredCube, glm::translate(glm::mat4(1.0f),
+    //                                              glm::vec3(2.0f, 0.0f,
+    //                                              -2.0f)))
+    //         .addDraw(coloredCube, glm::translate(glm::mat4(1.0f),
+    //                                              glm::vec3(-2.0f,
+    //                                              0.0f, 2.0f)))
+    //         .addDraw(coloredCube, glm::translate(glm::mat4(1.0f),
+    //                                              glm::vec3(-2.0f, 0.0f,
+    //                                              -2.0f)))
+    //         .build();
 
     std::chrono::steady_clock clock{};
     auto lastFrameTime = clock.now();
@@ -197,8 +204,25 @@ int main(void) {
 
         renderer.beginFrame();
 
-        renderer.addDraw(coloredStaticBatch);
-        renderer.addDraw(unlitStaticBatch);
+        // renderer.addDraw(coloredStaticBatch);
+        // renderer.addDraw(unlitStaticBatch);
+
+        renderer.addDraw(
+            unlitCube_1,
+            glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 2.0f)));
+        renderer.addDraw(
+            unlitCube_2,
+            glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f)));
+
+        renderer.addDraw(
+            coloredCube,
+            glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f)));
+        renderer.addDraw(
+            coloredCube,
+            glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 2.0f)));
+        renderer.addDraw(
+            coloredCube,
+            glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, -2.0f)));
 
         renderer.addDraw(
             waterBottle,

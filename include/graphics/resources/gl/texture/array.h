@@ -34,13 +34,9 @@ class TextureArray {
                                                              unitIndex);
     }
 
-    [[nodiscard]] auto getTextureInfo() const noexcept {
-        return arrayInfo;
-    }
+    [[nodiscard]] auto getTextureInfo() const noexcept { return arrayInfo; }
 
-    [[nodiscard]] auto& getLayerInfos() const noexcept {
-        return layerInfos;
-    }
+    [[nodiscard]] auto& getLayerInfos() const noexcept { return layerInfos; }
 
    private:
     friend class TextureArrayBuilder;
@@ -48,20 +44,22 @@ class TextureArray {
     template <typename Layers>
         requires RefConstRange<Layers, TextureData>
     TextureArray(Layers&& layers, const TextureInfo& info,
-                 const SamplerConfig& samplerConfig) : arrayInfo(info) {
+                 const SamplerConfig& samplerConfig)
+        : arrayInfo(info) {
         auto numLayers = std::ranges::distance(layers);
         glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &texture);
         glTextureStorage3D(texture, getMipLevels(info), getDataFormat(info),
-                           static_cast<GLsizei>(info.width),
-                           static_cast<GLsizei>(info.height),
+                           static_cast<GLsizei>(info.dimension.width),
+                           static_cast<GLsizei>(info.dimension.height),
                            static_cast<GLsizei>(numLayers));
         layerInfos.reserve(numLayers);
         for (auto [i, layer] : std::views::enumerate(layers)) {
-            glTextureSubImage3D(texture, 0, 0, 0, static_cast<GLint>(i),
-                                static_cast<GLsizei>(layer.info.width),
-                                static_cast<GLsizei>(layer.info.height), 1,
-                                getFormat(layer.info), GL_UNSIGNED_BYTE,
-                                layer.imageData.data());
+            glTextureSubImage3D(
+                texture, 0, 0, 0, static_cast<GLint>(i),
+                static_cast<GLsizei>(layer.info.dimension.width),
+                static_cast<GLsizei>(layer.info.dimension.height), 1,
+                getFormat(layer.info), GL_UNSIGNED_BYTE,
+                layer.imageData.data());
             layerInfos.emplace_back(layer.info);
         }
         applySamplerConfig(texture, samplerConfig);
@@ -84,10 +82,13 @@ class TextureArrayBuilder {
 
     auto& withTexture(const TextureDataHandle& dataHandle) {
         auto& textureData = dataHandle.get().get();
-        if (arrayInfo.isValid()) {
-            arrayInfo = join(textureData.info, arrayInfo);
-        } else {
+        if (!arrayInfo.isValid()) {
             arrayInfo = textureData.info;
+        } else if (arrayInfo != textureData.info) {
+            std::println(std::cerr,
+                         "TextureArrayBuilder::withTexture: Textures must have "
+                         "the same format and dimensions");
+            std::abort();
         }
         textureHandles.emplace_back(dataHandle.copy());
         return *this;

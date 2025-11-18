@@ -94,10 +94,10 @@ class MaterialPack<UnlitMaterial> {
                       [arrayInfo = albedoTextures.getTextureInfo()](
                           const auto& layerInfo) {
                           return BufferType{
-                              static_cast<float>(layerInfo.width) /
-                                  static_cast<float>(arrayInfo.width),
-                              static_cast<float>(layerInfo.height) /
-                                  static_cast<float>(arrayInfo.height)};
+                              static_cast<float>(layerInfo.dimension.width) /
+                                  static_cast<float>(arrayInfo.dimension.width),
+                              static_cast<float>(layerInfo.dimension.height) /
+                                  static_cast<float>(arrayInfo.dimension.height)};
                       }))
                   .build()} {}
 

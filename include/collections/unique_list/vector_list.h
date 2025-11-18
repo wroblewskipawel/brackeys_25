@@ -44,24 +44,24 @@ class VectorList {
 
     template <typename Type>
     const Type& get(Index<Type> index) const noexcept {
-        auto handle = Type::getInvalid();
-        if (isIndexValid(index)) {
-            const auto& typeStorage =
-                vectorStorage.template get<std::vector<Type>>();
-            handle = typeStorage[index.itemIndex].copy();
+        if (!isIndexValid(index)) {
+            std::println(std::cerr, "VectorList::get: Invalid index");
+            std::abort();
         }
-        return handle;
+        const auto& typeStorage =
+            vectorStorage.template get<std::vector<Type>>();
+        return typeStorage[index.itemIndex];
     }
 
     template <typename Type>
     Type& get(Index<Type> index) noexcept {
-        auto handle = Type::getInvalid();
-        if (isIndexValid(index)) {
-            const auto& typeStorage =
-                vectorStorage.template get<std::vector<Type>>();
-            handle = typeStorage[index.itemIndex].copy();
+        if (!isIndexValid(index)) {
+            std::println(std::cerr, "VectorList::get: Invalid index");
+            std::abort();
         }
-        return handle;
+        const auto& typeStorage =
+            vectorStorage.template get<std::vector<Type>>();
+        return typeStorage[index.itemIndex];
     }
 
     template <typename Type>

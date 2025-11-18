@@ -39,7 +39,16 @@ class MaterialBuilder<UnlitMaterial> {
         return *this;
     }
 
-    [[nodiscard]] auto& getAlbedoTexture() const noexcept { return albedoTexture; }
+    [[nodiscard]] auto& getAlbedoTexture() const noexcept {
+        return albedoTexture;
+    }
+
+    [[nodiscard]] auto getTextureDimensions() const noexcept {
+        if (albedoTexture.isInvalid()) {
+            return TextureDims{};
+        }
+        return albedoTexture.get().get().getInfo().dimension;
+    }
 
    private:
     TextureDataHandle albedoTexture;

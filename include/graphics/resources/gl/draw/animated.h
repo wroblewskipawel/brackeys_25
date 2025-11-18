@@ -88,7 +88,8 @@ class AnimatedDrawMap {
         BufferAllocation<glm::mat4> jointAllocation;
 
         bool canJoin(const Draw& other) const noexcept {
-            return jointMatrixCount == other.jointMatrixCount &&
+            return drawInfo == other.drawInfo &&
+                jointMatrixCount == other.jointMatrixCount &&
                    instanceAllocation.canJoin(other.instanceAllocation) &&
                    jointAllocation.canJoin(other.jointAllocation);
         }
