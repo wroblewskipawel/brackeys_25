@@ -34,21 +34,19 @@ using StorageList = TypeList<glm::mat4>;
 int main(void) {
     Window window{};
 
-    auto widgets = WidgetListBuilder<>{}.append(FpsDisplay(0.98f)).build();
-
-    auto instanceStreamListBuilder =
-        StreamListBuilder<>{}.append(StreamBufferConfig<glm::mat4>{
-            .pageSize = 512,
-        });
-
-    auto storageStreamListBuilder =
-        StreamListBuilder<>{}.append(StreamBufferConfig<glm::mat4>{
-            .pageSize = 512,
-        });
-
-    auto renderer = window.createRenderer(MeshesList{}, MaterialList{},
-                                          instanceStreamListBuilder,
-                                          storageStreamListBuilder);
+    auto renderer =
+        window.getRendererBuilder()
+            .withVertices(MeshesList{})
+            .withMaterials(MaterialList{})
+            .withInstances(
+                StreamListBuilder<>{}.append(StreamBufferConfig<glm::mat4>{
+                    .pageSize = 512,
+                }))
+            .withStorage(
+                StreamListBuilder<>{}.append(StreamBufferConfig<glm::mat4>{
+                    .pageSize = 512,
+                }))
+            .build();
 
     auto coloredShader =
         window.getShaderBuilder()
@@ -80,6 +78,8 @@ int main(void) {
             coloredShader)
         .setShader<AnimatedStage, UnlitAnimatedVertex, UnlitMaterial,
                    glm::mat4>(unlitAnimatedShader);
+
+    auto widgets = WidgetListBuilder<>{}.append(FpsDisplay(0.98f)).build();
 
     MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
     unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(

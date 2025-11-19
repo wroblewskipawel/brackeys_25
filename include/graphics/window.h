@@ -63,16 +63,8 @@ class Window {
 
     bool shouldClose() noexcept { return glfwWindowShouldClose(window); }
 
-    template <typename... Vertices, typename... Materials,
-              typename... Instances, typename... Storage>
-    auto createRenderer(
-        TypeList<Vertices...>, TypeList<Materials...>,
-        const StreamListBuilder<Instances...>& instanceStreamsListBuilder,
-        const StreamListBuilder<Storage...>& storageStreamsListBuilder) noexcept {
-        return Renderer<TypeList<Vertices...>, TypeList<Materials...>,
-                        TypeList<Instances...>, TypeList<Storage...>>(
-            instanceStreamsListBuilder.build(),
-            storageStreamsListBuilder.build());
+    auto getRendererBuilder() noexcept {
+        return getEmptyRendererBuilder();
     }
 
     auto getShaderBuilder() noexcept {

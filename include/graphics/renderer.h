@@ -62,6 +62,9 @@ struct AnimatedList {
 template <typename, typename, typename, typename>
 class Renderer;
 
+template <typename, typename, typename, typename>
+class RendererBuilder;
+
 template <typename... Vertices, typename... Materials, typename... Instances,
           typename... Storage>
 class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
@@ -126,7 +129,8 @@ class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
     }
 
    private:
-    friend class Window;
+    friend class RendererBuilder<TypeList<Vertices...>, TypeList<Materials...>,
+                                 TypeList<Instances...>, TypeList<Storage...>>;
 
     using AnimatedList = typename AnimatedList<Vertices...>::Type;
     using VerticesList = TypeList<Vertices...>;
@@ -159,3 +163,58 @@ class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
     StorageStreams storageStreams;
     Pipeline pipeline;
 };
+
+template <typename... Vertices, typename... Materials, typename... Instances,
+          typename... Storage>
+class RendererBuilder<TypeList<Vertices...>, TypeList<Materials...>,
+                      TypeList<Instances...>, TypeList<Storage...>> {
+   public:
+    RendererBuilder(StreamListBuilder<Instances...>&& instanceStreams,
+                    StreamListBuilder<Storage...>&& storageStreams) noexcept
+        : instanceStreams{instanceStreams}, storageStreams{storageStreams} {}
+
+    auto build() noexcept {
+        return Renderer<TypeList<Vertices...>, TypeList<Materials...>,
+                        TypeList<Instances...>, TypeList<Storage...>>(
+            instanceStreams.build(), storageStreams.build());
+    }
+
+    template <typename... NewVertices>
+    auto withVertices(TypeList<NewVertices...>) noexcept {
+        return RendererBuilder<TypeList<NewVertices...>, TypeList<Materials...>,
+                               TypeList<Instances...>, TypeList<Storage...>>(
+            std::move(instanceStreams), std::move(storageStreams));
+    }
+
+    template <typename... NewMaterials>
+    auto withMaterials(TypeList<NewMaterials...>) noexcept {
+        return RendererBuilder<TypeList<Vertices...>, TypeList<NewMaterials...>,
+                               TypeList<Instances...>, TypeList<Storage...>>(
+            std::move(instanceStreams), std::move(storageStreams));
+    }
+
+    template <typename... NewInsatnces>
+    auto withInstances(
+        StreamListBuilder<NewInsatnces...>&& newInstanceStreams) noexcept {
+        return RendererBuilder<TypeList<Vertices...>, TypeList<Materials...>,
+                               TypeList<NewInsatnces...>, TypeList<Storage...>>(
+            std::move(newInstanceStreams), std::move(storageStreams));
+    }
+
+    template <typename... NewStorage>
+    auto withStorage(
+        StreamListBuilder<NewStorage...>&& newStorageStreams) noexcept {
+        return RendererBuilder<TypeList<Vertices...>, TypeList<Materials...>,
+                               TypeList<Instances...>, TypeList<NewStorage...>>(
+            std::move(instanceStreams), std::move(newStorageStreams));
+    }
+
+   private:
+    StreamListBuilder<Instances...> instanceStreams;
+    StreamListBuilder<Storage...> storageStreams;
+};
+
+auto getEmptyRendererBuilder() {
+    return RendererBuilder<TypeList<>, TypeList<>, TypeList<>, TypeList<>>(
+        StreamListBuilder<>{}, StreamListBuilder<>{});
+}

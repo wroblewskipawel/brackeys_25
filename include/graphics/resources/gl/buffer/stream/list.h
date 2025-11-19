@@ -83,7 +83,8 @@ class StreamListBuilder {
    private:
     template <typename...>
     friend class StreamListBuilder;
-    friend class Window;
+    template <typename, typename, typename, typename>
+    friend class RendererBuilder;
 
     auto build() const noexcept {
         return StreamList(ConfigListHelper(configList));
