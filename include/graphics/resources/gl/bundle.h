@@ -245,12 +245,6 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
         return tryGetAnimations(modelIndices);
     }
 
-    // template <typename Vertex, typename Material, typename Instance>
-    // auto getStaticBatchBuilder() const noexcept {
-    //     return StaticBatchBuilder<Vertex, Material, Instance>(
-    //         getPackHandlesView<Vertex, Material>().getOwned());
-    // }
-
    private:
     template <typename Vertex, typename Material>
     auto tryGetModel(const Ref<Vertex, Material>& modelRef) const noexcept {
@@ -282,13 +276,6 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
         }
         return std::move(modelAnimations);
     }
-
-    // template <typename Vertex, typename Material>
-    // auto getPackHandlesView() const noexcept {
-    //     return PackHandlesView<Vertex, Material>(
-    //         meshPacks.template getPackHandleRef<Vertex>(),
-    //         materialPacks.template getPackHandleRef<Material>());
-    // }
 
     std::vector<AnimationHandle> animations;
     MeshPackList<Vertices...> meshPacks;

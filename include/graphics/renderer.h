@@ -123,6 +123,17 @@ class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
         return *this;
     }
 
+    template <typename Vertex, typename Material, typename Instance>
+    auto& addDraw(
+        const std::vector<StaticBatchHandle<Vertex, Material, Instance>>&
+            batchHandles,
+        const glm::mat4& instanceOffset = glm::mat4(1.0f)) {
+        for (const auto& batchHandle : batchHandles) {
+            addDraw(batchHandle, instanceOffset);
+        }
+        return *this;
+    }
+
    private:
     using AnimatedList = typename AnimatedList<Vertices...>::Type;
     using VerticesList = TypeList<Vertices...>;
