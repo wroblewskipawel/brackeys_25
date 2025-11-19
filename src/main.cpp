@@ -31,6 +31,51 @@ using MeshesList = TypeList<ColoredVertex, UnlitVertex, UnlitAnimatedVertex>;
 using InstancesList = TypeList<glm::mat4>;
 using StorageList = TypeList<glm::mat4>;
 
+auto loadAssets() {
+    MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
+    unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(
+        "assets/textures/tile_1.png", TextureFormat::RGB));
+
+    MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_2{};
+    unlitMaterialBuilder_2.setAlbedoTextureData(TextureData::loadFromFile(
+        "assets/textures/tile_2.png", TextureFormat::RGB));
+
+    auto unlitMaterialBuilder_1Handle =
+        registerMaterialBuilder(std::move(unlitMaterialBuilder_1));
+    auto unlitMaterialBuilder_2Handle =
+        registerMaterialBuilder(std::move(unlitMaterialBuilder_2));
+
+    auto cubeMeshUnlit = getCubeMesh<UnlitVertex>();
+    auto cubeMeshColored = getCubeMesh<ColoredVertex>();
+
+    auto unlitCubeModel_1 = ModelDataBuilder<UnlitVertex, UnlitMaterial>{}
+                                .withMesh(cubeMeshUnlit)
+                                .withMaterial(unlitMaterialBuilder_1Handle)
+                                .withName("unlitCube_1")
+                                .build();
+    auto unlitCubeModel_2 = ModelDataBuilder<UnlitVertex, UnlitMaterial>{}
+                                .withMesh(cubeMeshUnlit)
+                                .withMaterial(unlitMaterialBuilder_2Handle)
+                                .withName("unlitCube_2")
+                                .build();
+    auto coloredCubeModel = ModelDataBuilder<ColoredVertex, EmptyMaterial>{}
+                                .withMesh(cubeMeshColored)
+                                .withName("coloredCube")
+                                .build();
+
+    auto assetsBundle = AssetsBundle<MeshesList, MaterialList>();
+
+    assetsBundle
+        .pushDocument<UnlitVertex, UnlitMaterial>(
+            "gltf", "assets/WaterBottle/glTF/WaterBottle.gltf")
+        .pushDocument<UnlitAnimatedVertex, UnlitMaterial>(
+            "gltf", "assets/CesiumMan/glTF/CesiumMan.gltf")
+        .pushModel("cubes", unlitCubeModel_1)
+        .pushModel("cubes", unlitCubeModel_2)
+        .pushModel("cubes", coloredCubeModel);
+    return assetsBundle;
+}
+
 int main(void) {
     Window window{};
 
@@ -80,47 +125,7 @@ int main(void) {
 
     auto widgets = WidgetListBuilder<>{}.append(FpsDisplay(0.98f)).build();
 
-    MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_1{};
-    unlitMaterialBuilder_1.setAlbedoTextureData(TextureData::loadFromFile(
-        "assets/textures/tile_1.png", TextureFormat::RGB));
-
-    MaterialBuilder<UnlitMaterial> unlitMaterialBuilder_2{};
-    unlitMaterialBuilder_2.setAlbedoTextureData(TextureData::loadFromFile(
-        "assets/textures/tile_2.png", TextureFormat::RGB));
-
-    auto unlitMaterialBuilder_1Handle =
-        registerMaterialBuilder(std::move(unlitMaterialBuilder_1));
-    auto unlitMaterialBuilder_2Handle =
-        registerMaterialBuilder(std::move(unlitMaterialBuilder_2));
-
-    auto cubeMeshUnlit = getCubeMesh<UnlitVertex>();
-    auto cubeMeshColored = getCubeMesh<ColoredVertex>();
-
-    auto unlitCubeModel_1 = ModelDataBuilder<UnlitVertex, UnlitMaterial>{}
-                                .withMesh(cubeMeshUnlit)
-                                .withMaterial(unlitMaterialBuilder_1Handle)
-                                .withName("unlitCube_1")
-                                .build();
-    auto unlitCubeModel_2 = ModelDataBuilder<UnlitVertex, UnlitMaterial>{}
-                                .withMesh(cubeMeshUnlit)
-                                .withMaterial(unlitMaterialBuilder_2Handle)
-                                .withName("unlitCube_2")
-                                .build();
-    auto coloredCubeModel = ModelDataBuilder<ColoredVertex, EmptyMaterial>{}
-                                .withMesh(cubeMeshColored)
-                                .withName("coloredCube")
-                                .build();
-
-    auto assetsBundle = AssetsBundle<MeshesList, MaterialList>();
-
-    assetsBundle
-        .pushDocument<UnlitVertex, UnlitMaterial>(
-            "gltf", "assets/WaterBottle/glTF/WaterBottle.gltf")
-        .pushDocument<UnlitAnimatedVertex, UnlitMaterial>(
-            "gltf", "assets/CesiumMan/glTF/CesiumMan.gltf")
-        .pushModel("cubes", unlitCubeModel_1)
-        .pushModel("cubes", unlitCubeModel_2)
-        .pushModel("cubes", coloredCubeModel);
+    auto assetsBundle = loadAssets();
 
     auto resourceBundle = window.loadResources(assetsBundle);
 
