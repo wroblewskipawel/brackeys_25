@@ -67,15 +67,6 @@ template <typename... Vertices, typename... Materials, typename... Instances,
 class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
                TypeList<Instances...>, TypeList<Storage...>> {
    public:
-    using InstanceStreams = StreamList<Instances...>;
-    using StorageStreams = StreamList<Storage...>;
-
-    Renderer(InstanceStreams&& instanceStreamsList,
-             StorageStreams&& storageStreamsList) noexcept
-        : instanceStreams{std::move(instanceStreamsList)},
-          storageStreams{std::move(storageStreamsList)},
-          pipeline{instanceStreams, storageStreams} {}
-
     void beginFrame() noexcept {
         instanceStreams.beginGeneration();
         storageStreams.beginGeneration();
@@ -135,10 +126,21 @@ class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
     }
 
    private:
+    friend class Window;
+
     using AnimatedList = typename AnimatedList<Vertices...>::Type;
     using VerticesList = TypeList<Vertices...>;
     using MaterialsList = TypeList<Materials...>;
     using InstancesList = TypeList<Instances...>;
+
+    using InstanceStreams = StreamList<Instances...>;
+    using StorageStreams = StreamList<Storage...>;
+
+    Renderer(InstanceStreams&& instanceStreamsList,
+             StorageStreams&& storageStreamsList) noexcept
+        : instanceStreams{std::move(instanceStreamsList)},
+          storageStreams{std::move(storageStreamsList)},
+          pipeline{instanceStreams, storageStreams} {}
 
     using StaticStages =
         typename StageListBuilder<StaticModelStage, VerticesList, MaterialsList,

@@ -36,42 +36,38 @@ int main(void) {
 
     auto widgets = WidgetListBuilder<>{}.append(FpsDisplay(0.98f)).build();
 
-    auto instanceStreamList = StreamListBuilder<>{}
-                                  .append(StreamBufferConfig<glm::mat4>{
-                                      .pageSize = 512,
-                                  })
-                                  .build();
+    auto instanceStreamListBuilder =
+        StreamListBuilder<>{}.append(StreamBufferConfig<glm::mat4>{
+            .pageSize = 512,
+        });
 
-    auto storageStreamList = StreamListBuilder<>{}
-                                 .append(StreamBufferConfig<glm::mat4>{
-                                     .pageSize = 512,
-                                 })
-                                 .build();
+    auto storageStreamListBuilder =
+        StreamListBuilder<>{}.append(StreamBufferConfig<glm::mat4>{
+            .pageSize = 512,
+        });
 
-    auto renderer =
-        Renderer<MeshesList, MaterialList, InstancesList, StorageList>(
-            std::move(instanceStreamList), std::move(storageStreamList));
+    auto renderer = window.createRenderer(MeshesList{}, MaterialList{},
+                                          instanceStreamListBuilder,
+                                          storageStreamListBuilder);
 
-    ShaderBuilder coloredShaderBuilder{};
-    coloredShaderBuilder.addStage(ShaderStage::Vertex,
-                                  "shaders/colored/shader.vert");
-    coloredShaderBuilder.addStage(ShaderStage::Fragment,
-                                  "shaders/colored/shader.frag");
-    auto coloredShader = coloredShaderBuilder.build();
+    auto coloredShader =
+        window.getShaderBuilder()
+            .addStage(ShaderStage::Vertex, "shaders/colored/shader.vert")
+            .addStage(ShaderStage::Fragment, "shaders/colored/shader.frag")
+            .build();
 
-    ShaderBuilder unlitShaderBuilder{};
-    unlitShaderBuilder.addStage(ShaderStage::Vertex,
-                                "shaders/unlit/shader.vert");
-    unlitShaderBuilder.addStage(ShaderStage::Fragment,
-                                "shaders/unlit/shader.frag");
-    auto unlitShader = unlitShaderBuilder.build();
+    auto unlitShader =
+        window.getShaderBuilder()
+            .addStage(ShaderStage::Vertex, "shaders/unlit/shader.vert")
+            .addStage(ShaderStage::Fragment, "shaders/unlit/shader.frag")
+            .build();
 
-    ShaderBuilder unlitAnimatedShaderBuilder{};
-    unlitAnimatedShaderBuilder.addStage(ShaderStage::Vertex,
-                                        "shaders/unlit_animated/shader.vert");
-    unlitAnimatedShaderBuilder.addStage(ShaderStage::Fragment,
-                                        "shaders/unlit_animated/shader.frag");
-    auto unlitAnimatedShader = unlitAnimatedShaderBuilder.build();
+    auto unlitAnimatedShader =
+        window.getShaderBuilder()
+            .addStage(ShaderStage::Vertex, "shaders/unlit_animated/shader.vert")
+            .addStage(ShaderStage::Fragment,
+                      "shaders/unlit_animated/shader.frag")
+            .build();
 
     renderer
         .setShader<StaticStage, UnlitVertex, UnlitMaterial, glm::mat4>(
@@ -127,7 +123,7 @@ int main(void) {
         .pushModel("cubes", unlitCubeModel_2)
         .pushModel("cubes", coloredCubeModel);
 
-    auto resourceBundle = ResourceBundle(assetsBundle);
+    auto resourceBundle = window.loadResources(assetsBundle);
 
     auto waterBottle = resourceBundle.getModel<UnlitVertex, UnlitMaterial>(
         "gltf", "WaterBottle");

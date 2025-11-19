@@ -9,6 +9,8 @@
 #include <iostream>
 
 #include "graphics/renderer.h"
+#include "graphics/resources/gl/bundle.h"
+#include "graphics/resources/gl/buffer/stream/list.h"
 #include "graphics/resources/gl/shader.h"
 #include "graphics/window/imgui.h"
 #include "graphics/window/imgui/widget.h"
@@ -61,8 +63,32 @@ class Window {
 
     bool shouldClose() noexcept { return glfwWindowShouldClose(window); }
 
+    template <typename... Vertices, typename... Materials,
+              typename... Instances, typename... Storage>
+    auto createRenderer(
+        TypeList<Vertices...>, TypeList<Materials...>,
+        const StreamListBuilder<Instances...>& instanceStreamsListBuilder,
+        const StreamListBuilder<Storage...>& storageStreamsListBuilder) noexcept {
+        return Renderer<TypeList<Vertices...>, TypeList<Materials...>,
+                        TypeList<Instances...>, TypeList<Storage...>>(
+            instanceStreamsListBuilder.build(),
+            storageStreamsListBuilder.build());
+    }
+
+    auto getShaderBuilder() noexcept {
+        return ShaderBuilder{};
+    }
+
+    template <typename... Vertices, typename... Materials>
+    auto loadResources(
+        const AssetsBundle<TypeList<Vertices...>, TypeList<Materials...>>&
+            assetsBundle) noexcept {
+        return ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>>(
+            assetsBundle);
+    }
+
    private:
-    template<typename>
+    template <typename>
     friend class Frame;
 
     void beginFrame() noexcept {

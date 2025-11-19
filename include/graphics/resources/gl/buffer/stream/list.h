@@ -80,13 +80,14 @@ class StreamListBuilder {
             std::move(configList)});
     }
 
-    auto build() const noexcept {
-        return StreamList(ConfigListHelper(configList));
-    }
-
    private:
     template <typename...>
     friend class StreamListBuilder;
+    friend class Window;
+
+    auto build() const noexcept {
+        return StreamList(ConfigListHelper(configList));
+    }
 
     StreamListBuilder(ConfigList<Types...>&& configList) noexcept
         : configList(std::move(configList)) {}

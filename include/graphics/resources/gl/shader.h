@@ -76,8 +76,6 @@ class Shader {
 
 class ShaderBuilder {
    public:
-    ShaderBuilder() = default;
-
     ShaderBuilder(const ShaderBuilder&) = delete;
     ShaderBuilder& operator=(const ShaderBuilder&) = delete;
 
@@ -134,8 +132,12 @@ class ShaderBuilder {
     }
 
    private:
+    friend class Window;
+
     const static GLsizei infoLogLen = 512;
     inline static GLchar infoLog[infoLogLen];
+
+    ShaderBuilder() = default;
 
     std::string loadSource(const std::filesystem::path& filepath) {
         std::ifstream fs{};

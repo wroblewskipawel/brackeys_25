@@ -200,14 +200,6 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
     template <typename Vertex, typename Material>
     using Ref = typename IndexStorage::template Ref<Vertex, Material>;
 
-    ResourceBundle(
-        const AssetsBundle<TypeList<Vertices...>, TypeList<Materials...>>&
-            assetsBundle) noexcept
-        : animations(copyVector(assetsBundle.getAnimations())),
-          meshPacks(assetsBundle.getMeshes()),
-          materialPacks(assetsBundle.getMaterials()),
-          documenIndexMap(assetsBundle.getIndicesMap()) {}
-
     template <typename Vertex, typename Material>
     auto getModel(const std::string& modelNamespace,
                   const std::string& modelName) const noexcept {
@@ -246,6 +238,16 @@ class ResourceBundle<TypeList<Vertices...>, TypeList<Materials...>> {
     }
 
    private:
+    friend class Window;
+
+    ResourceBundle(
+        const AssetsBundle<TypeList<Vertices...>, TypeList<Materials...>>&
+            assetsBundle) noexcept
+        : animations(copyVector(assetsBundle.getAnimations())),
+          meshPacks(assetsBundle.getMeshes()),
+          materialPacks(assetsBundle.getMaterials()),
+          documenIndexMap(assetsBundle.getIndicesMap()) {}
+
     template <typename Vertex, typename Material>
     auto tryGetModel(const Ref<Vertex, Material>& modelRef) const noexcept {
         size_t packMaterialIndex = 0;
