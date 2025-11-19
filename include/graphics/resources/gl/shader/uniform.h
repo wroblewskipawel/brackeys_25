@@ -45,3 +45,25 @@ struct UniformLocations {
         jointMatrixOffset = glGetUniformLocation(program, "jointMatrixOffset");
     }
 };
+
+class Uniform {
+   public:
+    [[nodiscard]] static const UniformLocations& getProgramUniformLocations(
+        GLuint program) noexcept {
+        return uniformLocations.at(program);
+    }
+
+   private:
+    template <typename, typename, typename>
+    friend class Shader;
+
+    static void setProgramUniformLocations(GLuint program) noexcept {
+        uniformLocations[program] = UniformLocations(program);
+    }
+
+    static void popProgramUniformLocations(GLuint program) noexcept {
+        uniformLocations.erase(program);
+    }
+
+    inline static std::unordered_map<GLuint, UniformLocations> uniformLocations;
+};

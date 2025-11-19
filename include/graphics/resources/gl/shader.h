@@ -1,14 +1,14 @@
 #pragma once
 
 #include <glad/glad.h>
-#include <glm/glm.hpp>
 
 #include <filesystem>
 #include <fstream>
+#include <glm/glm.hpp>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <unordered_map>
-#include <iostream>
 
 #include "graphics/resources/gl/shader/uniform.h"
 
@@ -22,8 +22,10 @@ struct CameraMatrices {
     glm::mat4 projection;
 };
 
+template <typename, typename, typename>
 class ShaderBuilder;
 
+template <typename, typename, typename>
 class Shader {
    public:
     Shader(const Shader&) = delete;
@@ -43,9 +45,13 @@ class Shader {
         return *this;
     };
 
-    ~Shader() noexcept { glDeleteProgram(program); }
+    ~Shader() noexcept { 
+        Uniform::popProgramUniformLocations(program);
+        glDeleteProgram(program);
+    }
 
    private:
+    template <typename, typename, typename>
     friend class ShaderBuilder;
     template <typename, typename, typename>
     friend class StaticStage;
@@ -55,25 +61,15 @@ class Shader {
     friend class AnimatedStage;
 
     static Shader invalid() noexcept { return Shader(0); }
-
-    inline static std::unordered_map<GLuint, UniformLocations> uniformLocations;
-
-    [[nodiscard]] const UniformLocations& getUniformLocations() const noexcept {
-        return uniformLocations.at(program);
-    }
-
-    static const UniformLocations& getProgramUniformLocations(
-        GLuint program) noexcept {
-        return uniformLocations.at(program);
-    }
-
+    
     Shader(GLuint program) noexcept : program(program) {
-        uniformLocations[program] = UniformLocations(program);
+        Uniform::setProgramUniformLocations(program);
     }
-
+    
     GLuint program;
 };
 
+template <typename Vertex, typename Material, typename Instance>
 class ShaderBuilder {
    public:
     ShaderBuilder(const ShaderBuilder&) = delete;
@@ -82,14 +78,68 @@ class ShaderBuilder {
     ShaderBuilder(ShaderBuilder&&) noexcept = default;
     ShaderBuilder& operator=(ShaderBuilder&&) noexcept = default;
 
-    ~ShaderBuilder() noexcept {
-        for (const auto& [stage, shader] : stages) {
-            glDeleteShader(shader);
-        }
-    }
+    ~ShaderBuilder() noexcept = default;
 
     ShaderBuilder& addStage(ShaderStage stage,
                             const std::filesystem::path& filepath) noexcept {
+        stages.emplace(stage, filepath);
+        return *this;
+    }
+
+    auto build() const noexcept {
+        auto stages = buildStages();
+        if (stages.empty()) {
+            return Shader<Vertex, Material, Instance>::invalid();
+        }
+
+        GLuint program = glCreateProgram();
+        for (const auto& shader : stages) {
+            glAttachShader(program, shader);
+        }
+        glLinkProgram(program);
+
+        for (const auto& shader : stages) {
+            glDeleteShader(shader);
+        }
+
+        GLint status;
+        glGetProgramiv(program, GL_LINK_STATUS, &status);
+        if (status != GL_TRUE) {
+            glGetProgramInfoLog(program, infoLogLen, NULL, infoLog);
+            std::println(std::cerr, "Failed to link program\n {}", infoLog);
+            glDeleteProgram(program);
+            return Shader<Vertex, Material, Instance>::invalid();
+        }
+        return Shader<Vertex, Material, Instance>(program);
+    }
+
+   private:
+    friend class Window;
+
+    const static GLsizei infoLogLen = 512;
+    inline static GLchar infoLog[infoLogLen];
+
+    ShaderBuilder() = default;
+
+    auto buildStages() const noexcept {
+        auto shaders = std::vector<GLuint>{};
+        for (const auto& [stage, filepath] : stages) {
+            auto shader = buildStage(stage, filepath);
+            if (shader != 0) {
+                shaders.emplace_back(shader);
+            } else {
+                for (const auto& shader : shaders) {
+                    glDeleteShader(shader);
+                }
+                shaders.clear();
+                break;
+            }
+        }
+        return shaders;
+    }
+
+    auto buildStage(ShaderStage stage,
+                    const std::filesystem::path& filepath) const noexcept {
         GLuint shader = glCreateShader(static_cast<GLenum>(stage));
         auto source = loadSource(filepath);
         const char* src = source.c_str();
@@ -104,42 +154,12 @@ class ShaderBuilder {
                          "Failed to compile shader [filepath: {}]\n{}",
                          filepath.string(), infoLog);
             glDeleteShader(shader);
-        } else {
-            stages.find(stage) != stages.end() ? glDeleteShader(stages[stage])
-                                               : void();
-            stages[stage] = shader;
+            shader = 0;
         }
-
-        return *this;
+        return shader;
     }
 
-    Shader build() const noexcept {
-        GLuint program = glCreateProgram();
-        for (const auto& [stage, shader] : stages) {
-            glAttachShader(program, shader);
-        }
-
-        glLinkProgram(program);
-        GLint status;
-        glGetProgramiv(program, GL_LINK_STATUS, &status);
-        if (status != GL_TRUE) {
-            glGetProgramInfoLog(program, infoLogLen, NULL, infoLog);
-            std::println(std::cerr, "Failed to link program\n {}", infoLog);
-            glDeleteProgram(program);
-            return Shader::invalid();
-        }
-        return Shader(program);
-    }
-
-   private:
-    friend class Window;
-
-    const static GLsizei infoLogLen = 512;
-    inline static GLchar infoLog[infoLogLen];
-
-    ShaderBuilder() = default;
-
-    std::string loadSource(const std::filesystem::path& filepath) {
+    std::string loadSource(const std::filesystem::path& filepath) const noexcept {
         std::ifstream fs{};
         std::ostringstream os{};
         fs.exceptions(std::ios::failbit | std::ios::badbit);
@@ -154,5 +174,5 @@ class ShaderBuilder {
         return os.str();
     }
 
-    std::unordered_map<ShaderStage, GLuint> stages;
+    std::unordered_map<ShaderStage, std::filesystem::path> stages;
 };

@@ -86,7 +86,7 @@ class Renderer<TypeList<Vertices...>, TypeList<Materials...>,
 
     template <template <typename, typename, typename> typename Stage,
               typename Vertex, typename Material, typename Instance>
-    auto& setShader(const Shader& shader) noexcept {
+    auto& setShader(const Shader<Vertex, Material, Instance>& shader) noexcept {
         pipeline.template getStage<Stage<Vertex, Material, Instance>>()
             .setShader(shader);
         return *this;

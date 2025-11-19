@@ -49,35 +49,34 @@ int main(void) {
             .build();
 
     auto coloredShader =
-        window.getShaderBuilder()
+        window
+            .template getShaderBuilder<ColoredVertex, EmptyMaterial,
+                                       glm::mat4>()
             .addStage(ShaderStage::Vertex, "shaders/colored/shader.vert")
             .addStage(ShaderStage::Fragment, "shaders/colored/shader.frag")
             .build();
 
     auto unlitShader =
-        window.getShaderBuilder()
+        window
+            .template getShaderBuilder<UnlitVertex, UnlitMaterial, glm::mat4>()
             .addStage(ShaderStage::Vertex, "shaders/unlit/shader.vert")
             .addStage(ShaderStage::Fragment, "shaders/unlit/shader.frag")
             .build();
 
     auto unlitAnimatedShader =
-        window.getShaderBuilder()
+        window
+            .template getShaderBuilder<UnlitAnimatedVertex, UnlitMaterial,
+                                       glm::mat4>()
             .addStage(ShaderStage::Vertex, "shaders/unlit_animated/shader.vert")
             .addStage(ShaderStage::Fragment,
                       "shaders/unlit_animated/shader.frag")
             .build();
 
-    renderer
-        .setShader<StaticStage, UnlitVertex, UnlitMaterial, glm::mat4>(
-            unlitShader)
-        .setShader<StaticStage, ColoredVertex, EmptyMaterial, glm::mat4>(
-            coloredShader)
-        .setShader<DynamicStage, UnlitVertex, UnlitMaterial, glm::mat4>(
-            unlitShader)
-        .setShader<DynamicStage, ColoredVertex, EmptyMaterial, glm::mat4>(
-            coloredShader)
-        .setShader<AnimatedStage, UnlitAnimatedVertex, UnlitMaterial,
-                   glm::mat4>(unlitAnimatedShader);
+    renderer.setShader<StaticStage>(unlitShader)
+        .setShader<StaticStage>(coloredShader)
+        .setShader<DynamicStage>(unlitShader)
+        .setShader<DynamicStage>(coloredShader)
+        .setShader<AnimatedStage>(unlitAnimatedShader);
 
     auto widgets = WidgetListBuilder<>{}.append(FpsDisplay(0.98f)).build();
 

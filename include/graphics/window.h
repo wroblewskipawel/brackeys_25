@@ -67,8 +67,9 @@ class Window {
         return getEmptyRendererBuilder();
     }
 
+    template<typename Vertex, typename Material, typename Instance>
     auto getShaderBuilder() noexcept {
-        return ShaderBuilder{};
+        return ShaderBuilder<Vertex, Material, Instance>{};
     }
 
     template <typename... Vertices, typename... Materials>

@@ -12,6 +12,7 @@
 template <typename Vertex, typename Material, typename Instance>
 class StaticStage {
    public:
+    using Shader = Shader<Vertex, Material, Instance>;
     using StaticBatch = StaticBatch<Vertex, Material, Instance>;
     using StaticBatchHandle = typename StaticBatch::Handle;
 
@@ -46,7 +47,7 @@ class StaticStage {
         if (shaderProgram) {
             glUseProgram(shaderProgram);
             const auto& locations =
-                Shader::getProgramUniformLocations(shaderProgram);
+                Uniform::getProgramUniformLocations(shaderProgram);
             glUniformMatrix4fv(locations.viewMatrix, 1, GL_FALSE,
                                glm::value_ptr(cameraMatrices.view));
             glUniformMatrix4fv(locations.projectionMatrix, 1, GL_FALSE,

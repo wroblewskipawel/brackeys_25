@@ -13,6 +13,7 @@
 template <typename Vertex, typename Material, typename Instance>
 class AnimatedStage {
    public:
+    using Shader = Shader<Vertex, Material, Instance>;
     using Model = Model<Vertex, Material>;
 
     AnimatedStage(const StreamHandle<Instance>& instanceStreamBuffer,
@@ -59,7 +60,7 @@ class AnimatedStage {
         if (shaderProgram) {
             glUseProgram(shaderProgram);
             const auto& locations =
-                Shader::getProgramUniformLocations(shaderProgram);
+                Uniform::getProgramUniformLocations(shaderProgram);
             glUniformMatrix4fv(locations.viewMatrix, 1, GL_FALSE,
                                glm::value_ptr(cameraMatrices.view));
             glUniformMatrix4fv(locations.projectionMatrix, 1, GL_FALSE,
