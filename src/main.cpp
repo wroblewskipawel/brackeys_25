@@ -188,8 +188,6 @@ int main(void) {
     float accumulatedTime = 0.0f;
 
     while (!window.shouldClose()) {
-        auto frame = Frame(window);
-
         auto currentFrameTime = clock.now();
         auto deltaTime =
             std::chrono::duration<float>(currentFrameTime - lastFrameTime)
@@ -201,12 +199,14 @@ int main(void) {
         animationPlayer_2.update(deltaTime / 2.0f);
         animationPlayer_3.update(deltaTime / 4.0f);
 
-        renderer.beginFrame();
+        widgets.update(deltaTime);
 
-        renderer.addDraw(coloredStaticBatch);
-        renderer.addDraw(unlitStaticBatch);
+        auto frame = Frame(window, renderer, cameraMatrices);
 
-        renderer.addDraw(
+        frame.draw(coloredStaticBatch);
+        frame.draw(unlitStaticBatch);
+
+        frame.draw(
             waterBottle,
             glm::scale(glm::rotate(glm::translate(glm::mat4(1.0f),
                                                   glm::vec3(-2.0f, 0.0f, 0.0f)),
@@ -214,7 +214,7 @@ int main(void) {
                                    glm::vec3(0.0f, 0.0f, 1.0f)),
                        glm::vec3(6.0f)));
 
-        renderer.addDraw(
+        frame.draw(
             waterBottle,
             glm::scale(glm::rotate(glm::translate(glm::mat4(1.0f),
                                                   glm::vec3(2.0f, 0.0f, 0.0f)),
@@ -222,7 +222,7 @@ int main(void) {
                                    glm::vec3(0.0f, 0.0f, 1.0f)),
                        glm::vec3(6.0f)));
 
-        renderer.addDraw(
+        frame.draw(
             waterBottle,
             glm::scale(glm::rotate(glm::translate(glm::mat4(1.0f),
                                                   glm::vec3(0.0f, 0.0f, 2.5f)),
@@ -230,24 +230,22 @@ int main(void) {
                                    glm::vec3(0.0f, 1.0f, 0.0f)),
                        glm::vec3(4.0f)));
 
-        renderer.addDraw(
-            cesiumMan,
-            glm::scale(
-                glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
-                glm::vec3(2.0f)),
-            animationPlayer_1);
+        frame.draw(cesiumMan,
+                   glm::scale(glm::translate(glm::mat4(1.0f),
+                                             glm::vec3(0.0f, 0.0f, -1.0f)),
+                              glm::vec3(2.0f)),
+                   animationPlayer_1);
 
-        renderer.addDraw(
-            cesiumMan,
-            glm::scale(
-                glm::rotate(glm::translate(glm::mat4(1.0f),
-                                           glm::vec3(0.0f, -2.0f, -1.0f)),
-                            -3.15f / 2.0f * accumulatedTime,
-                            glm::vec3(0.0f, 0.0f, 1.0f)),
-                glm::vec3(2.0f)),
-            animationPlayer_2);
+        frame.draw(cesiumMan,
+                   glm::scale(glm::rotate(
+                                  glm::translate(glm::mat4(1.0f),
+                                                 glm::vec3(0.0f, -2.0f, -1.0f)),
+                                  -3.15f / 2.0f * accumulatedTime,
+                                  glm::vec3(0.0f, 0.0f, 1.0f)),
+                              glm::vec3(2.0f)),
+                   animationPlayer_2);
 
-        renderer.addDraw(
+        frame.draw(
             cesiumMan,
             glm::scale(glm::rotate(glm::translate(glm::mat4(1.0f),
                                                   glm::vec3(0.0f, 2.0f, -1.0f)),
@@ -256,9 +254,6 @@ int main(void) {
                        glm::vec3(2.0f)),
             animationPlayer_3);
 
-        renderer.endFrame(cameraMatrices);
-
-        widgets.update(deltaTime);
         frame.draw(widgets);
     }
     return 0;

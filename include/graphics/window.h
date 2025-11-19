@@ -8,10 +8,13 @@
 
 #include <iostream>
 
+#include "graphics/renderer.h"
+#include "graphics/resources/gl/shader.h"
 #include "graphics/window/imgui.h"
 #include "graphics/window/imgui/widget.h"
 #include "graphics/window/opengl.h"
 
+template <typename Renderer>
 class Frame;
 
 class Window {
@@ -59,6 +62,7 @@ class Window {
     bool shouldClose() noexcept { return glfwWindowShouldClose(window); }
 
    private:
+    template<typename>
     friend class Frame;
 
     void beginFrame() noexcept {
@@ -76,18 +80,64 @@ class Window {
     GLFWwindow* window;
 };
 
+template <typename Renderer>
 class Frame {
    public:
-    Frame(Window& window) noexcept : window(window) { window.beginFrame(); };
+    Frame(Window& window, Renderer& renderer,
+          const CameraMatrices& cameraMatrices) noexcept
+        : window(window), renderer(renderer), cameraMatrices(cameraMatrices) {
+        window.beginFrame();
+        renderer.beginFrame();
+    };
+
+    Frame(const Frame&) = delete;
+    Frame& operator=(const Frame&) = delete;
+
+    Frame(Frame&&) = delete;
+    Frame& operator=(Frame&&) = delete;
 
     template <typename Type>
         requires WidgetListType<Type>
-    void draw(Type& widgets) {
+    auto& draw(Type& widgets) {
         widgets.draw();
+        return *this;
     }
 
-    ~Frame() noexcept { window.endFrame(); }
+    template <typename Vertex, typename Material, typename Instance>
+    auto& draw(const StaticBatchHandle<Vertex, Material, Instance>& packHandle,
+               const glm::mat4& instanceOffset = glm::mat4(1.0f)) {
+        renderer.addDraw(packHandle, instanceOffset);
+        return *this;
+    }
+
+    template <typename Vertex, typename Material, typename Instance>
+    auto& draw(const Model<Vertex, Material>& model, const Instance& instance) {
+        renderer.addDraw(model, instance);
+        return *this;
+    }
+
+    template <typename Vertex, typename Material, typename Instance>
+    auto& draw(const Model<Vertex, Material>& model, const Instance& instance,
+               const AnimationPlayer& sampler) {
+        renderer.addDraw(model, instance, sampler);
+        return *this;
+    }
+
+    template <typename Vertex, typename Material, typename Instance>
+    auto& draw(const std::vector<StaticBatchHandle<Vertex, Material, Instance>>&
+                   batchHandles,
+               const glm::mat4& instanceOffset = glm::mat4(1.0f)) {
+        renderer.addDraw(batchHandles, instanceOffset);
+        return *this;
+    }
+
+    ~Frame() noexcept {
+        renderer.endFrame(cameraMatrices);
+        window.endFrame();
+    }
 
    private:
     Window& window;
+    Renderer& renderer;
+    CameraMatrices cameraMatrices;
 };
