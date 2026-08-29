@@ -1,0 +1,7 @@
+{
+    "cmake.generator": "Ninja",
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}/build"
+    ]
+}

@@ -8,4 +8,17 @@ Diagnostics:
 CompileFlags:
   CompilationDatabase: "build"
   Compiler: clang++
-  Add: [-std=c++23, -Iinclude, -xc++]
+  Add:
+    - -std=c++23
+    - -xc++
+    - -I../include
+    - -I../extern/json/include
+    - -I../extern/fx-gltf
+    - -I../extern/glfw/include
+    - -I../extern/glm
+    - -I../extern/stb
+    - -I../extern/magic_enum
+    - -I../extern/imgui
+    - -I../extern/imgui/backends
+    - -I../extern/glad/include
+    - -DGLM_FORCE_QUAT_DATA_XYZW

@@ -3,7 +3,6 @@
 #include <glad/glad.h>
 
 #include "collections/unique_list.h"
-#include "concepts/range.h"
 #include "graphics/renderer/pipeline.h"
 #include "graphics/renderer/stage/animated.h"
 #include "graphics/renderer/stage/dynamic.h"
@@ -12,8 +11,6 @@
 #include "graphics/resources/gl/draw/animated.h"
 #include "graphics/resources/gl/draw/dynamic.h"
 #include "graphics/resources/gl/draw/static.h"
-#include "graphics/resources/gl/draw/static/batch.h"
-#include "graphics/resources/gl/mesh.h"
 #include "graphics/resources/gl/model.h"
 #include "graphics/resources/gl/shader.h"
 

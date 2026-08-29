@@ -54,8 +54,10 @@ CTestTestfile.cmake
 _deps
 build
 
-# VSCode settings and extensions data
-.vscode/
+# Ingore VSCode extensions local data 
+# Share the IDE settings for the project
+.vscode/*
+!.vscode/settings.json
 .cache/
 
 # ImGui ini file
