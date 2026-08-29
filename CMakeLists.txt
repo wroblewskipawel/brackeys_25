@@ -49,9 +49,7 @@ if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /bigobj)
 endif()
 
-target_include_directories(
-    ${PROJECT_NAME}
-    PUBLIC
+set(PROJECT_INCLUDE_DIRS
     "${CMAKE_SOURCE_DIR}/include/"
     "${CMAKE_SOURCE_DIR}/extern/json/include/"
     "${CMAKE_SOURCE_DIR}/extern/fx-gltf/"
@@ -63,6 +61,8 @@ target_include_directories(
     "${CMAKE_SOURCE_DIR}/extern/imgui/backends/"
     "${CMAKE_SOURCE_DIR}/extern/glad/include/"
 )
+
+target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_INCLUDE_DIRS})
 
 set(SHADER_DIR "${CMAKE_SOURCE_DIR}/shaders/")
 set(ASSETS_DIR "${CMAKE_SOURCE_DIR}/assets/")
@@ -94,3 +94,5 @@ copy_directory(
     ${CMAKE_SOURCE_DIR}/shaders/
     ${CMAKE_BINARY_DIR}/shaders/
 )
+
+include(${CMAKE_SOURCE_DIR}/cmake/iwyu.cmake)
