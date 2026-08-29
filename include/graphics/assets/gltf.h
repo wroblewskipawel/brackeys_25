@@ -26,6 +26,7 @@
 #include "graphics/storage/material.h"
 #include "graphics/storage/mesh.h"
 #include "graphics/storage/texture.h"
+#include "utility/ranges.h"
 
 template <typename Data>
 constexpr fx::gltf::Accessor::Type getAccessorType() {
@@ -450,7 +451,7 @@ inline SkinData readSkinData(const fx::gltf::Document& document,
         std::unordered_map<int32_t, std::pair<uint32_t, glm::mat4>>();
     auto invserseBind = readInverseBindMatrices(document, skin);
     for (const auto& [i, jointData] :
-         std::views::zip(skin.joints, invserseBind) | std::views::enumerate) {
+         utils::ranges::enumerate(std::views::zip(skin.joints, invserseBind))) {
         const auto& [jointIndex, bindMatrix] = jointData;
         jointDataMap[jointIndex] = {static_cast<uint32_t>(i), bindMatrix};
     }
@@ -778,7 +779,7 @@ class DocumentReader {
 
     void loadMeshes(const fx::gltf::Document& document) noexcept {
         for (const auto& [documentMeshIndex, mesh] :
-             std::views::enumerate(document.meshes)) {
+             utils::ranges::enumerate(document.meshes)) {
             if (mesh.primitives.size() != 1) {
                 std::println(
                     std::cout,
@@ -832,7 +833,7 @@ class DocumentReader {
         auto skinMeshMap = getSkinMeshMap(document);
         for (const auto& animation : document.animations) {
             for (const auto& [skinIndex, skinData] :
-                 std::views::enumerate(skinDatas)) {
+                 utils::ranges::enumerate(skinDatas)) {
                 if (isSkinAnimation(skinData, animation)) {
                     if (animation.name.empty()) {
                     }

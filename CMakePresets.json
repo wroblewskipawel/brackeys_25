@@ -1,0 +1,39 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+    "configurePresets": [
+        {
+            "name": "msys2-clang64-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/msys2-clang64-toolchain.cmake"
+            }
+        },
+        {
+            "name": "msys2-clang64-debug",
+            "displayName": "MSYS2 Clang64 (Debug)",
+            "inherits": "msys2-clang64-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "msys2-clang64-release",
+            "displayName": "MSYS2 Clang64 (Release)",
+            "inherits": "msys2-clang64-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "msys2-clang64-relwithdebinfo",
+            "displayName": "MSYS2 Clang64 (RelWithDebInfo)",
+            "inherits": "msys2-clang64-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        }
+    ]
+}

@@ -9,6 +9,7 @@
 
 #include "graphics/resources/animation/joint.h"
 #include "graphics/storage/animation.h"
+#include "utility/ranges.h"
 
 class BuilderJoint;
 
@@ -66,14 +67,13 @@ class Skin {
 
     void applyJointRelations(std::vector<glm::mat4>& transforms) const {
         for (const auto& [i, parent] :
-             std::views::enumerate(jointsTree) | std::views::drop(1)) {
+             utils::ranges::enumerate(jointsTree) | std::views::drop(1)) {
             transforms[i] = transforms[parent.getIndex()] * transforms[i];
         }
     }
 
     void applyBindPose(std::vector<glm::mat4>& transforms) const {
-        for (const auto& [i, bind] :
-             std::views::enumerate(inverseBindMatrices)) {
+        for (const auto& [i, bind] : utils::ranges::enumerate(inverseBindMatrices)) {
             transforms[i] *= bind;
         }
     }
@@ -84,7 +84,7 @@ class Skin {
     // and origial ordering??
     void applyJointOrdering(std::vector<glm::mat4>& transforms) const {
         std::vector<glm::mat4> orderedTransforms(transforms.size());
-        for (const auto& [i, transform] : std::views::enumerate(transforms)) {
+        for (const auto& [i, transform] : utils::ranges::enumerate(transforms)) {
             orderedTransforms[outputLocations[i]] = transform;
         }
         transforms = std::move(orderedTransforms);
@@ -202,7 +202,8 @@ class AnimationPlayer {
             std::views::transform(animationRef.joints, [](const auto& joint) {
                 return joint.has_value() ? (*joint).getDuration() : 0.0;
             });
-        duration = *std::max_element(durations.begin(), durations.end());
+        duration = static_cast<float>(
+            *std::ranges::max_element(durations.begin(), durations.end()));
         currentKeyframes.resize(animationRef.numJoints());
     }
 
@@ -210,7 +211,7 @@ class AnimationPlayer {
     AnimationPlayer& operator=(const AnimationPlayer&) = delete;
 
     AnimationPlayer(AnimationPlayer&&) = default;
-    AnimationPlayer& operator=(AnimationPlayer&&) = default;
+    AnimationPlayer& operator=(AnimationPlayer&&) noexcept = default;
 
     size_t numJoints() const noexcept { return currentKeyframes.size(); }
 
@@ -252,8 +253,7 @@ class AnimationPlayer {
         const Animation& animationData) const {
         auto jointTransforms =
             std::vector<glm::mat4>(animationData.joints.size());
-        for (const auto& [i, joint] :
-             std::views::enumerate(animationData.joints)) {
+        for (const auto& [i, joint] : utils::ranges::enumerate(animationData.joints)) {
             jointTransforms[i] =
                 joint.has_value()
                     ? (*joint)

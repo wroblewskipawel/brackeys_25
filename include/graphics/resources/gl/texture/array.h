@@ -6,6 +6,7 @@
 #include "graphics/resources/gl/texture.h"
 #include "graphics/resources/gl/texture/binding.h"
 #include "graphics/resources/texture.h"
+#include "utility/ranges.h"
 
 class TextureArrayBuilder;
 
@@ -53,7 +54,7 @@ class TextureArray {
                            static_cast<GLsizei>(info.dimension.height),
                            static_cast<GLsizei>(numLayers));
         layerInfos.reserve(numLayers);
-        for (auto [i, layer] : std::views::enumerate(layers)) {
+        for (auto [i, layer] : utils::ranges::enumerate(layers)) {
             glTextureSubImage3D(
                 texture, 0, 0, 0, static_cast<GLint>(i),
                 static_cast<GLsizei>(layer.info.dimension.width),

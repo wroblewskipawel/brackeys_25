@@ -16,6 +16,7 @@
 #include "graphics/storage/animation.h"
 #include "graphics/storage/material.h"
 #include "graphics/storage/mesh.h"
+#include "utility/ranges.h"
 
 template <typename, typename>
 struct AssetsIndicesStorage;
@@ -228,7 +229,7 @@ class AssetsBundle<TypeList<Vertices...>, TypeList<Materials...>> {
         const std::vector<AnimationHandle>& animations) noexcept {
         auto indices = std::vector<size_t>(animations.size());
         for (const auto& [index, animation] :
-             std::views::enumerate(animations)) {
+             utils::ranges::enumerate(animations)) {
             auto animationIndex = findAnimation(animation);
             if (animationIndex == animationStorage.size()) {
                 animationStorage.emplace_back(animation.copy());

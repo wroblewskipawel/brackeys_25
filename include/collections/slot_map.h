@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "collections/pin.h"
+#include "utility/ranges.h"
 
 template <typename Item, typename Ownership>
 class SlotMap;
@@ -288,7 +289,7 @@ class SlotMap {
 
     auto&& take() noexcept {
         freeCells = std::vector(storageCells.size());
-        for (auto [i, generation] : std::views::enumerate(cellGenerations)) {
+        for (auto [i, generation] : utils::ranges::enumerate(cellGenerations)) {
             freeCells[i] = i;
             generation += 1;
         }

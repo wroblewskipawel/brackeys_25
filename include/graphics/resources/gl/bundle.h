@@ -12,6 +12,7 @@
 #include "graphics/storage/gl/mesh.h"
 #include "graphics/storage/material.h"
 #include "graphics/storage/mesh.h"
+#include "utility/ranges.h"
 
 template <typename... Vertices>
 using MeshPackHandleList = UniqueTypeList<MeshPackHandle<Vertices>...>;
@@ -85,7 +86,7 @@ auto partitionMaterials(
         TextureDims, std::pair<std::unordered_map<size_t, size_t>,
                                std::vector<MaterialBuilderHandle<Material>>>>{};
     for (auto [materialIndex, materialHandle] :
-         std::views::enumerate(materials)) {
+         utils::ranges::enumerate(materials)) {
         auto textureDims = materialHandle.get().get().getTextureDimensions();
         auto materialIt = materialMap.find(textureDims);
         if (materialIt == materialMap.end()) {

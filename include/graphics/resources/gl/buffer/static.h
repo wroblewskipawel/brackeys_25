@@ -4,6 +4,7 @@
 
 #include "concepts/range.h"
 #include "graphics/resources/gl/buffer/binding.h"
+#include "utility/ranges.h"
 
 template <typename Item>
 class StaticBufferVec;
@@ -80,7 +81,7 @@ class StaticBufferVec {
         buffers.resize(numBuffers);
         numItems.resize(numBuffers);
         glCreateBuffers(buffers.size(), buffers.data());
-        for (const auto& [i, dataRange] : std::views::enumerate(range)) {
+        for (const auto& [i, dataRange] : utils::ranges::enumerate(range)) {
             numItems[i] = std::ranges::distance(dataRange);
             glNamedBufferStorage(buffers[i], sizeof(Item) * numItems[i],
                                  &*dataRange.begin(), GL_NONE);
